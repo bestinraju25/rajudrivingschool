@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="palm" x1="0" x2="1">
+      <stop offset="0" stop-color="#1c5d2a"/>
+      <stop offset="1" stop-color="#6c9d38"/>
+    </linearGradient>
+    <linearGradient id="trunk" x1="0" x2="1">
+      <stop offset="0" stop-color="#452811"/>
+      <stop offset="1" stop-color="#8a6230"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="none"/>
+  <g opacity=".88">
+    <path d="M125 860 L145 620 L170 860Z" fill="url(#trunk)"/>
+    <path d="M150 610 C80 580 35 520 18 450 C100 463 153 520 150 610Z" fill="url(#palm)"/>
+    <path d="M151 608 C210 560 292 545 352 575 C270 620 205 630 151 608Z" fill="url(#palm)"/>
+    <path d="M153 610 C132 530 158 455 218 410 C232 492 205 562 153 610Z" fill="url(#palm)"/>
+  </g>
+  <g opacity=".82" transform="translate(1530 70) scale(1.18)">
+    <path d="M125 860 L145 620 L170 860Z" fill="url(#trunk)"/>
+    <path d="M150 610 C80 580 35 520 18 450 C100 463 153 520 150 610Z" fill="url(#palm)"/>
+    <path d="M151 608 C210 560 292 545 352 575 C270 620 205 630 151 608Z" fill="url(#palm)"/>
+    <path d="M153 610 C132 530 158 455 218 410 C232 492 205 562 153 610Z" fill="url(#palm)"/>
+  </g>
+  <g opacity=".92">
+    <rect x="1140" y="730" width="210" height="120" fill="#6e3d25"/>
+    <path d="M1105 735 L1242 645 L1394 735Z" fill="#a54831"/>
+    <rect x="1205" y="775" width="42" height="75" fill="#201915"/>
+    <rect x="1280" y="765" width="42" height="36" fill="#ffd15b" opacity=".45"/>
+  </g>
+  <g opacity=".86">
+    <rect x="320" y="690" width="7" height="210" fill="#d9dfd5"/>
+    <path d="M320 725 L480 725" stroke="#d9dfd5" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="470" cy="725" r="16" fill="#ffd027" opacity=".7"/>
+    <rect x="1530" y="655" width="7" height="245" fill="#d9dfd5"/>
+    <path d="M1375 690 L1534 690" stroke="#d9dfd5" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="1382" cy="690" r="16" fill="#ffd027" opacity=".7"/>
+  </g>
+</svg>
