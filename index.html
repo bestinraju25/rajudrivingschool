@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Raju Driving School — practical driving lessons in Chalakudy, Kerala.">
+<title>Raju Driving School | Learn. Drive. Go.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header class="nav" data-nav>
+  <a class="brand" href="#home" aria-label="Raju Driving School home"><img class="brand-logo" src="./images/raju-logo.png" alt="Raju Driving School — Chalakudy — Since 1969"></a>
+  <nav class="desktop-nav"><a href="#about">About</a><a href="#courses">Courses</a><a href="./learn.html">Learn</a><a href="./mock-test.html">Mock Test</a><a href="./video-lessons.html">Video Classes</a><a href="#experience">Experience</a><a class="nav-cta" href="#contact">Start Learning <span>↗</span></a></nav>
+  <button class="menu-btn" data-menu aria-label="Menu" aria-expanded="false"><i></i><i></i></button>
+  <div class="mobile-menu" data-mobile-menu><a href="#about">About</a><a href="#courses">Courses</a><a href="./learn.html">Learn</a><a href="./mock-test.html">Mock Test</a><a href="./video-lessons.html">Video Classes</a><a href="#experience">Experience</a><a href="#contact">Start Learning</a></div>
+</header>
+<main>
+<section class="video-hero hero-scroll-car" id="home" aria-label="Raju Driving School introduction">
+  <div class="video-sticky">
+    <div class="hero-static-scene" aria-hidden="true"></div>
+    <canvas class="hero-scroll-canvas" id="heroScrollCanvas" width="1280" height="720" aria-hidden="true"></canvas>
+    <div class="hero-wash"></div>
+    <div class="hero-glow glow-a"></div><div class="hero-glow glow-b"></div>
+    <div class="hero-road" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    <div class="hero-copy">
+      <div class="eyebrow"><span></span> DRIVING LESSONS · CHALAKUDY</div>
+      <h1>Get ready.<br><em>Get moving.</em></h1>
+      <p>Learn the road with patient instruction, practical training and confidence that stays with you long after the test.</p>
+      <div class="hero-actions"><a class="btn btn-yellow" href="#contact">Book a lesson <b>↗</b></a><a class="btn btn-glass" href="#courses">Explore training</a></div>
+    </div>
+    <div class="hero-car-wrap" aria-hidden="true"><img class="hero-car" src="./images/training-car.png" alt=""></div>
+    <div class="hero-bottom"><div class="scroll-prompt"><span class="mouse"></span><span>SCROLL TO DRIVE</span></div><div class="hero-meter"><span id="videoProgress"></span></div><div class="hero-count"><b id="videoPct">00</b><small>%</small></div></div>
+  </div>
+</section>
+
+<section class="marquee"><div>LEARN WITH CONFIDENCE <i>✦</i> DRIVE WITH CONTROL <i>✦</i> ROAD READY <i>✦</i> CHALAKUDY <i>✦</i> LEARN WITH CONFIDENCE <i>✦</i></div></section>
+
+<section class="intro section" id="about">
+  <div class="section-kicker">01 / THE SCHOOL</div>
+  <div class="intro-grid"><div class="reveal"><p class="big-copy">Driving lessons should feel <span>clear, calm</span> and genuinely useful.</p></div><div class="intro-text reveal"><p>At Raju Driving School, we turn the complicated bits of driving into simple, practical habits. Start with the controls, build road awareness, then take that confidence into real traffic.</p><div class="intro-links"><a class="arrow-link" href="#history">Our history <b>→</b></a><a class="arrow-link" href="#courses">Meet the training <b>→</b></a></div></div></div>
+</section>
+
+
+<section class="history section" id="history" aria-labelledby="history-title">
+  <div class="history-top">
+    <div class="section-kicker">02 / OUR HISTORY</div>
+    <div class="history-hero reveal">
+      <div>
+        <h2 id="history-title">More than five decades of trust.<br><span>One journey on every road.</span></h2>
+        <p class="history-lead">Every institution has a beginning. Ours began with a simple vision — to teach people not just how to drive, but how to drive with confidence, responsibility and care.</p>
+      </div>
+      <div class="history-badge" aria-label="Established in 1969"><strong>1969</strong><span>ESTABLISHED<br>CHALAKUDY</span></div>
+    </div>
+  </div>
+
+  <div class="history-timeline">
+    <div class="history-line" aria-hidden="true"><span></span></div>
+
+    <article class="history-milestone reveal">
+      <div class="history-year">1969</div>
+      <div class="history-card">
+        <span class="history-label">THE BEGINNING</span>
+        <h3>A familiar name in Chalakudy.</h3>
+        <p>Established in 1969, Raju Driving School began its journey in Chalakudy at a time when driving was becoming an increasingly important part of everyday life. What started as a humble driving school gradually became a familiar and trusted name among families across Chalakudy and the surrounding areas.</p>
+        <p>For more than five decades, our journey has been closely connected with the people of this community.</p>
+      </div>
+    </article>
+
+    <article class="history-milestone history-offset reveal">
+      <div class="history-year">GENERATIONS</div>
+      <div class="history-card">
+        <span class="history-label">TRUST PASSED ON</span>
+        <h3>Parents learned. Then their children.</h3>
+        <p>Generations have walked through our doors as learners. Parents who once learned to drive with us later brought their children. Friends recommended us to friends. Families trusted us with one of the most important skills a person can learn — the ability to take control of a vehicle and safely navigate the road.</p>
+        <p>And that trust became our greatest achievement.</p>
+      </div>
+    </article>
+
+    <article class="history-milestone reveal">
+      <div class="history-year">THEN → NOW</div>
+      <div class="history-card">
+        <span class="history-label">A JOURNEY THAT GREW WITH CHALAKUDY</span>
+        <h3>Everything changed. Our commitment didn't.</h3>
+        <p>Over the years, driving itself has changed. The roads have changed. Vehicles have changed. Technology has changed. Licensing procedures have evolved. And every new generation of learners has brought different expectations.</p>
+        <p>But one thing has remained constant at Raju Driving School: <strong>our commitment to teaching people to become safe and confident drivers.</strong></p>
+        <p>From the early days of traditional driving instruction to today's structured practical training, we have continued to adapt with the times while preserving the values on which the school was built.</p>
+      </div>
+    </article>
+
+    <article class="history-milestone history-offset reveal">
+      <div class="history-year">TODAY</div>
+      <div class="history-card">
+        <span class="history-label">THE NEXT CHAPTER</span>
+        <h3>Modern training. Same responsibility.</h3>
+        <p>Today, Raju Driving School continues its journey from Anamala Junction, Chalakudy, serving learners with modern training vehicles, experienced instructors and a growing range of training programmes.</p>
+      </div>
+    </article>
+  </div>
+
+  <div class="history-belief reveal">
+    <div class="history-belief-copy">
+      <span class="history-label">MORE THAN A DRIVING LICENCE</span>
+      <h3>A licence may be the goal.<br><span>Responsibility is the lesson.</span></h3>
+      <p>We believe that learning to drive is learning responsibility. It is understanding the road. It is respecting other people. It is knowing when to accelerate — and when to slow down. It is having the confidence to make the right decision when it matters.</p>
+      <p>That philosophy has guided our training for generations.</p>
+    </div>
+    <div class="history-principles">
+      <span>UNDERSTAND THE ROAD</span>
+      <span>RESPECT OTHERS</span>
+      <span>KNOW WHEN TO SLOW</span>
+      <span>MAKE THE RIGHT DECISION</span>
+    </div>
+  </div>
+
+  <div class="history-ending reveal">
+    <div class="history-ending-number">55<span>+</span></div>
+    <div>
+      <span class="history-label">YEARS · THOUSANDS OF JOURNEYS · ONE LEGACY</span>
+      <h3>The real history is written by every learner who drove away with confidence.</h3>
+      <p>As the years passed, Raju Driving School expanded its training capabilities to meet the changing needs of learners. From two-wheelers and cars to heavy-vehicle training, the school continues to broaden its services and training fleet. Recent milestones include the addition of new two-wheeler training vehicles and a new bus, followed by the successful launch of heavy driving tests in Chalakudy.</p>
+      <p>For us, the real history of Raju Driving School cannot be measured only in years. It is measured in the countless learners who started with nervous hands on the steering wheel and eventually drove away with confidence — the first licence, the first solo drive, the first family trip, the first time a student became a confident driver.</p>
+      <p>Since 1969, we have been teaching Chalakudy to move forward — one driver, one journey, and one generation at a time.</p>
+      <p class="history-signoff">Learn to Drive. <span>Learn to Drive Right.</span></p>
+    </div>
+  </div>
+</section>
+
+
+<section class="raju-method section" id="courses" aria-label="The Raju Method">
+  <div class="method-head">
+    <div class="method-title reveal">
+      <div class="section-kicker">03 / THE RAJU METHOD</div>
+      <h2>Learn it.<br><span>Practice it.</span><br><em>Drive it.</em></h2>
+    </div>
+    <div class="method-intro reveal">
+      <p>We follow a step-by-step training journey that builds knowledge, confidence and real road skills — <strong>the right way.</strong></p>
+    </div>
+    <div class="method-promise reveal">
+      <img class="promise-card" src="./images/training-method/our-promise-card.png" alt="Our promise: safe training, patient instructors, modern methods and responsible drivers for life.">
+    </div>
+  </div>
+
+  <div class="method-journey">
+    <img class="method-road method-road-one" src="./images/training-method/winding-road.svg" alt="" aria-hidden="true">
+    <img class="method-road method-road-two" src="./images/training-method/straight-road.svg" alt="" aria-hidden="true">
+
+    <article class="method-stage method-stage-blue reveal">
+      <div class="stage-top"><span class="stage-number">01</span><img src="./images/training-method/classroom.svg" alt="" class="stage-icon"></div>
+      <div class="stage-copy">
+        <h3>Classroom</h3>
+        <p class="stage-lead">Understand the basics.</p>
+        <p>Theory classes build a strong foundation before you get behind the wheel.</p>
+      </div>
+      <div class="stage-panel">
+        <img class="stage-image" src="./images/training-method/classroom-training.jpg" alt="Classroom road-sign training">
+        <ul>
+          <li>Road signs &amp; signals</li><li>Rules of the road</li><li>Vehicle controls</li><li>Road markings</li>
+          <li>Defensive driving</li><li>First aid &amp; safety</li><li>Traffic awareness</li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="method-stage method-stage-blue reveal">
+      <div class="stage-top"><span class="stage-number">02</span><img src="./images/training-method/simulator.svg" alt="" class="stage-icon"></div>
+      <div class="stage-copy">
+        <h3>Simulator</h3>
+        <p class="stage-lead">Practice in a safe space.</p>
+        <p>Hands-on practice in a driving simulator helps learners build confidence and control.</p>
+      </div>
+      <div class="stage-panel">
+        <img class="stage-image" src="./images/training-method/simulator-training.jpg" alt="Driving simulator training">
+        <ul>
+          <li>Starting &amp; stopping</li><li>Steering control</li><li>Gear &amp; clutch practice</li><li>Traffic situations</li>
+          <li>Intersections</li><li>Night / low visibility</li><li>Hazard awareness</li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="method-stage method-stage-blue reveal">
+      <div class="stage-top"><span class="stage-number">03</span><img src="./images/training-method/licence.svg" alt="" class="stage-icon"></div>
+      <div class="stage-copy">
+        <h3>Learner's Licence</h3>
+        <p class="stage-lead">Get ready for the road.</p>
+        <p>Complete the required process and move from simulation to supervised practical training.</p>
+      </div>
+      <div class="stage-panel">
+        <img class="stage-image" src="./images/training-method/learner-licence.jpg" alt="Learner's licence guidance">
+        <ul>
+          <li>Documents guidance</li><li>LL test preparation</li><li>RTO procedures</li><li>Licence support</li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="method-stage method-stage-red reveal">
+      <div class="stage-top"><span class="stage-number">04</span><img src="./images/training-method/cockpit.svg" alt="" class="stage-icon"></div>
+      <div class="stage-copy">
+        <h3>Cockpit Drill</h3>
+        <p class="stage-lead">Every drive starts with a check.</p>
+        <p>Pre-driving checks become a habit for every journey.</p>
+      </div>
+      <div class="stage-panel">
+        <img class="stage-image stage-image-cockpit" src="./images/training-method/cockpit-check-card.png" alt="Outside and inside cockpit safety checks">
+        <div class="method-mini-flow">
+          <div><strong>MSM</strong><span>Mirror → Signal → Manoeuvre</span></div>
+          <div><strong>PSL</strong><span>Position → Speed → Look</span></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="method-stage method-stage-red reveal">
+      <div class="stage-top"><span class="stage-number">05</span><img src="./images/training-method/car.svg" alt="" class="stage-icon"></div>
+      <div class="stage-copy">
+        <h3>Real Road Training</h3>
+        <p class="stage-lead">Apply it on the road.</p>
+        <p>Step-by-step training on real roads with expert guidance.</p>
+      </div>
+      <div class="stage-panel">
+        <img class="stage-image" src="./images/training-method/real-road-training.jpg" alt="Raju Driving School car during real-road training">
+        <ul class="red-list">
+          <li>Moving off &amp; stopping</li><li>Gear &amp; gear shifting</li><li>Turning &amp; intersections</li><li>MSM, PSL &amp; lane discipline</li>
+          <li>Reversing &amp; parking</li><li>Hill driving</li><li>Traffic &amp; road situations</li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="method-stage method-stage-red reveal">
+      <div class="stage-top"><span class="stage-number">06</span><img src="./images/training-method/check.svg" alt="" class="stage-icon"></div>
+      <div class="stage-copy">
+        <h3>Test Ready</h3>
+        <p class="stage-lead">Confidence that stays for life.</p>
+        <p>Focused practice for the test and for everyday safe driving.</p>
+      </div>
+      <div class="stage-panel">
+        <img class="stage-image" src="./images/training-method/test-ready.jpg" alt="Driving test preparation">
+        <ul class="red-list">
+          <li>Manoeuvres practice</li><li>Road discipline</li><li>Test procedures</li><li>Final confidence</li>
+          <li>For a lifetime of safe driving</li>
+        </ul>
+      </div>
+    </article>
+  </div>
+
+  <div class="method-bottom reveal">
+    <img src="./images/training-method/bottom-promise-strip.png" alt="From the classroom to real roads, we shape confident, responsible drivers. Experienced instructors, modern training methods, safety first, trusted since 1969.">
+  </div>
+</section>
+
+<section class="training-in-action section" id="training-in-action" aria-label="Training in action">
+  <div class="training-action-head">
+    <div>
+      <div class="section-kicker">TRAINING IN ACTION</div>
+      <h2>Learn with guidance.<br><span>Drive with confidence.</span></h2>
+    </div>
+    <p>Good training is more than time behind the wheel. Our learners get practical guidance, patient instruction and the confidence to handle real driving situations.</p>
+  </div>
+
+  <div class="training-action-grid">
+    <figure class="training-action-feature reveal">
+      <img src="./images/training-action/car-instructor-front.jpg" alt="Raju Driving School instructor guiding a learner during car training" loading="lazy" decoding="async">
+      <figcaption><strong>Guided practice</strong><span>Clear instruction while you learn the right habits.</span></figcaption>
+    </figure>
+
+    <div class="training-action-side">
+      <figure class="training-action-card reveal">
+        <img src="./images/training-action/car-instructor-side.jpg" alt="Raju Driving School instructor teaching a learner from the side of the training car" loading="lazy" decoding="async">
+        <figcaption><strong>Real-road confidence</strong><span>Build control, awareness and decision-making step by step.</span></figcaption>
+      </figure>
+      <figure class="training-action-card training-action-bike reveal">
+        <img src="./images/training-action/motorcycle.jpg" alt="Raju Driving School motorcycle training vehicle" loading="lazy" decoding="async">
+        <figcaption><strong>Two-wheeler training</strong><span>Focused practice for learners building balance and road control.</span></figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="learn-portal section" id="learn">
+  <div class="learn-portal-grid">
+    <div>
+      <div class="section-kicker">06 / LEARNING HUB</div>
+      <h2>Learn the road<br><span>before you drive it.</span></h2>
+      <p>We have turned the basic driving syllabus into a practical digital learning hub. Explore cockpit controls, signals, MSM / PSL, junctions, reversing, parking, roundabouts and more — lesson by lesson.</p>
+      <a class="btn btn-yellow" href="./learn.html">Open the Learning Hub <b>↗</b></a>
+    </div>
+    <div class="learn-portal-card">
+      <div class="learn-portal-card-top"><span>01 → 25</span><b>BASIC DRIVING</b></div>
+      <div class="learn-portal-wheel" aria-hidden="true"><span>CONTROLS</span><span>ROAD SKILLS</span><span>MANOEUVRES</span><span>TRAFFIC</span><strong>LEARN<br>RIGHT</strong></div>
+      <p>Study the concept. Practise it with your instructor. Build the habit for real roads.</p>
+    </div>
+  </div>
+</section>
+
+<section class="experience" id="experience">
+  <div class="experience-stage">
+    <div class="experience-bg"><div class="sun"></div><div class="hill hill-1"></div><div class="hill hill-2"></div><div class="cloud cloud-1"></div><div class="cloud cloud-2"></div><div class="road-ribbon"></div></div>
+    <div class="experience-copy"><div class="section-kicker">04 / THE EXPERIENCE</div><h2>The road is<br><span>your classroom.</span></h2><p>Practice is where confidence clicks. Every turn, signal and parking move becomes a little more familiar.</p></div>
+    <div class="traffic-light" aria-label="Traffic signal">
+      <div class="signal-head"><i class="r"></i><i class="a"></i><i class="g"></i></div>
+      <div class="signal-pole"></div><div class="signal-base"></div>
+    </div>
+    <img class="experience-car" src="./images/training-car.png" alt="Raju Driving School training car">
+  </div>
+</section>
+
+<section class="fleet-section" id="fleet" aria-label="Our training fleet">
+  <div class="fleet-stage">
+    <div class="fleet-sky-glow" aria-hidden="true"></div>
+    <div class="fleet-grid" aria-hidden="true"></div>
+    <div class="fleet-heading">
+      <div class="section-kicker">05 / OUR TRAINING FLEET</div>
+      <h2>Vehicles built for<br><span>learning the road.</span></h2>
+      <p>Scroll down. Each training vehicle comes into view, settles into the fleet and reveals the full range of training vehicles at Raju Driving School.</p>
+    </div>
+
+    <div class="fleet-scroll-cta"><span>↓</span> SCROLL TO VIEW THE FLEET</div>
+
+    <div class="fleet-status" aria-hidden="true"><b></b><span></span><small></small></div>
+
+    <div class="fleet-lineup" aria-label="Raju Driving School training vehicles">
+      <article class="fleet-item" data-fleet-item data-direction="left">
+        <img src="./images/fleet2/red-alto.png" alt="Red Alto 800 — Raju Driving School" loading="lazy" decoding="async">
+      </article>
+      <article class="fleet-item" data-fleet-item data-direction="right">
+        <img src="./images/fleet2/white-hatchback.png" alt="White Ignis — Raju Driving School" loading="lazy" decoding="async">
+      </article>
+      <article class="fleet-item" data-fleet-item data-direction="left">
+        <img src="./images/fleet2/blue-alto.png" alt="Blue Alto — Raju Driving School" loading="lazy" decoding="async">
+      </article>
+      <article class="fleet-item" data-fleet-item data-direction="right">
+        <img src="./images/fleet2/blue-hatchback.png" alt="Blue Celerio Automatic — Raju Driving School" loading="lazy" decoding="async">
+      </article>
+      <article class="fleet-item" data-fleet-item data-direction="left">
+        <img src="./images/fleet2/dark-gray-hatchback.png" alt="Grey Alto — Raju Driving School" loading="lazy" decoding="async">
+      </article>
+      <article class="fleet-item" data-fleet-item data-direction="right">
+        <img src="./images/fleet2/red-hatchback.png" alt="Red Celerio — Raju Driving School" loading="lazy" decoding="async">
+      </article>
+      <article class="fleet-item" data-fleet-item data-direction="left">
+        <img src="./images/fleet2/red-sedan.png" alt="Red Nissan Micra — Raju Driving School" loading="lazy" decoding="async">
+      </article>
+      <article class="fleet-item fleet-item-bike" data-fleet-item data-direction="right">
+        <img src="./images/fleet2/green-moped.png" alt="Raju Driving School green motorcycle" loading="lazy" decoding="async">
+      </article>
+      <article class="fleet-item fleet-item-bike" data-fleet-item data-direction="left">
+        <img src="./images/fleet2/black-blue-motorcycle.png" alt="Raju Driving School black and blue motorcycle" loading="lazy" decoding="async">
+      </article>
+      <article class="fleet-item fleet-item-bus" data-fleet-item data-direction="right">
+        <img src="./images/fleet2/training-bus.png" alt="Heavy Bus — Raju Driving School" loading="lazy" decoding="async">
+      </article>
+    </div>
+
+    <div class="fleet-progress"><span class="fleet-progress-fill"></span></div>
+    <div class="fleet-counter" aria-hidden="true"><b></b><span></span></div>
+  </div>
+</section>
+
+<section class="stats section"><div class="section-kicker">07 / WHY RAJU</div><div class="stats-grid"><div class="stat reveal"><strong>01</strong><h3>Patient<br>teaching</h3><p>Clear instruction without rushing the learner.</p></div><div class="stat reveal"><strong>02</strong><h3>Real-road<br>practice</h3><p>Skills built around everyday driving situations.</p></div><div class="stat reveal"><strong>03</strong><h3>Safety<br>first</h3><p>Awareness and responsible road habits from day one.</p></div><div class="stat reveal"><strong>04</strong><h3>Test<br>focused</h3><p>Practice the skills you need when it counts.</p></div></div></section>
+
+<section class="journey section"><div class="section-kicker">08 / YOUR JOURNEY</div><div class="journey-head"><h2>From first turn<br>to <span>full confidence.</span></h2><p>Four simple stages. One goal: make the road feel familiar.</p></div><div class="timeline"><div class="timeline-line"><span></span></div><article><b>01</b><h3>Enquire</h3><p>Tell us what you want to learn.</p></article><article><b>02</b><h3>Start</h3><p>Get comfortable with the car and controls.</p></article><article><b>03</b><h3>Practice</h3><p>Take your skills into real traffic.</p></article><article><b>04</b><h3>Go</h3><p>Drive with confidence and prepare for the next step.</p></article></div></section>
+
+<section class="quote-section" id="reviews" aria-label="Google reviews">
+  <div class="quote-orbit orbit-a"></div><div class="quote-orbit orbit-b"></div>
+  <div class="reviews-shell">
+    <div class="reviews-head">
+      <div>
+        <div class="section-kicker">09 / STUDENT VOICE</div>
+        <h2>Real words from<br><span>real learners.</span></h2>
+      </div>
+      <div class="reviews-source"><span class="google-mark">G</span><div><strong>Google Reviews</strong><small>★★★★★ · 5-star experiences</small></div></div>
+    </div>
+    <div class="reviews-grid">
+      <article class="review-card review-featured">
+        <div class="review-top"><div class="review-person"><span class="review-avatar">U</span><div><strong>umesh p.v</strong><small>1 review · 5 months ago</small></div></div><span class="review-stars">★★★★★</span></div>
+        <p>I had a very good experience with Raju Motor Driving School in Chalakudy. The proprietor, Mr. Raju, is very approachable and supportive, and all the staff members are friendly and helpful.</p>
+        <p>The driving instructors are highly talented and skilled. They teach in a simple and clear way, making it easy to understand even for beginners. Their guidance really helped build my confidence on the road.</p>
+        <p>They also provide excellent support for the driving test, making the whole process smooth and stress-free. I would highly recommend this driving school to anyone looking to learn driving in a comfortable and professional environment.</p>
+        <div class="review-sign">— Umesh Kannur 🙏</div><a class="review-link" href="https://share.google/fVOSmpD0In6g4xNvM" target="_blank" rel="noopener">View on Google ↗</a>
+      </article>
+      <article class="review-card">
+        <div class="review-top"><div class="review-person"><span class="review-avatar avatar-k">K</span><div><strong>Krishnaveny MA</strong><small>1 review · a month ago</small></div></div><span class="review-stars">★★★★★</span></div>
+        <p>The defensive driving seminar conducted by Raju Sir was very informative and engaging. I learned the importance of safe and responsible driving.</p>
+        <p>Thank you, Raju Sir, for such a valuable session.</p>
+        <a class="review-link" href="https://share.google/7vKW5bp3RUvSOKlKs" target="_blank" rel="noopener">View on Google ↗</a>
+      </article>
+      <article class="review-card">
+        <div class="review-top"><div class="review-person"><span class="review-avatar avatar-l">L</span><div><strong>Laly Lasar</strong><small>3 reviews · 7 months ago</small></div></div><span class="review-stars">★★★★★</span></div>
+        <p>If we properly learn and follow the instructions given by this driving school, passing the driving test becomes easy.</p>
+        <p>The teaching is clear and well explained. Raju sir is also very friendly and supportive. Thank you ❤️</p>
+        <a class="review-link" href="https://share.google/Of7VKcOr7piBvX2QV" target="_blank" rel="noopener">View on Google ↗</a>
+      </article>
+      <article class="review-card">
+        <div class="review-top"><div class="review-person"><span class="review-avatar avatar-j">J</span><div><strong>Jack John</strong><small>1 review · a year ago</small></div></div><span class="review-stars">★★★★★</span></div>
+        <p>I'm absolutely thrilled with Raju's driving school I attended! Our instructor Jithin sir is patient, knowledgeable, and supportive throughout the entire learning process.</p>
+        <p>From the very first lesson, I felt comfortable and confident behind the wheel. The school's curriculum was comprehensive, covering everything from basic driving skills to advanced techniques and road safety.</p>
+        <a class="review-link" href="https://share.google/P3NJumAVFQd0mOv9p" target="_blank" rel="noopener">View on Google ↗</a>
+      </article>
+      <article class="review-card">
+        <div class="review-top"><div class="review-person"><span class="review-avatar avatar-h">H</span><div><strong>Hanock</strong><small>3 reviews · 4 months ago</small></div></div><span class="review-stars">★★★★★</span></div>
+        <p>I am 💯 % confident in their teaching.</p>
+      </article>
+      <article class="review-card">
+        <div class="review-top"><div class="review-person"><span class="review-avatar avatar-m">M</span><div><strong>Martin Joy</strong><small>3 reviews · a year ago</small></div></div><span class="review-stars">★★★★★</span></div>
+        <p>One of the Best driving school in thrissur district, very professional, top level teaching skills, better(latest model) vehicle for practice/test.</p>
+      </article>
+    </div>
+    <div class="reviews-footer"><span>Selected directly from the Google reviews you provided.</span><span>★★★★★ Real learner feedback</span></div>
+  </div>
+</section>
+<section class="contact" id="contact"><div class="contact-art"><div class="contact-sun"></div><div class="contact-road-shape"></div></div><div class="contact-grid"><div><div class="section-kicker">10 / LET'S DRIVE</div><h2>Your first<br><span>lesson starts</span><br>with a hello.</h2><p>Tell us what you want to learn. We’ll help you choose the right next step.</p><div class="contact-buttons"><a class="btn btn-yellow" href="tel:+918943764734">Call us ↗</a><a class="btn btn-white" href="https://wa.me/918943764734">WhatsApp</a></div></div><form data-form><label>Name<input name="name" required placeholder="Your name"></label><label>Phone<input name="phone" required placeholder="Your phone number"></label><label>Training<select name="course"><option>Car driving</option><option>Two-wheeler</option><option>Test preparation</option><option>General enquiry</option></select></label><label>Message<textarea name="message" rows="3" placeholder="What would you like to learn?"></textarea></label><button class="btn btn-yellow" type="submit">Send enquiry <b>↗</b></button><small>Your enquiry will open in WhatsApp with your details ready to send.</small></form></div></section>
+<footer><div class="footer-brand"><img class="brand-logo footer-logo" src="./images/raju-logo.png" alt="Raju Driving School — Chalakudy — Since 1969"></div><div class="footer-nav"><a href="#about">About</a><a href="#courses">Courses</a><a href="#experience">Experience</a><a href="#contact">Contact</a></div><p>© <span id="year"></span> Raju Driving School. All rights reserved.</p></footer>
+</main><script src="./script.js"></script>
+</body></html>

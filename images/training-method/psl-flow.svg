@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 140" fill="none">
+<g font-family="Arial,sans-serif" font-weight="700" text-anchor="middle">
+<circle cx="70" cy="70" r="42" stroke="#0B57D0" stroke-width="4"/><text x="70" y="80" font-size="34" fill="#0B57D0">P</text>
+<path d="M120 70h70" stroke="#667085" stroke-width="3"/><path d="m180 60 12 10-12 10" stroke="#667085" stroke-width="3"/>
+<circle cx="250" cy="70" r="42" stroke="#0B57D0" stroke-width="4"/><text x="250" y="80" font-size="34" fill="#0B57D0">S</text>
+<path d="M300 70h70" stroke="#667085" stroke-width="3"/><path d="m360 60 12 10-12 10" stroke="#667085" stroke-width="3"/>
+<circle cx="430" cy="70" r="42" stroke="#0B57D0" stroke-width="4"/><text x="430" y="80" font-size="34" fill="#0B57D0">L</text>
+</g></svg>
