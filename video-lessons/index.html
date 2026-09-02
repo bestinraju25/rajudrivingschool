@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Raju Driving School video lessons — driving theory, cockpit drill and vehicle mechanism classes.">
+<title>Video Lessons | Raju Driving School</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+<style>
+.video-page{min-height:100vh;background:linear-gradient(180deg,#f8fbff 0%,#fff 38%,#f7faff 100%);color:var(--ink)}
+.video-nav{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;height:82px;padding:0 clamp(18px,5vw,72px);background:rgba(255,255,255,.82);backdrop-filter:blur(20px);border-bottom:1px solid #e4ebf3}
+.video-brand img{width:88px;height:64px;object-fit:contain}.video-navlinks{display:flex;align-items:center;gap:10px;font-size:.76rem;font-weight:800}.video-navlinks a{padding:11px 14px;border-radius:12px;color:#52657c;text-decoration:none}.video-navlinks a:hover{color:var(--blue);background:#f0f6ff}.video-navlinks .video-home{border:1px solid #dbe5ef;background:#fff}
+.video-shell{max-width:1220px;margin:auto;padding:clamp(45px,7vw,92px) 20px 100px}.video-hero{display:grid;grid-template-columns:1.1fr .55fr;gap:55px;align-items:end;margin-bottom:54px}.video-kicker{font-size:.68rem;font-weight:900;letter-spacing:.2em;color:var(--blue);text-transform:uppercase}.video-hero h1{font:800 clamp(3.6rem,7vw,7rem)/.88 Manrope;letter-spacing:-.065em;margin:17px 0 22px}.video-hero h1 span{color:var(--blue)}.video-hero h1 em{font-style:normal;color:var(--red)}.video-hero p{max-width:720px;color:#657991;line-height:1.75;font-size:1rem;margin:0}.video-hero-card{padding:28px;border-radius:30px;background:#fff;border:1px solid #dfe7f0;box-shadow:0 25px 65px rgba(12,49,92,.09)}.video-hero-card strong{display:block;font:800 1.25rem Manrope;margin-bottom:9px}.video-hero-card p{font-size:.78rem;line-height:1.65}.video-hero-card .yt-mark{width:48px;height:34px;border-radius:10px;display:grid;place-items:center;background:#ef3b2f;color:#fff;margin-bottom:18px;font-size:1rem}
+.video-section-head{display:flex;align-items:end;justify-content:space-between;gap:25px;margin-bottom:22px}.video-section-head h2{font:800 clamp(2.4rem,4.5vw,4.7rem)/.95 Manrope;letter-spacing:-.055em;margin:10px 0 0}.video-section-head h2 span{color:var(--blue)}.video-section-head p{max-width:430px;color:#6d8098;line-height:1.65;font-size:.82rem;margin:0}
+.video-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}.video-card{background:#fff;border:1px solid #dfe7f0;border-radius:28px;overflow:hidden;box-shadow:0 18px 55px rgba(13,52,94,.08);transition:transform .25s ease,box-shadow .25s ease}.video-card:hover{transform:translateY(-4px);box-shadow:0 25px 70px rgba(13,52,94,.13)}.video-frame{position:relative;aspect-ratio:16/9;background:#071a31}.video-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}.video-info{padding:21px 22px 23px}.video-number{display:inline-flex;align-items:center;gap:7px;font-size:.58rem;font-weight:900;letter-spacing:.15em;color:var(--blue);text-transform:uppercase}.video-number:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--yellow)}.video-info h3{font:800 1.35rem/1.15 Manrope;letter-spacing:-.035em;margin:11px 0 8px}.video-info p{color:#6d8098;font-size:.76rem;line-height:1.6;margin:0 0 16px}.watch-link{display:inline-flex;align-items:center;gap:8px;color:var(--blue);font-size:.68rem;font-weight:900;text-decoration:none}.watch-link span{font-size:1rem}.video-note{margin-top:38px;padding:18px 21px;border-radius:20px;background:#f3f7fc;border:1px solid #e0e8f1;color:#63768d;font-size:.7rem;line-height:1.65}.video-note strong{color:var(--ink)}
+.video-footer{max-width:1220px;margin:0 auto;padding:0 20px 40px;color:#718197;font-size:.68rem;display:flex;justify-content:space-between;gap:15px}.video-footer a{color:var(--blue);font-weight:800;text-decoration:none}
+@media(max-width:850px){.video-hero{grid-template-columns:1fr;gap:25px}.video-section-head{display:block}.video-section-head p{margin-top:15px}.video-grid{grid-template-columns:1fr}.video-navlinks a:not(.video-home){display:none}}
+@media(max-width:560px){.video-nav{height:72px;padding:0 15px}.video-brand img{width:74px}.video-shell{padding:38px 15px 75px}.video-hero h1{font-size:3.55rem}.video-card{border-radius:23px}.video-info{padding:18px}.video-footer{padding:0 15px 30px;display:block}.video-footer div+div{margin-top:8px}}
+/* Prevent homepage hero styles in styles.css from affecting this standalone page. */
+.video-page .video-hero{
+  position:relative;
+  min-height:auto;
+  height:auto;
+  overflow:visible;
+}
+
+.video-page .video-hero h1{
+  position:static;
+}
+
+.video-page .video-hero .hero-video,
+.video-page .video-hero .hero-wash,
+.video-page .video-hero .hero-glow,
+.video-page .video-hero .hero-bottom,
+.video-page .video-hero .hero-copy{
+  position:static;
+}
+
+.video-page .video-hero .hero-video,
+.video-page .video-hero .hero-wash,
+.video-page .video-hero .hero-glow,
+.video-page .video-hero .hero-bottom{
+  display:none;
+}
+</style>
+</head>
+<body class="video-page">
+<header class="video-nav">
+  <a class="video-brand" href="./index.html" aria-label="Raju Driving School home"><img src="./images/raju-logo.png" alt="Raju Driving School — Chalakudy — Since 1969"></a>
+  <nav class="video-navlinks"><a href="./learn.html">Learning Hub</a><a href="./mock-test.html">Mock Test</a><a href="./index.html#courses">Raju Method</a><a class="video-home" href="./index.html">Home ↗</a></nav>
+</header>
+<main class="video-shell">
+<section class="video-hero">
+  <div><div class="video-kicker">LEARNING HUB · VIDEO CLASSES</div><h1>Learn from the class.<br><span>Practice the idea.</span><br><em>Drive it right.</em></h1><p>Watch Raju Driving School's theory and practical-preparation classes directly here. The videos are hosted on YouTube, while this page gives students one clean place to continue their learning.</p></div>
+  <aside class="video-hero-card"><div class="yt-mark">▶</div><strong>Classes, in one place.</strong><p>Choose a lesson below and watch it without leaving the Raju Driving School website. Use these classes alongside the Learning Hub and learner mock test.</p></aside>
+</section>
+<section aria-labelledby="video-title"><div class="video-section-head"><div><div class="video-kicker">01 / VIDEO LIBRARY</div><h2 id="video-title">Study. <span>Watch.</span> Repeat.</h2></div><p>Start with theory, move into cockpit preparation, then understand the vehicle itself. More classes can be added here as the library grows.</p></div>
+<div class="video-grid">
+<article class="video-card"><div class="video-frame"><iframe src="https://www.youtube-nocookie.com/embed/hUAbEgllp_M?rel=0" title="Driving Theory Class 1 — Raju Driving School" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><div class="video-info"><span class="video-number">Class 01 · Theory</span><h3>Driving Theory Class 1</h3><p>Begin with the first driving theory class and build the knowledge needed before practical training.</p><a class="watch-link" href="https://youtu.be/hUAbEgllp_M" target="_blank" rel="noopener">Open on YouTube <span>↗</span></a></div></article>
+<article class="video-card"><div class="video-frame"><iframe src="https://www.youtube-nocookie.com/embed/PFwtzI_5Djw?rel=0" title="Driving Theory Class 2 — Raju Driving School" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><div class="video-info"><span class="video-number">Class 02 · Theory</span><h3>Driving Theory Class 2</h3><p>Continue the theory sequence and strengthen your understanding of road knowledge and safe driving.</p><a class="watch-link" href="https://youtu.be/PFwtzI_5Djw" target="_blank" rel="noopener">Open on YouTube <span>↗</span></a></div></article>
+<article class="video-card"><div class="video-frame"><iframe src="https://www.youtube-nocookie.com/embed/QmPJMfiIcuw?rel=0" title="Cockpit Drill — Raju Driving School" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><div class="video-info"><span class="video-number">Practical · Cockpit</span><h3>Cockpit Drill</h3><p>Learn the checks and setup routine to complete before the vehicle moves.</p><a class="watch-link" href="https://youtu.be/QmPJMfiIcuw" target="_blank" rel="noopener">Open on YouTube <span>↗</span></a></div></article>
+<article class="video-card"><div class="video-frame"><iframe src="https://www.youtube-nocookie.com/embed/6opMVroHYkY?rel=0" title="Vehicle Mechanism Theory Class — Raju Driving School" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><div class="video-info"><span class="video-number">Class · Vehicle</span><h3>Vehicle Mechanism Theory Class</h3><p>Understand the vehicle mechanism and the basic ideas that support confident vehicle control.</p><a class="watch-link" href="https://youtu.be/6opMVroHYkY" target="_blank" rel="noopener">Open on YouTube <span>↗</span></a></div></article>
+</div><div class="video-note"><strong>Tip for students:</strong> Watch the relevant class before practising the skill with your instructor. The videos support the training programme; practical driving should always be carried out under appropriate instruction.</div>
+</section>
+</main>
+<footer class="video-footer"><div>© <span id="year"></span> Raju Driving School. All rights reserved.</div><div><a href="./learn.html">Learning Hub</a> · <a href="./mock-test.html">Mock Test</a> · <a href="./index.html">Main website</a></div></footer>
+<script>document.getElementById('year').textContent=new Date().getFullYear();</script>
+</body></html>
