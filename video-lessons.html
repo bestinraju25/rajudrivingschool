@@ -18,6 +18,32 @@
 .video-footer{max-width:1220px;margin:0 auto;padding:0 20px 40px;color:#718197;font-size:.68rem;display:flex;justify-content:space-between;gap:15px}.video-footer a{color:var(--blue);font-weight:800;text-decoration:none}
 @media(max-width:850px){.video-hero{grid-template-columns:1fr;gap:25px}.video-section-head{display:block}.video-section-head p{margin-top:15px}.video-grid{grid-template-columns:1fr}.video-navlinks a:not(.video-home){display:none}}
 @media(max-width:560px){.video-nav{height:72px;padding:0 15px}.video-brand img{width:74px}.video-shell{padding:38px 15px 75px}.video-hero h1{font-size:3.55rem}.video-card{border-radius:23px}.video-info{padding:18px}.video-footer{padding:0 15px 30px;display:block}.video-footer div+div{margin-top:8px}}
+/* Prevent homepage hero styles in styles.css from affecting this standalone page. */
+.video-page .video-hero{
+  position:relative;
+  min-height:auto;
+  height:auto;
+  overflow:visible;
+}
+
+.video-page .video-hero h1{
+  position:static;
+}
+
+.video-page .video-hero .hero-video,
+.video-page .video-hero .hero-wash,
+.video-page .video-hero .hero-glow,
+.video-page .video-hero .hero-bottom,
+.video-page .video-hero .hero-copy{
+  position:static;
+}
+
+.video-page .video-hero .hero-video,
+.video-page .video-hero .hero-wash,
+.video-page .video-hero .hero-glow,
+.video-page .video-hero .hero-bottom{
+  display:none;
+}
 </style>
 </head>
 <body class="video-page">
