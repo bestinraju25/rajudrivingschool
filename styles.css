@@ -1432,3 +1432,22 @@
 @media (max-width:600px){
   .experience-stage .experience-car{width:88vw !important;bottom:16% !important;}
 }
+
+/* =========================================================
+   MODERN GLOBAL SCROLLBAR
+   Slim, rounded and unobtrusive; remains fully scrollable.
+   ========================================================= */
+html{
+  scrollbar-width:thin;
+  scrollbar-color:#163451 transparent;
+}
+html::-webkit-scrollbar{width:9px;height:9px}
+html::-webkit-scrollbar-track{background:transparent}
+html::-webkit-scrollbar-thumb{
+  background:#163451;
+  border:2px solid transparent;
+  background-clip:padding-box;
+  border-radius:999px;
+}
+html::-webkit-scrollbar-thumb:hover{background:#0757c9;background-clip:padding-box}
+html::-webkit-scrollbar-button{display:none;width:0;height:0}
