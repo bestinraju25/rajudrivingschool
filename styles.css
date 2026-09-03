@@ -1271,3 +1271,63 @@
 .local-contact-details p{margin:0!important;color:#bcd0e8!important}
 .local-contact-details strong{color:#fff}
 .local-contact-details a{color:#fff;border-bottom:1px solid rgba(255,210,31,.75);padding-bottom:2px}
+
+/* ================================================================
+   SHORT-DESKTOP HERO FIX
+   On shorter laptop/desktop viewports the hero copy must stay compact
+   and comfortably above the following marquee instead of colliding with it.
+   ================================================================ */
+@media (min-width:901px) and (max-height:760px){
+  .hero-scroll-car .hero-copy{
+    top:13%;
+    width:min(510px,43vw);
+  }
+  .hero-scroll-car .hero-copy h1{
+    font-size:clamp(3.25rem,6.4vw,6.25rem);
+    line-height:.88;
+    margin:12px 0 16px;
+  }
+  .hero-scroll-car .hero-copy p{
+    max-width:470px;
+    font-size:.92rem;
+    line-height:1.5;
+  }
+  .hero-scroll-car .hero-actions{
+    margin-top:18px;
+    gap:9px;
+  }
+  .hero-scroll-car .hero-actions .btn{
+    padding:12px 16px;
+  }
+  .hero-scroll-car .hero-scroll-canvas{
+    bottom:1%;
+    width:min(72vw,1080px);
+  }
+}
+
+@media (min-width:901px) and (max-height:560px){
+  .hero-scroll-car .hero-copy{
+    top:10%;
+    width:min(470px,42vw);
+  }
+  .hero-scroll-car .hero-copy h1{
+    font-size:clamp(2.9rem,5.8vw,5.2rem);
+    margin:9px 0 12px;
+  }
+  .hero-scroll-car .hero-copy p{
+    font-size:.84rem;
+    line-height:1.4;
+    max-width:430px;
+  }
+  .hero-scroll-car .hero-actions{
+    margin-top:13px;
+  }
+  .hero-scroll-car .hero-actions .btn{
+    padding:10px 14px;
+    font-size:.68rem;
+  }
+  .hero-scroll-car .hero-scroll-canvas{
+    bottom:-2%;
+    width:min(68vw,1020px);
+  }
+}

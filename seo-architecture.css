@@ -77,3 +77,36 @@
   .seo-page .menu-btn i{background:#fff!important}
   .seo-page .mobile-menu{top:70px!important;right:0!important}
 }
+
+
+/* ================================================================
+   DESKTOP PAGE HERO / NAV SPACING
+   Keep fixed navigation from creating a large visual dead zone and
+   make the opening copy readable inside short laptop viewports.
+   ================================================================ */
+@media (min-width:901px){
+  .seo-hero{padding:104px 6vw 68px;}
+  .seo-hero h1{font-size:clamp(44px,5.2vw,72px);line-height:.96;margin-bottom:18px;max-width:900px;}
+  .seo-lead{font-size:clamp(17px,1.55vw,21px);line-height:1.52;max-width:700px;}
+  .seo-actions{margin-top:26px;}
+}
+@media (min-width:901px) and (max-height:760px){
+  .seo-hero{padding-top:86px;padding-bottom:58px;}
+  .seo-breadcrumb{margin-bottom:18px;font-size:11px;}
+  .seo-hero h1{font-size:clamp(40px,4.8vw,64px);line-height:.94;margin-bottom:15px;}
+  .seo-lead{font-size:17px;line-height:1.45;max-width:650px;}
+  .seo-actions{margin-top:20px;}
+  .seo-actions .btn{padding:11px 17px;}
+}
+@media (min-width:901px) and (max-height:560px){
+  .seo-hero{padding-top:72px;padding-bottom:45px;}
+  .seo-breadcrumb{margin-bottom:12px;}
+  .seo-hero h1{font-size:clamp(36px,4.3vw,56px);margin-bottom:12px;}
+  .seo-lead{font-size:15px;line-height:1.38;}
+  .seo-actions{margin-top:15px;}
+  .seo-actions .btn{padding:9px 14px;font-size:.7rem;}
+}
+
+@media (min-width:901px){
+  .seo-page .nav{top:12px!important;}
+}
