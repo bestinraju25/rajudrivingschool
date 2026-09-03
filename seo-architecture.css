@@ -1,0 +1,35 @@
+/* SEO landing-page layer — preserves the existing Raju Driving School visual system. */
+.seo-page{background:#f7f7f2;color:#111}
+.seo-hero{padding:150px 6vw 90px;background:linear-gradient(135deg,#101820 0%,#17232d 62%,#0f151a 100%);color:#fff;position:relative;overflow:hidden}
+.seo-hero:after{content:"";position:absolute;inset:auto -10% -45% 35%;height:70%;background:radial-gradient(circle,rgba(246,211,72,.18),transparent 65%);pointer-events:none}
+.seo-hero-inner{max-width:1180px;margin:auto;position:relative;z-index:1}
+.seo-breadcrumb{font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-bottom:26px}
+.seo-breadcrumb a{color:inherit;text-decoration:none}
+.seo-hero h1{font:800 clamp(42px,6vw,82px)/.98 Manrope,Arial,sans-serif;letter-spacing:-.05em;max-width:950px;margin:0 0 24px}
+.seo-hero h1 span{color:#f6d348}
+.seo-lead{font-size:clamp(18px,2vw,23px);line-height:1.6;max-width:760px;color:rgba(255,255,255,.8);margin:0}
+.seo-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
+.seo-content{max-width:1180px;margin:auto;padding:80px 6vw}
+.seo-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:50px;align-items:start}
+.seo-content h2{font:800 clamp(30px,4vw,48px)/1.05 Manrope,Arial,sans-serif;letter-spacing:-.04em;margin:0 0 18px}
+.seo-content h2 span{color:#b49400}
+.seo-content h3{font:800 23px/1.15 Manrope,Arial,sans-serif;margin:0 0 10px}
+.seo-content p{font-size:17px;line-height:1.72;color:#4d5358;margin:0 0 16px}
+.seo-card{background:#fff;border:1px solid #e6e6df;border-radius:24px;padding:28px;box-shadow:0 18px 45px rgba(16,24,32,.07)}
+.seo-card ul,.seo-content ul{padding-left:20px;color:#4d5358;line-height:1.8}
+.seo-card li::marker{color:#b49400}
+.seo-kicker{font-size:12px;letter-spacing:.14em;font-weight:800;color:#777;text-transform:uppercase;margin-bottom:12px}
+.seo-services{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:34px}
+.seo-service{background:#fff;border:1px solid #e5e5df;border-radius:22px;padding:26px;text-decoration:none;color:#111;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.seo-service:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(0,0,0,.08);border-color:#d2c27a}
+.seo-service small{display:block;color:#8a8a82;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.seo-service p{font-size:15px;margin:0 0 14px}
+.seo-service b{font-size:14px}
+.seo-topic{margin-top:58px;padding-top:48px;border-top:1px solid #deded5}
+.seo-topic-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:25px}
+.seo-topic-card{background:#eef0eb;border-radius:20px;padding:24px}
+.seo-cta{margin-top:60px;background:#121a20;color:#fff;border-radius:30px;padding:44px;display:flex;justify-content:space-between;gap:30px;align-items:center}
+.seo-cta h2{margin-bottom:8px;color:#fff}
+.seo-cta p{color:rgba(255,255,255,.68);margin:0}
+.seo-note{font-size:13px!important;color:#7a7e80!important}
+@media(max-width:800px){.seo-hero{padding:125px 5vw 70px}.seo-content{padding:60px 5vw}.seo-grid,.seo-services,.seo-topic-grid{grid-template-columns:1fr}.seo-cta{padding:30px;display:block}.seo-cta .seo-actions{margin-top:24px}}
