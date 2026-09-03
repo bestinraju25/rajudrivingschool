@@ -56,6 +56,36 @@
   .learn-source-note{font-size:.6rem;margin-top:9px;}
   .learn-hero-visual{min-height:300px;}
 }
+
+.test-track{padding:105px clamp(20px,8vw,120px);background:linear-gradient(180deg,#eef4fa 0%,#f8fafc 100%);overflow:hidden}.test-track-inner{max-width:1400px;margin:auto}.test-track-head{display:grid;grid-template-columns:1fr .62fr;gap:8vw;align-items:end}.test-track-head h2{font:800 clamp(3.3rem,6vw,6.5rem)/.9 Manrope;letter-spacing:-.06em;margin:17px 0 0}.test-track-head h2 span{color:var(--red)}.test-track-head>p{color:var(--muted);line-height:1.8;margin:0 0 7px}.test-track-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:52px}.test-track-card{background:#fff;border:1px solid #dce5ef;border-radius:28px;overflow:hidden;box-shadow:0 18px 55px rgba(10,48,105,.07)}.test-track-visual{position:relative;background:#f7f9fc;border-bottom:1px solid #e3eaf2;padding:20px}.test-track-visual img{display:block;width:100%;height:310px;object-fit:contain;border-radius:20px}.track-badge{position:absolute;left:34px;top:34px;padding:8px 11px;border-radius:999px;background:var(--blue);color:#fff;font-size:.55rem;font-weight:900;letter-spacing:.08em}.track-badge.red{background:var(--red)}.track-badge.yellow{background:var(--yellow);color:var(--ink)}.test-track-body{padding:25px 25px 27px}.track-card-top{display:flex;justify-content:space-between;align-items:center;color:#8795a8;font-size:.56rem;font-weight:900;letter-spacing:.1em}.track-card-top span{display:grid;place-items:center;width:33px;height:33px;border-radius:50%;background:var(--ink);color:var(--yellow);font:900 .62rem Manrope}.test-track-body h3{font:900 1.45rem Manrope;margin:18px 0 8px}.test-track-body>p{color:var(--muted);font-size:.72rem;line-height:1.6;margin:0 0 18px}.test-track-body ol{list-style:none;padding:0;margin:0;display:grid;gap:9px}.test-track-body li{display:grid;grid-template-columns:58px 1fr;gap:9px;align-items:start;color:#4b6079;font-size:.66rem;line-height:1.5}.test-track-body li b{display:flex;align-items:center;justify-content:center;min-height:23px;padding:0 8px;border-radius:999px;background:#edf4ff;color:var(--blue);font-size:.53rem;letter-spacing:.02em;white-space:nowrap}.route-list li b{font-weight:900}.track-video{margin-top:22px;border-top:1px solid #e5ebf2;padding-top:15px}.track-video summary{cursor:pointer;color:var(--blue);font-size:.64rem;font-weight:900;list-style:none}.track-video summary::-webkit-details-marker{display:none}.track-video summary:after{content:' +';font-size:.9rem}.track-video[open] summary:after{content:' −'}.track-video video{display:block;width:100%;margin-top:13px;border-radius:16px;background:#101317;max-height:440px}.test-track-note{margin-top:22px;padding:18px 20px;border-radius:18px;background:#fff;border:1px solid #dce5ef;display:flex;gap:18px;align-items:flex-start}.test-track-note span{flex:none;padding:7px 10px;border-radius:999px;background:var(--yellow);color:var(--ink);font-size:.5rem;font-weight:900;letter-spacing:.1em}.test-track-note p{margin:0;color:#687b91;font-size:.63rem;line-height:1.65}
+@media(max-width:1000px){.test-track-head{grid-template-columns:1fr}.test-track-grid{grid-template-columns:1fr 1fr}.test-track-visual img{height:280px}.test-track-card:last-child{grid-column:1/-1;max-width:calc(50% - 9px)}}
+@media(max-width:650px){.test-track{padding:72px 20px}.test-track-head h2{font-size:3.5rem}.test-track-grid{grid-template-columns:1fr;margin-top:36px}.test-track-card:last-child{grid-column:auto;max-width:none}.test-track-visual{padding:13px}.test-track-visual img{height:300px}.track-badge{left:25px;top:25px}.test-track-body{padding:22px 20px 23px}.test-track-note{display:block}.test-track-note span{display:inline-block;margin-bottom:10px}}
+
+/* v9: simplify the Learning Hub by removing the secondary hero visual, course-map section, and duplicated track illustrations. */
+.learn-hero-grid{grid-template-columns:minmax(0,1fr);max-width:1120px}
+.learn-hero-visual{display:none}
+.learn-hero p{max-width:760px}
+.learn-hero-actions{margin-top:28px}
+.test-track-head{grid-template-columns:1fr}
+.test-track-grid{margin-top:42px}
+.test-track-card{overflow:hidden}
+.test-track-body{padding-top:27px}
+@media(max-width:1000px){.learn-hero-grid{grid-template-columns:1fr}.learn-hero-visual{display:none}}
+
+/* v11: tighten vertical rhythm after removing the overview/visual blocks. */
+.test-track{padding-top:64px;padding-bottom:64px;}
+.test-track-grid{margin-top:32px;}
+.test-track-note{margin-top:16px;}
+.learn-lessons{padding-top:64px;padding-bottom:72px;}
+.learn-path{padding-top:72px;padding-bottom:72px;}
+.learn-cta{padding-top:72px;padding-bottom:72px;}
+@media(max-width:650px){
+  .test-track{padding-top:48px;padding-bottom:48px;}
+  .test-track-grid{margin-top:28px;}
+  .learn-lessons{padding-top:52px;padding-bottom:56px;}
+  .learn-path{padding-top:56px;padding-bottom:56px;}
+  .learn-cta{padding-top:56px;padding-bottom:56px;}
+}
 </style>
 <link href="https://www.rajudrivingschool.com/learn/" rel="canonical"/><script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://www.rajudrivingschool.com/#website","url":"https://www.rajudrivingschool.com/","name":"Raju Driving School","inLanguage":"en-IN"},{"@type":"LocalBusiness","@id":"https://www.rajudrivingschool.com/#business","name":"Raju Driving School","url":"https://www.rajudrivingschool.com/","telephone":"+91 8943764734","logo":{"@type":"ImageObject","url":"https://www.rajudrivingschool.com/images/raju-logo.png"},"image":"https://www.rajudrivingschool.com/images/raju-logo.png","address":{"@type":"PostalAddress","streetAddress":"Anamala Junction","addressLocality":"Chalakudy","addressRegion":"Kerala","addressCountry":"IN","postalCode":"680307"},"areaServed":{"@type":"City","name":"Chalakudy"},"foundingDate":"1969","hasMap":"https://www.google.com/maps/place/?q=place_id:ChIJL-CORWwCCDsRHLXsI0kyqlM","sameAs":["https://www.justdial.com/Thrissur/Raju-Driving-School-Chalakudi/9999PX487-X487-140716122347-C5G8_BZDET","https://www.quickerala.com/thrissur/chalakudy/raju-driving-school/264917"]},{"@type":"WebPage","@id":"https://www.rajudrivingschool.com/learn/#webpage","url":"https://www.rajudrivingschool.com/learn/","name":"Learn Driving Online in Chalakudy | Raju Driving School","description":"Learn driving online with Raju Driving School’s 25-lesson learning hub covering cockpit drill, controls, signals, road skills, manoeuvres, parking, roundabouts and traffic basics.","isPartOf":{"@id":"https://www.rajudrivingschool.com/#website"},"about":{"@id":"https://www.rajudrivingschool.com/#business"},"inLanguage":"en-IN"}]}</script><script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.rajudrivingschool.com/"},{"@type":"ListItem","position":2,"name":"Learn Driving Online","item":"https://www.rajudrivingschool.com/learn/"}]}</script><script id="learn-lesson-itemlist" type="application/ld+json">{"@context":"https://schema.org","@type":"ItemList","@id":"https://www.rajudrivingschool.com/learn/#lessons","name":"Raju Driving School Basic Driving Lessons","numberOfItems":25,"itemListElement":[{"@type":"ListItem","position":1,"name":"Cockpit Drill"},{"@type":"ListItem","position":2,"name":"Foot Controls"},{"@type":"ListItem","position":3,"name":"Hand Controls"},{"@type":"ListItem","position":4,"name":"Auxiliary Controls"},{"@type":"ListItem","position":5,"name":"Signals"},{"@type":"ListItem","position":6,"name":"MSM / PSL"},{"@type":"ListItem","position":7,"name":"Moving Off and Stopping"},{"@type":"ListItem","position":8,"name":"Gear Changing"},{"@type":"ListItem","position":9,"name":"Uphill, Downhill & Angle Start"},{"@type":"ListItem","position":10,"name":"Emergency Stop"},{"@type":"ListItem","position":11,"name":"Road Positioning"},{"@type":"ListItem","position":12,"name":"Major Road → Minor Road: Left"},{"@type":"ListItem","position":13,"name":"Major Road → Minor Road: Right"},{"@type":"ListItem","position":14,"name":"T-Junction: Turning Left"},{"@type":"ListItem","position":15,"name":"T-Junction: Turning Right"},{"@type":"ListItem","position":16,"name":"Cross Junction"},{"@type":"ListItem","position":17,"name":"Passing Stationary Vehicles"},{"@type":"ListItem","position":18,"name":"Overtaking"},{"@type":"ListItem","position":19,"name":"Reversing Exercise: Straight, Left, Right"},{"@type":"ListItem","position":20,"name":"Turn in the Road"},{"@type":"ListItem","position":21,"name":"Vertical Parking"},{"@type":"ListItem","position":22,"name":"Angular Parking"},{"@type":"ListItem","position":23,"name":"Parallel Parking"},{"@type":"ListItem","position":24,"name":"Roundabout"},{"@type":"ListItem","position":25,"name":"Traffic Signal"}]}</script><meta content="1200" property="og:image:width"/><meta content="630" property="og:image:height"/><meta content="image/png" property="og:image:type"/></head>
 <body class="learn-page">
@@ -68,23 +98,82 @@
 <div class="learn-hero-grid">
 <div>
 <div class="learn-kicker">LEARNING HUB · BASIC DRIVING</div>
-<h1>Learn driving online in Chalakudy.<br/><span>Know the road. Practise the skill.</span></h1>
+<h1>Learn driving online.<br/><span>Know the road. Practise the skill.</span></h1>
 <p>A practical learning hub for the fundamentals taught through our basic driving programme. Work through the lessons before, during and after your practical training — one skill at a time.</p>
-<div class="learn-hero-actions"><a class="btn btn-yellow" href="/mock-test/">Take the mock test <b>↗</b></a><a class="btn" href="/#courses" style="background:#fff;border:1px solid #dce5ef;color:var(--ink)">Back to the Raju Method</a></div>
+<div class="learn-hero-actions"><a class="btn btn-yellow" href="/mock-test/">Take the mock test <b>↗</b></a></div>
 <div class="learn-source-note">Structured from the 29-page IDTR Basic Driving Lessons guide supplied for Raju Driving School.</div>
 </div>
-<div class="learn-hero-visual">
-<figure class="learn-visual-card learn-visual-main"><img alt="Instructor guiding a learner during driving training" decoding="async" height="1024" loading="lazy" src="../images/training-action/car-instructor-front.jpg" width="1536"/><figcaption><strong>Learn with guidance.</strong><span>Understand the principle, then practise it on the road.</span></figcaption></figure>
-<div class="learn-visual-card learn-visual-mini"><strong>25</strong><span>core lessons in the supplied basic driving syllabus</span></div>
-</div>
+
 </div>
 </section>
-<section class="learn-overview">
-<div class="learn-overview-inner">
-<div class="learn-overview-head"><div><div class="learn-kicker">01 / THE COURSE MAP</div><h2>From controls to<br/><span>traffic signals.</span></h2></div><p>The supplied IDTR guide progresses from getting comfortable in the cockpit to manoeuvres, junctions, parking, roundabouts and traffic signals. The lesson order below follows that progression.</p></div>
-<div class="learn-stats"><div class="learn-stat"><strong>25</strong><span>Core lessons</span></div><div class="learn-stat"><strong>01→25</strong><span>Structured sequence</span></div><div class="learn-stat"><strong>3</strong><span>Control foundations</span></div><div class="learn-stat"><strong>1</strong><span>Road-ready goal</span></div></div>
-</div>
+<section class="test-track" id="test-track">
+  <div class="test-track-inner">
+    <div class="test-track-head">
+      <div>
+        <div class="learn-kicker">01 / DRIVING TEST PREPARATION</div>
+        <h2>Know the track.<br/><span>Then take the test.</span></h2>
+      </div>
+    </div>
+    <div class="test-track-grid">
+      <article class="test-track-card"><div class="test-track-body">
+          <div class="track-card-top"><span>01</span><small>H TEST</small></div>
+          <h3>H — Car / LMV</h3>
+          <p>Study the H-shaped track and follow the marked A → B → C → D → A flow.</p>
+          <ol class="route-list">
+            <li><b>A → B</b><span>Go straight up the left side from A to B.</span></li>
+            <li><b>B → C</b><span>Use the centre connection, turn around the marked bend and continue to C.</span></li>
+            <li><b>C → D</b><span>Go straight up the right side from C to D.</span></li>
+            <li><b>D → A</b><span>Use the centre connection again and return down to A.</span></li>
+          </ol>
+          <details class="track-video">
+            <summary>Watch the supplied demonstration</summary>
+            <video controls preload="metadata" playsinline poster="../assets/test-track/h-car-poster.jpg">
+              <source src="../assets/test-track/h-car.mp4" type="video/mp4"/>
+            </video>
+          </details>
+        </div>
+      </article>
+      <article class="test-track-card"><div class="test-track-body">
+          <div class="track-card-top"><span>02</span><small>8 TEST</small></div>
+          <h3>8 — Two-Wheeler</h3>
+          <p>Follow the continuous figure-eight path through both loops, keeping the two-wheeler balanced and controlled.</p>
+          <ol class="route-list">
+            <li><b>START</b><span>Enter the lower loop from the marked starting point.</span></li>
+            <li><b>LOOP 1</b><span>Follow the curve smoothly and stay within the track.</span></li>
+            <li><b>CROSS</b><span>Pass through the centre transition and continue into the upper loop.</span></li>
+            <li><b>LOOP 2</b><span>Complete the upper loop and continue through the figure-eight exit.</span></li>
+          </ol>
+          <details class="track-video">
+            <summary>Watch the supplied demonstration</summary>
+            <video controls preload="metadata" playsinline poster="../assets/test-track/8-two-wheeler-poster.jpg">
+              <source src="../assets/test-track/8-two-wheeler.mp4" type="video/mp4"/>
+            </video>
+          </details>
+        </div>
+      </article>
+      <article class="test-track-card"><div class="test-track-body">
+          <div class="track-card-top"><span>03</span><small>T TEST</small></div>
+          <h3>T — Bus / Heavy Vehicle</h3>
+          <p>Follow the T-shaped route A → B → C → D → E shown in the demonstration.</p>
+          <ol class="route-list">
+            <li><b>A → B</b><span>Drive straight up the stem from A to the top point B.</span></li>
+            <li><b>B → C</b><span>Turn into the horizontal arm and continue to the right end at C.</span></li>
+            <li><b>C → D</b><span>Return along the lower side of the arm and move back towards D.</span></li>
+            <li><b>D → E</b><span>Turn into the lower horizontal path and finish at the right-side point E.</span></li>
+          </ol>
+          <details class="track-video">
+            <summary>Watch the supplied demonstration</summary>
+            <video controls preload="metadata" playsinline poster="../assets/test-track/t-bus-poster.jpg">
+              <source src="../assets/test-track/t-bus.mp4" type="video/mp4"/>
+            </video>
+          </details>
+        </div>
+      </article>
+    </div>
+    <div class="test-track-note"><span>INSTRUCTOR NOTE</span><p>Track dimensions, reference points and test-day instructions can vary. These diagrams recreate the supplied examples; practise the exact technique taught by your Raju Driving School instructor.</p></div>
+  </div>
 </section>
+
 <section class="learn-lessons" id="lessons">
 <div class="learn-lessons-inner">
 <div class="learn-lessons-head"><div><div class="learn-kicker">02 / BASIC DRIVING LESSONS</div><h2>Learn it <span>step by step.</span></h2></div><p>Tap any lesson to open its learning notes. The descriptions keep the terminology and progression of the supplied IDTR guide while turning the classroom material into an easier digital study format.</p></div>
@@ -118,6 +207,7 @@
 </div>
 </div>
 </section>
+
 <section class="learn-path" id="path">
 <div class="learn-path-inner">
 <div class="learn-path-head"><div><div class="learn-kicker">03 / HOW TO USE THIS HUB</div><h2>Learn. Practise.<br/><span>Then drive.</span></h2></div><p>This page is a study companion, not a replacement for supervised practical instruction. Use the concepts here to arrive at your lesson prepared, then practise them with your instructor.</p></div>
