@@ -7,6 +7,7 @@ const heroCar=document.querySelector('.hero-car');
 const heroScrollCanvas=document.querySelector('#heroScrollCanvas');
 const heroFrameCount=96;
 const heroFrames=new Array(heroFrameCount);
+const heroFrameLoading=new Array(heroFrameCount).fill(false);
 let heroFramesLoaded=0;
 let heroTargetFrame=0;
 let heroDisplayFrame=0;
@@ -35,18 +36,39 @@ function animateHeroFrames(){
   if(Math.abs(heroTargetFrame-heroDisplayFrame)>0.015) heroFrameRaf=requestAnimationFrame(animateHeroFrames);
 }
 function scheduleHeroFrame(){if(!heroFrameRaf)heroFrameRaf=requestAnimationFrame(animateHeroFrames)}
-if(heroScrollCanvas){
-  for(let i=0;i<heroFrameCount;i++){
-    const img=new Image();
-    img.decoding='async';
-    img.src=heroFramePath(i);
-    img.onload=()=>{
-      heroFramesLoaded++;
-      if(i===0) drawHeroFrame(0);
-      if(i===Math.round(heroTargetFrame)) drawHeroFrame(i);
-    };
+function loadHeroFrame(i){
+  if(!heroScrollCanvas || i<0 || i>=heroFrameCount || heroFrames[i] || heroFrameLoading[i]) return;
+  heroFrameLoading[i]=true;
+  const img=new Image();
+  img.decoding='async';
+  if(i===0) img.fetchPriority='high';
+  img.src=heroFramePath(i);
+  img.onload=()=>{
+    heroFramesLoaded++;
+    heroFrameLoading[i]=false;
     heroFrames[i]=img;
-  }
+    if(i===0 || i===Math.round(heroTargetFrame)) drawHeroFrame(i);
+  };
+  img.onerror=()=>{heroFrameLoading[i]=false};
+  heroFrames[i]=img;
+}
+if(heroScrollCanvas){
+  // The first frame is enough for the initial visual. Defer the 95-frame sequence
+  // so the page can become interactive before the large animation payload arrives.
+  loadHeroFrame(0);
+  const preloadHeroSequence=()=>{
+    let i=1;
+    const pump=()=>{
+      const end=Math.min(i+5,heroFrameCount);
+      while(i<end){loadHeroFrame(i++);}
+      if(i<heroFrameCount){
+        if('requestIdleCallback' in window) requestIdleCallback(pump,{timeout:1200});
+        else setTimeout(pump,80);
+      }
+    };
+    pump();
+  };
+  window.addEventListener('load',preloadHeroSequence,{once:true});
 }
 const heroCarWrap=document.querySelector('.hero-car-wrap');
 const progressBar=document.querySelector('#videoProgress');
@@ -82,6 +104,7 @@ function render(){
     // the vehicle naturally drives from its starting position toward the right.
     if(heroScrollCanvas){
       heroTargetFrame = hp*(heroFrameCount-1);
+      loadHeroFrame(Math.round(heroTargetFrame));
       scheduleHeroFrame();
     }
     if(heroCarWrap) heroCarWrap.style.transform='none';

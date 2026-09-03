@@ -33,3 +33,47 @@
 .seo-cta p{color:rgba(255,255,255,.68);margin:0}
 .seo-note{font-size:13px!important;color:#7a7e80!important}
 @media(max-width:800px){.seo-hero{padding:125px 5vw 70px}.seo-content{padding:60px 5vw}.seo-grid,.seo-services,.seo-topic-grid{grid-template-columns:1fr}.seo-cta{padding:30px;display:block}.seo-cta .seo-actions{margin-top:24px}}
+
+
+/* =========================================================
+   SEO PAGE NAVIGATION — consistent dark-hero treatment
+   The landing-page hero is dark, so the shared floating nav
+   uses a dark glass surface with high-contrast links.
+   ========================================================= */
+.seo-page .nav{
+  left:24px!important;right:24px!important;top:16px!important;
+  width:auto!important;height:68px!important;
+  padding:0!important;transform:none!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+.seo-page .nav:before{display:none!important}
+.seo-page .nav .brand{
+  position:absolute!important;left:0!important;right:auto!important;top:50%!important;
+  transform:translateY(-50%)!important;height:58px!important;
+  padding:3px 11px 3px 4px!important;border-radius:18px!important;
+  background:rgba(11,27,43,.72)!important;
+  border:1px solid rgba(255,255,255,.18)!important;
+  box-shadow:0 12px 32px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.08)!important;
+  backdrop-filter:blur(20px) saturate(135%)!important;
+  -webkit-backdrop-filter:blur(20px) saturate(135%)!important;
+}
+.seo-page .nav .brand-logo{width:78px!important;height:52px!important;object-fit:contain!important}
+.seo-page .desktop-nav{
+  margin-left:auto!important;gap:4px!important;padding:7px 8px 7px 16px!important;
+  border:1px solid rgba(255,255,255,.20)!important;border-radius:999px!important;
+  background:rgba(11,27,43,.68)!important;
+  box-shadow:0 12px 34px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.08)!important;
+  backdrop-filter:blur(22px) saturate(135%)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(135%)!important;
+}
+.seo-page .desktop-nav>a:not(.nav-cta){color:#e6eef8!important;padding:10px 12px!important}
+.seo-page .desktop-nav>a:not(.nav-cta):hover{color:#fff!important;background:rgba(255,255,255,.10)!important}
+.seo-page .nav-cta{margin-left:6px!important;padding:12px 19px!important;border-radius:999px!important}
+@media(max-width:900px){
+  .seo-page .nav{left:12px!important;right:12px!important;width:auto!important;height:64px!important;top:10px!important;transform:none!important;padding:0 12px!important;border-radius:18px!important;background:rgba(11,27,43,.66)!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:0 10px 28px rgba(0,0,0,.14)!important;backdrop-filter:blur(20px)!important;-webkit-backdrop-filter:blur(20px)!important}
+  .seo-page .nav .brand{position:relative!important;left:auto!important;right:auto!important;top:auto!important;transform:none!important;height:58px!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  .seo-page .nav .brand-logo{width:70px!important;height:50px!important}
+  .seo-page .menu-btn i{background:#fff!important}
+  .seo-page .mobile-menu{top:70px!important;right:0!important}
+}

@@ -1,0 +1,12 @@
+# Clean URLs for Raju Driving School
+RewriteEngine On
+
+# If Apache is used, send old .html URLs to their clean equivalents.
+RewriteCond %{THE_REQUEST} \s/+(.+?)\.html(?:[\s?]|$) [NC]
+RewriteRule ^(.+)\.html$ /$1/ [R=301,L,NE]
+
+# Fallback: map a clean path to a root .html file if its folder is not present.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+RewriteRule ^(.+?)/?$ /$1.html [L]
