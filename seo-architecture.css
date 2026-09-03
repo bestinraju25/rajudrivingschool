@@ -25,7 +25,14 @@
 .seo-service small{display:block;color:#8a8a82;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
 .seo-service p{font-size:15px;margin:0 0 14px}
 .seo-service b{font-size:14px}
-.seo-topic{margin-top:58px;padding-top:48px;border-top:1px solid #deded5}
+/* Standalone topic/deep-dive sections must use the same content rail as the page body.
+   Without this, sections placed after </main> can stretch edge-to-edge and look
+   clipped/over-spaced on desktop. */
+.seo-topic{max-width:1180px;margin:58px auto 0;padding:48px 6vw 80px;border-top:1px solid #deded5}
+.seo-topic > h2{max-width:980px}
+.seo-topic > p{max-width:1100px}
+.seo-topic .seo-topic-grid{max-width:1180px}
+
 .seo-topic-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:25px}
 .seo-topic-card{background:#eef0eb;border-radius:20px;padding:24px}
 .seo-cta{margin-top:60px;background:#121a20;color:#fff;border-radius:30px;padding:44px;display:flex;justify-content:space-between;gap:30px;align-items:center}
@@ -109,4 +116,16 @@
 
 @media (min-width:901px){
   .seo-page .nav{top:12px!important;}
+}
+
+@media (min-width:901px){
+  .seo-topic{margin-top:42px;padding-top:38px;padding-bottom:72px;}
+}
+@media (min-width:901px) and (max-height:760px){
+  .seo-topic{margin-top:34px;padding-top:32px;padding-bottom:58px;}
+  .seo-topic-grid{margin-top:20px;}
+  .seo-topic-card{padding:22px;}
+}
+@media (max-width:800px){
+  .seo-topic{margin-top:34px;padding:38px 5vw 58px;}
 }

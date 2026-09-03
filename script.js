@@ -184,7 +184,7 @@ function render(){
       driveP=1;
     }
     // Travel from well outside the left edge to the stopping point near the signal.
-    const x=-50 + driveP*95;
+    const x=-34 + driveP*78;
     car.style.transform=`translate3d(${x}vw,0,0)`;
     const green=p<greenEnd, yellow=p>=greenEnd&&p<yellowEnd, red=p>=yellowEnd;
     experience.classList.toggle('signal-green',green);
