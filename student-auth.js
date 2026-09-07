@@ -25,7 +25,12 @@
   if (!window.supabase?.createClient) { show('The authentication service could not be loaded. Please refresh and try again.', 'error'); return; }
   const client = window.supabase.createClient(window.RAJU_SUPABASE_URL, window.RAJU_SUPABASE_ANON_KEY);
 
-  client.auth.getSession().then(({ data }) => { if (data.session) window.location.href = '../student-dashboard/'; });
+  const params = new URLSearchParams(window.location.search);
+  const requestedRedirect = params.get('redirect');
+  const safeRedirect = requestedRedirect && requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//') ? requestedRedirect : '/student-dashboard/';
+  function goAfterAuth() { window.location.href = safeRedirect; }
+
+  client.auth.getSession().then(({ data }) => { if (data.session) goAfterAuth(); });
 
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -34,7 +39,7 @@
     const button = loginForm.querySelector('.auth-submit'); button.disabled = true; show('Signing you in…');
     const { error } = await client.auth.signInWithPassword({ email, password });
     if (error) { show(error.message, 'error'); button.disabled = false; return; }
-    window.location.href = '../student-dashboard/';
+    goAfterAuth();
   });
 
   signupForm.addEventListener('submit', async (e) => {
@@ -48,7 +53,7 @@
     const { data, error } = await client.auth.signUp({ email, password, options: { data: { full_name, phone } } });
     if (error) { show(error.message, 'error'); button.disabled = false; return; }
     if (data.session) {
-      window.location.href = '../student-dashboard/';
+      goAfterAuth();
     } else {
       show('Account created. Please check your email to confirm your account, then log in.', 'success');
       signupForm.reset(); setTab('login');
