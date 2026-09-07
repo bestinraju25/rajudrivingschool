@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="icon" type="image/png" href="../images/raju-logo.png" />
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="../student-auth.css" />
+  <title>Student Dashboard | Raju Driving School</title>
+</head>
+<body class="student-dashboard-page">
+  <header class="nav auth-nav dashboard-nav">
+    <a aria-label="Raju Driving School home" class="brand" href="../"><img alt="Raju Driving School" class="brand-logo" src="../images/raju-logo.png" /></a>
+    <div class="dashboard-actions"><a href="../">Website</a><button id="logoutBtn" type="button">Log out</button></div>
+  </header>
+  <main class="dashboard-shell">
+    <section class="dashboard-hero">
+      <span class="auth-kicker">STUDENT PORTAL</span>
+      <h1>Welcome, <span id="studentName">Student</span> 👋</h1>
+      <p>Your personal Raju Driving School area is ready. More learning features can be connected here as we build the student system.</p>
+    </section>
+    <section class="dashboard-grid">
+      <article class="dashboard-card dashboard-profile"><span>MY PROFILE</span><h2 id="profileName">—</h2><p id="profileEmail">—</p><p id="profilePhone">—</p></article>
+      <article class="dashboard-card locked-card"><div class="lock-icon">🔒</div><span>MY LESSONS</span><h2>Learning Hub</h2><p>Lessons, videos and learning materials will appear here.</p><small>Coming next</small></article>
+      <article class="dashboard-card locked-card"><div class="lock-icon">🔒</div><span>MY PROGRESS</span><h2>Training progress</h2><p>Track completed lessons, practice and test preparation.</p><small>Coming next</small></article>
+      <article class="dashboard-card locked-card"><div class="lock-icon">🔒</div><span>MY RECORDS</span><h2>Student records</h2><p>Course, enrolment and certificate information can be connected here.</p><small>Coming next</small></article>
+    </section>
+  </main>
+  <div id="dashboardMessage" class="auth-message dashboard-message" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../student-config.js"></script>
+  <script src="../student-dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Student login and account registration for Raju Driving School." />
+  <link rel="icon" type="image/png" href="../images/raju-logo.png" />
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="../student-auth.css" />
+  <title>Student Login | Raju Driving School</title>
+</head>
+<body class="student-auth-page">
+  <header class="nav auth-nav">
+    <a aria-label="Raju Driving School home" class="brand" href="../"><img alt="Raju Driving School" class="brand-logo" src="../images/raju-logo.png" /></a>
+    <a class="auth-home-link" href="../">← Back to website</a>
+  </header>
+
+  <main class="auth-shell">
+    <section class="auth-intro">
+      <span class="auth-kicker">RAJU DRIVING SCHOOL · STUDENT PORTAL</span>
+      <h1>Your learning journey,<br /><em>all in one place.</em></h1>
+      <p>Sign in to access your student area. New learner? Create your account in a minute.</p>
+      <div class="auth-points">
+        <span>✓ Secure account</span>
+        <span>✓ Personal student area</span>
+        <span>✓ Future access to lessons & progress</span>
+      </div>
+    </section>
+
+    <section class="auth-card" aria-label="Student account">
+      <div class="auth-tabs" role="tablist" aria-label="Student account actions">
+        <button class="auth-tab active" type="button" data-tab="login">Log in</button>
+        <button class="auth-tab" type="button" data-tab="signup">Sign up</button>
+      </div>
+
+      <div id="authMessage" class="auth-message" role="status" aria-live="polite"></div>
+
+      <form id="loginForm" class="auth-form active" novalidate>
+        <div class="auth-form-head"><span>WELCOME BACK</span><h2>Student login</h2><p>Use the email and password linked to your student account.</p></div>
+        <label>Email<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required /></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" placeholder="Your password" required /></label>
+        <button class="auth-submit" type="submit">Log in <span>↗</span></button>
+        <button class="forgot-btn" id="forgotPassword" type="button">Forgot your password?</button>
+      </form>
+
+      <form id="signupForm" class="auth-form" novalidate>
+        <div class="auth-form-head"><span>NEW STUDENT</span><h2>Create account</h2><p>Set up your student login now. We can add your course details later.</p></div>
+        <div class="auth-two-col">
+          <label>Full name<input name="full_name" type="text" autocomplete="name" placeholder="Your full name" required /></label>
+          <label>Mobile number<input name="phone" type="tel" autocomplete="tel" placeholder="+91 98765 43210" required /></label>
+        </div>
+        <label>Email<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required /></label>
+        <label>Password<input name="password" type="password" autocomplete="new-password" placeholder="At least 8 characters" minlength="8" required /></label>
+        <label>Password confirmation<input name="confirm_password" type="password" autocomplete="new-password" placeholder="Repeat your password" minlength="8" required /></label>
+        <label class="auth-check"><input name="terms" type="checkbox" required /><span>I agree to use this student portal for my own account.</span></label>
+        <button class="auth-submit" type="submit">Create student account <span>↗</span></button>
+      </form>
+
+      <p class="auth-note">Your password is handled by the authentication service and is never stored in this website's code or GitHub repository.</p>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../student-config.js"></script>
+  <script src="../student-auth.js"></script>
+</body>
+</html>
