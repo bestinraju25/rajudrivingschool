@@ -313,7 +313,9 @@ $$;
 grant execute on function public.create_booking_request(uuid,timestamptz,integer,text) to authenticated;
 
 -- 6) Robust admin approval: instructor assigned AND full booking fee recorded.
-create or replace function public.approve_booking(p_booking_id uuid)
+drop function if exists public.approve_booking(uuid);
+
+create function public.approve_booking(p_booking_id uuid)
 returns boolean
 language plpgsql
 security definer
@@ -321,7 +323,6 @@ set search_path = public
 as $$
 declare
   b public.bookings%rowtype;
-  paid numeric(10,2);
 begin
   if not public.is_admin() then
     raise exception 'Only an administrator can approve bookings.';
@@ -340,18 +341,7 @@ begin
     raise exception 'Assign an instructor before approving.';
   end if;
 
-  if coalesce(b.class_fee,0) <= 0 then
-    raise exception 'Set the class fee before approving.';
-  end if;
-
-  select coalesce(sum(amount),0) into paid
-  from public.fee_payments
-  where booking_id = p_booking_id;
-
-  if paid < b.class_fee then
-    raise exception 'Full class fee must be recorded before approval.';
-  end if;
-
+  -- Approval is for scheduling/arrangement only. Payment is independent and may be recorded later.
   update public.bookings
   set status = 'approved',
       approved_by = auth.uid(),

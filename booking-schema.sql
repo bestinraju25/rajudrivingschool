@@ -304,35 +304,43 @@ before insert or update on public.bookings
 for each row execute procedure public.set_booking_fee();
 
 -- Admin-only approval that requires full manual payment against the booking fee.
-create or replace function public.approve_booking(p_booking_id uuid)
-returns public.bookings
+drop function if exists public.approve_booking(uuid);
+
+create function public.approve_booking(p_booking_id uuid)
+returns boolean
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  b public.bookings;
-  paid numeric;
+  b public.bookings%rowtype;
 begin
   if not public.is_admin() then
-    raise exception 'Admin access required.';
+    raise exception 'Only an administrator can approve bookings.';
   end if;
 
-  select * into b from public.bookings where id = p_booking_id for update;
-  if not found then raise exception 'Booking not found.'; end if;
-  if b.assigned_instructor_id is null then raise exception 'Assign an instructor before approval.'; end if;
-  if b.class_fee <= 0 then raise exception 'Set the class fee before approval.'; end if;
+  select * into b
+  from public.bookings
+  where id = p_booking_id
+  for update;
 
-  select coalesce(sum(amount), 0) into paid from public.fee_payments where booking_id = p_booking_id;
-  if paid < b.class_fee then
-    raise exception 'Payment received (₹%) is less than the booking fee (₹%).', paid, b.class_fee;
+  if not found then
+    raise exception 'Booking not found.';
   end if;
 
+  if b.assigned_instructor_id is null then
+    raise exception 'Assign an instructor before approving.';
+  end if;
+
+  -- Approval is for scheduling/arrangement only. Payment is independent and may be recorded later.
   update public.bookings
-    set status = 'approved', approved_at = now(), approved_by = auth.uid()
-    where id = p_booking_id
-    returning * into b;
-  return b;
+  set status = 'approved',
+      approved_by = auth.uid(),
+      approved_at = now(),
+      updated_at = now()
+  where id = p_booking_id;
+
+  return true;
 end;
 $$;
 

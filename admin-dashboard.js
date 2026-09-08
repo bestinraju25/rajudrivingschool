@@ -62,7 +62,7 @@
       const paid=payments.filter(p=>p.booking_id===b.id).reduce((sum,p)=>sum+Number(p.amount||0),0);
       const fee=Number(b.class_fee||0);
       const paymentReady=paid>=fee && fee>0;
-      const statusLabel=b.status==='payment_recorded'?'Payment recorded':'Payment pending';
+      const statusLabel=b.status==='payment_recorded'?'Payment recorded':'Awaiting admin approval';
       return `<article class="booking-request-card">
         <div class="booking-request-main">
           <div class="booking-request-avatar">${esc((student.full_name||'S').trim().charAt(0).toUpperCase())}</div>

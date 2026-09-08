@@ -351,6 +351,34 @@ end;
 $$;
 
 -- Ask PostgREST to reload the relationship cache.
+
+-- Admin approval is for scheduling/arrangement only. Payment is independent.
+drop function if exists public.approve_booking(uuid);
+create function public.approve_booking(p_booking_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  b public.bookings%rowtype;
+begin
+  if not public.is_admin() then
+    raise exception 'Admin access required.';
+  end if;
+  select * into b from public.bookings where id = p_booking_id for update;
+  if not found then raise exception 'Booking not found.'; end if;
+  if b.assigned_instructor_id is null then
+    raise exception 'Assign an instructor before approving.';
+  end if;
+  update public.bookings
+  set status='approved', approved_by=auth.uid(), approved_at=now(), updated_at=now()
+  where id=p_booking_id;
+  return true;
+end;
+$$;
+grant execute on function public.approve_booking(uuid) to authenticated;
+
 notify pgrst, 'reload schema';
 
 select 'Raju Driving School complete student portal repair installed successfully. Student overlapping bookings are now blocked.' as message;
