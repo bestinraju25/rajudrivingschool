@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="../images/raju-logo.png"><link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../student-auth.css"><link rel="stylesheet" href="../booking.css">
+<title>Admin Dashboard | Raju Driving School</title>
+</head>
+<body class="booking-page">
+<header class="nav auth-nav dashboard-nav"><a class="brand" href="../"><img alt="Raju Driving School" class="brand-logo" src="../images/raju-logo.png"></a><div class="admin-nav"><strong id="adminName">Admin</strong><a href="../">Website</a><button id="logoutBtn">Log out</button></div></header>
+<main class="booking-shell">
+<section class="booking-header"><div><span class="auth-kicker">ADMIN PORTAL</span><h1>School control centre</h1><p>Approve classes after payment, assign instructors, manage unavailable time and maintain the manual fee ledger.</p></div><button class="booking-btn secondary" id="refreshBtn">Refresh</button></section>
+<div id="adminMessage" class="notice"></div>
+<section class="admin-stat-grid"><div class="admin-stat"><span>PENDING</span><strong id="statPending">0</strong></div><div class="admin-stat"><span>APPROVED</span><strong id="statApproved">0</strong></div><div class="admin-stat"><span>COLLECTED</span><strong id="statCollected">₹0.00</strong></div><div class="admin-stat"><span>BLOCKED / LEAVE</span><strong id="statBlocks">0</strong></div></section>
+
+<section class="booking-card"><div class="admin-section-title"><h2>Booking requests</h2><span class="muted">Assign instructor → set fee → record payment → approve</span></div><div id="bookingTable" class="admin-table-wrap"></div></section>
+
+<section class="admin-layout">
+<section class="booking-card" id="paymentFormCard"><div class="admin-section-title"><h2>Record manual payment</h2></div><form id="paymentForm" class="admin-form">
+<input id="paymentStudent" name="student_id" type="hidden"><input id="paymentBooking" name="booking_id" type="hidden">
+<div class="admin-grid"><label>Student<input id="paymentStudentDisplay" disabled placeholder="Choose Payment from a booking"></label><label>Booking<input id="paymentBookingDisplay" disabled placeholder="Optional"></label><label>Amount<input name="amount" type="number" min="1" step="0.01" required placeholder="₹ amount"></label><label>Date<input id="paymentDate" name="payment_date" type="date" required></label><label>Method<select name="payment_method"><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank transfer</option><option value="card">Card</option><option value="other">Other</option></select></label><label>Receipt number<input name="receipt_number" maxlength="80"></label></div>
+<label>Note<textarea name="notes" maxlength="300" placeholder="Optional payment note"></textarea></label><button class="admin-btn" type="submit">Record payment</button></form></section>
+<section class="booking-card"><div class="admin-section-title"><h2>Hourly class fee</h2></div><p class="muted">Set the standard hourly amount used when an admin prices a booking.</p><form id="settingsForm" class="admin-form"><label>Hourly fee<input id="hourlyFee" name="hourly_class_fee" type="number" min="0" step="0.01" required></label><button class="admin-btn" type="submit">Save hourly fee</button></form></section>
+</section>
+
+<section class="booking-card"><div class="admin-section-title"><h2>Instructor availability</h2><span class="muted">Block leave, maintenance, meetings or other unavailable periods.</span></div><form id="blockForm" class="admin-form"><div class="admin-grid"><label>Instructor<select id="blockInstructor" name="instructor_id" required></select></label><label>Type<select name="availability_type"><option value="leave">Leave</option><option value="unavailable">Unavailable</option><option value="blocked">Blocked</option></select></label><label>From<input name="start_at" type="datetime-local" required></label><label>To<input name="end_at" type="datetime-local" required></label></div><label>Reason<input name="reason" maxlength="200" placeholder="Annual leave / vehicle maintenance / etc."></label><button class="admin-btn" type="submit">Block time</button></form><div id="blockTable" class="admin-table-wrap" style="margin-top:20px"></div></section>
+
+<section class="booking-card"><div class="admin-section-title"><h2>Students & course fees</h2><span class="muted">Registration details and total course fee</span></div><div id="studentFeeTable" class="admin-table-wrap"></div></section>
+<section class="booking-card"><div class="admin-section-title"><h2>Payment ledger</h2><span class="muted">Manual collection history</span></div><div id="paymentTable" class="admin-table-wrap"></div></section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../student-config.js"></script><script src="../admin-dashboard.js"></script>
+</body></html>

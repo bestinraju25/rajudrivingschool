@@ -72,3 +72,33 @@ The portal is intentionally a foundation. The dashboard currently has placeholde
 - Certificates
 
 Later we can add course enrolment, lesson completion, video access, mock-test scores, attendance, certificates and an admin portal without replacing the authentication foundation.
+
+## Booking, admin and manual fees
+
+After the original student schema has been run, also run `booking-schema.sql` once. It adds:
+
+- Five instructors: Yashodaran, Francis, Ranjith, Akhil and Lissy.
+- Hourly class fee setting.
+- Student booking requests with 1/2/3 hour durations.
+- Optional preferred instructor; admin makes the final assignment.
+- Instructor unavailable/leave blocks.
+- Conflict protection so an instructor cannot be double-booked or assigned during a blocked time.
+- Manual fee-payment ledger with date, amount, method, receipt and notes.
+- Approval workflow: assign instructor + record the full booking fee + approve.
+- Admin role protection through `admin_users` and Supabase Auth.
+
+### Create the first admin
+
+1. In Supabase, go to **Authentication → Users** and create an admin user with an email and a strong temporary password.
+2. Copy the user's UUID.
+3. In SQL Editor run:
+
+```sql
+insert into public.admin_users (id, email, full_name)
+values ('PASTE-AUTH-USER-UUID-HERE', 'admin@rajudrivingschool.com', 'Raju Driving School Admin');
+```
+
+4. Sign in at `/admin/`.
+5. Change the temporary password after the first login.
+
+Never put a Supabase secret/service-role key in `student-config.js` or any browser file.

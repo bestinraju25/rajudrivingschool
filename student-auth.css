@@ -9,3 +9,18 @@
 .dashboard-shell{width:min(1180px,calc(100% - 40px));margin:0 auto;padding:80px 0}.dashboard-hero{margin-bottom:38px}.dashboard-hero h1{font-family:Manrope,DM Sans,sans-serif;font-size:clamp(2.8rem,6vw,5.2rem);line-height:1;letter-spacing:-.05em;margin:15px 0}.dashboard-hero h1 span{color:var(--student-blue)}.dashboard-hero p{max-width:680px;color:var(--student-muted);line-height:1.7}.dashboard-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}.dashboard-card{background:#fff;border:1px solid var(--student-line);border-radius:22px;padding:27px;min-height:190px;box-shadow:0 15px 45px rgba(16,36,58,.06)}.dashboard-card h2{margin:10px 0 8px;font-size:1.45rem}.dashboard-card p{margin:7px 0;color:var(--student-muted);line-height:1.5}.locked-card{position:relative}.lock-icon{position:absolute;right:22px;top:20px;font-size:1.1rem}.locked-card small{display:inline-block;margin-top:14px;padding:6px 9px;border-radius:999px;background:#f0f4f7;color:#687788;font-weight:800;font-size:.68rem}.dashboard-message{position:fixed;right:22px;bottom:22px;max-width:420px;z-index:30}
 @media(max-width:850px){.auth-shell{grid-template-columns:1fr;gap:30px;padding:45px 0}.auth-intro h1{font-size:clamp(2.8rem,13vw,4.5rem)}.auth-card{padding:22px}.dashboard-grid{grid-template-columns:1fr}.dashboard-shell{padding:50px 0}.auth-nav{padding:12px 20px}.auth-nav .brand-logo{height:45px}.dashboard-actions{gap:13px;font-size:.8rem}}
 @media(max-width:520px){.auth-two-col{grid-template-columns:1fr}.auth-home-link{font-size:.75rem}.auth-points{display:none}.dashboard-card{min-height:150px}}
+
+
+.auth-form select, .auth-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(20, 25, 30, .14);
+  border-radius: 12px;
+  padding: 13px 14px;
+  font: inherit;
+  background: #fff;
+  color: inherit;
+  outline: none;
+}
+.auth-form textarea { resize: vertical; min-height: 92px; }
+.auth-form select:focus, .auth-form textarea:focus { border-color: rgba(20, 25, 30, .35); }

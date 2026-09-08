@@ -1,75 +1,31 @@
 <!DOCTYPE html>
 <html lang="en-IN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Private student dashboard for Raju Driving School learners." />
-  <link rel="icon" type="image/png" href="../images/raju-logo.png" />
-  <link rel="stylesheet" href="../styles.css" />
-  <link rel="stylesheet" href="../student-auth.css" />
-  <link rel="stylesheet" href="../student-learning.css" />
-  <style>html:not(.student-dashboard-ready) body{visibility:hidden}</style>
-  <title>Student Dashboard | Raju Driving School</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="../images/raju-logo.png"><link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../student-auth.css"><link rel="stylesheet" href="../booking.css">
+<title>Student Dashboard | Raju Driving School</title>
 </head>
-<body class="student-dashboard-page">
-  <header class="nav auth-nav dashboard-nav">
-    <a aria-label="Raju Driving School home" class="brand" href="../"><img alt="Raju Driving School" class="brand-logo" src="../images/raju-logo.png" /></a>
-    <div class="dashboard-actions"><a href="../">Website</a><button id="logoutBtn" type="button">Log out</button></div>
-  </header>
-
-  <main class="dashboard-shell">
-    <div class="dashboard-hero">
-      <span class="auth-kicker">RAJU DRIVING SCHOOL · MY STUDENT AREA</span>
-      <h1>Welcome back, <span id="studentName">Student</span>.</h1>
-      <p>Your learning, practice and test history — organised in one private dashboard.</p>
-    </div>
-
-    <section class="dashboard-learning-grid" aria-label="Student learning shortcuts">
-      <a class="dashboard-learning-card" href="../learn/">
-        <div class="card-icon">01</div><span class="arrow">↗</span>
-        <small>LEARNING HUB</small><h3>Learn & revise</h3><p>Open your structured lessons and work through the driving curriculum at your own pace.</p>
-      </a>
-      <a class="dashboard-learning-card" href="../video-lessons/">
-        <div class="card-icon">▶</div><span class="arrow">↗</span>
-        <small>VIDEO CLASSES</small><h3>Watch & practise</h3><p>Watch the school’s theory and practical-preparation video classes.</p>
-      </a>
-      <a class="dashboard-learning-card" href="../mock-test/">
-        <div class="card-icon">✓</div><span class="arrow">↗</span>
-        <small>MOCK TEST</small><h3>Test yourself</h3><p>Take a 30-question learner mock test. Every completed attempt is recorded below.</p>
-      </a>
-    </section>
-
-    <h2 class="dashboard-section-title">Your test performance</h2>
-    <section class="dashboard-card dashboard-stats-card">
-      <div class="dashboard-stat-grid">
-        <div class="dashboard-stat"><small>ATTEMPTS</small><strong id="attemptCount">—</strong><span>Total mock tests</span></div>
-        <div class="dashboard-stat"><small>BEST SCORE</small><strong id="bestScore">—</strong><span>Highest score</span></div>
-        <div class="dashboard-stat"><small>LAST SCORE</small><strong id="lastScore">—</strong><span>Most recent attempt</span></div>
-        <div class="dashboard-stat"><small>PASS RATE</small><strong id="passRate">—</strong><span>Based on saved attempts</span></div>
-      </div>
-    </section>
-
-    <h2 class="dashboard-section-title">Recent mock tests</h2>
-    <section class="dashboard-attempts" id="attemptsList" aria-live="polite">
-      <div class="dashboard-empty">Loading your test history…</div>
-    </section>
-
-    <h2 class="dashboard-section-title">My profile</h2>
-    <section class="dashboard-card dashboard-profile">
-      <div class="profile-grid">
-        <div class="profile-field"><small>Name</small><strong id="profileName">—</strong></div>
-        <div class="profile-field"><small>Email</small><strong id="profileEmail">—</strong></div>
-        <div class="profile-field"><small>Mobile</small><strong id="profilePhone">—</strong></div>
-        <div class="profile-field"><small>Course</small><strong id="profileCourse">Not assigned yet</strong></div>
-        <div class="profile-field"><small>Licence category</small><strong id="profileCategory">Not assigned yet</strong></div>
-        <div class="profile-field"><small>Status</small><strong id="profileStatus">Active</strong></div>
-      </div>
-    </section>
-  </main>
-  <div id="dashboardMessage" class="auth-message dashboard-message" role="status" aria-live="polite"></div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../student-config.js"></script>
-  <script src="../student-dashboard.js"></script>
-</body>
-</html>
+<body class="booking-page">
+<header class="nav auth-nav dashboard-nav"><a aria-label="Raju Driving School home" class="brand" href="../"><img alt="Raju Driving School" class="brand-logo" src="../images/raju-logo.png"></a><div class="dashboard-actions"><a href="../">Website</a><button id="logoutBtn" type="button">Log out</button></div></header>
+<main class="booking-shell">
+<section class="booking-header"><div><span class="auth-kicker">STUDENT PORTAL</span><h1>Welcome, <span id="studentName">Student</span> 👋</h1><p>Book your hourly driving classes, see confirmation status and keep track of manually collected fees.</p></div><div class="dashboard-actions"><a class="booking-btn secondary" href="#booking">Book a class</a><button class="booking-btn secondary" id="refreshBtn" type="button">Refresh</button></div></section>
+<div id="dashboardMessage" class="notice"></div>
+<section class="booking-card"><div class="fee-summary"><div class="fee-box"><span>COURSE FEE</span><strong id="totalCourseFee">₹0.00</strong></div><div class="fee-box"><span>PAID</span><strong id="totalPaid">₹0.00</strong></div><div class="fee-box"><span>BALANCE</span><strong id="balanceDue">₹0.00</strong></div></div></section>
+<section class="booking-card" id="booking"><h2>Book a driving class</h2><p>Choose a preferred time. You may optionally request an instructor; the school admin will assign and approve the final class.</p><form id="bookingForm" class="booking-form"><div class="booking-form-grid"><label>Date & time<input id="requestedStart" type="datetime-local" required></label><label>Class duration<select id="durationMinutes"><option value="60">1 hour</option><option value="120">2 hours</option><option value="180">3 hours</option></select></label><label>Preferred instructor<select id="preferredInstructor"></select></label><label>Note (optional)<input id="studentNote" maxlength="300" placeholder="Any preferred timing or request"></label></div><div class="booking-form-actions"><button class="booking-btn" type="submit">Request booking</button></div></form></section>
+<section class="booking-card"><h2>My bookings</h2><p>Requests stay pending until the admin assigns an instructor, records the fee and approves the class.</p><div id="bookingList" class="booking-list"></div></section>
+<section class="booking-card"><h2>Fee payments</h2><p>Payments are recorded by the school after collecting money manually.</p><div id="paymentList" class="payment-table"></div></section>
+<section class="booking-card"><h2>My profile</h2><div class="admin-grid">
+<div><span class="muted">Name</span><strong id="profileName">—</strong></div>
+<div><span class="muted">Email</span><strong id="profileEmail">—</strong></div>
+<div><span class="muted">Phone</span><strong id="profilePhone">—</strong></div>
+<div><span class="muted">Date of birth</span><strong id="profileDob">—</strong></div>
+<div><span class="muted">Blood group</span><strong id="profileBloodGroup">—</strong></div>
+<div><span class="muted">Applying for</span><strong id="profileApplyingFor">—</strong></div>
+<div><span class="muted">Pincode</span><strong id="profilePincode">—</strong></div>
+<div style="grid-column:1/-1"><span class="muted">Full address</span><strong id="profileAddress">—</strong></div>
+<div><span class="muted">Course</span><strong id="profileCourse">—</strong></div>
+<div><span class="muted">Account status</span><strong id="profileStatus">—</strong></div>
+</div></section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../student-config.js"></script><script src="../student-dashboard.js"></script>
+</body></html>

@@ -25,12 +25,7 @@
   if (!window.supabase?.createClient) { show('The authentication service could not be loaded. Please refresh and try again.', 'error'); return; }
   const client = window.supabase.createClient(window.RAJU_SUPABASE_URL, window.RAJU_SUPABASE_ANON_KEY);
 
-  const params = new URLSearchParams(window.location.search);
-  const requestedRedirect = params.get('redirect');
-  const safeRedirect = requestedRedirect && requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//') ? requestedRedirect : '/student-dashboard/';
-  function goAfterAuth() { window.location.href = safeRedirect; }
-
-  client.auth.getSession().then(({ data }) => { if (data.session) goAfterAuth(); });
+  client.auth.getSession().then(({ data }) => { if (data.session) window.location.href = '../student-dashboard/'; });
 
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -39,21 +34,28 @@
     const button = loginForm.querySelector('.auth-submit'); button.disabled = true; show('Signing you in…');
     const { error } = await client.auth.signInWithPassword({ email, password });
     if (error) { show(error.message, 'error'); button.disabled = false; return; }
-    goAfterAuth();
+    window.location.href = '../student-dashboard/';
   });
 
   signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(signupForm);
     const full_name = fd.get('full_name').trim(), phone = fd.get('phone').trim(), email = fd.get('email').trim();
+    const date_of_birth = fd.get('date_of_birth');
+    const blood_group = fd.get('blood_group');
+    const address = fd.get('address').trim();
+    const pincode = fd.get('pincode').trim();
+    const applying_for = fd.get('applying_for');
     const password = fd.get('password'), confirm = fd.get('confirm_password');
+    if (!date_of_birth || !blood_group || !address || !pincode || !applying_for) return show('Please complete all required student details.', 'error');
+    if (!/^[0-9]{6}$/.test(pincode)) return show('Please enter a valid 6-digit pincode.', 'error');
     if (password !== confirm) return show('Passwords do not match.', 'error');
     if (!fd.get('terms')) return show('Please accept the account terms to continue.', 'error');
     const button = signupForm.querySelector('.auth-submit'); button.disabled = true; show('Creating your student account…');
-    const { data, error } = await client.auth.signUp({ email, password, options: { data: { full_name, phone } } });
+    const { data, error } = await client.auth.signUp({ email, password, options: { data: { full_name, phone, date_of_birth, blood_group, address, pincode, applying_for } } });
     if (error) { show(error.message, 'error'); button.disabled = false; return; }
     if (data.session) {
-      goAfterAuth();
+      window.location.href = '../student-dashboard/';
     } else {
       show('Account created. Please check your email to confirm your account, then log in.', 'success');
       signupForm.reset(); setTab('login');
