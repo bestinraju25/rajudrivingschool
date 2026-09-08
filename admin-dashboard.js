@@ -118,8 +118,69 @@
   function renderBlocks(blocks,instructorMap){const root=document.getElementById('blockTable');if(!blocks.length){root.innerHTML='<div class="empty">No unavailable periods recorded.</div>';return;}root.innerHTML=`<table class="admin-table"><thead><tr><th>Instructor</th><th>From</th><th>To</th><th>Reason</th><th></th></tr></thead><tbody>${blocks.map(b=>`<tr><td>${esc(instructorMap.get(b.instructor_id)?.name||'Instructor')}</td><td>${fmt(b.start_at)}</td><td>${fmt(b.end_at)}</td><td>${esc(b.reason||'—')}</td><td><button class="admin-btn danger delete-block" data-id="${b.id}">Remove</button></td></tr>`).join('')}</tbody></table>`;root.querySelectorAll('.delete-block').forEach(btn=>btn.onclick=async()=>{if(!confirm('Remove this unavailable period?'))return;const {error}=await client.from('instructor_unavailability').delete().eq('id',btn.dataset.id);if(error)show(error.message,'error');else{show('Blocked time removed.','success');await load();}});}
   function renderStudents(students,payments){const root=document.getElementById('studentFeeTable');if(!students.length){root.innerHTML='<div class="empty">No student profiles yet.</div>';return;}root.innerHTML=`<table class="admin-table"><thead><tr><th>Student</th><th>Registration details</th><th>Applying for</th><th>Total course fee</th><th>Paid</th><th></th></tr></thead><tbody>${students.map(s=>{const paid=payments.filter(p=>p.student_id===s.id).reduce((sum,p)=>sum+Number(p.amount||0),0);return `<tr><td><strong>${esc(s.full_name||'Student')}</strong><br><small>${esc(s.email||'')}<br>${esc(s.phone||'')}</small></td><td><small>DOB: ${esc(s.date_of_birth||'—')}<br>Blood: ${esc(s.blood_group||'—')}<br>Pincode: ${esc(s.pincode||'—')}<br>${esc(s.address||'—')}</small></td><td><strong>${esc(s.applying_for||'—')}</strong></td><td><input class="student-total-fee" data-id="${s.id}" type="number" min="0" step="0.01" value="${Number(s.total_course_fee||0)}" style="width:120px"><br><button class="admin-btn secondary save-student-fee" data-id="${s.id}">Save</button></td><td><strong>${money(paid)}</strong></td><td><button class="admin-btn record-student-payment" data-id="${s.id}">Payment</button></td></tr>`;}).join('')}</tbody></table>`;root.querySelectorAll('.save-student-fee').forEach(btn=>btn.onclick=async()=>{const input=root.querySelector(`.student-total-fee[data-id="${btn.dataset.id}"]`);const {error}=await client.from('student_profiles').update({total_course_fee:Number(input.value)}).eq('id',btn.dataset.id);if(error)show(error.message,'error');else{show('Course fee updated.','success');await load();}});root.querySelectorAll('.record-student-payment').forEach(btn=>btn.onclick=()=>openPayment(btn.dataset.id,'',''));}
 
-  function openPayment(studentId,bookingId,fee){document.getElementById('paymentStudent').value=studentId;document.getElementById('paymentBooking').value=bookingId||'';const student=cached.studentMap?.get(studentId);document.getElementById('paymentStudentDisplay').value=student?.full_name||student?.email||studentId;document.getElementById('paymentBookingDisplay').value=bookingId||'General course payment';document.querySelector('#paymentForm [name="amount"]').value=Number(fee||0)||'';document.getElementById('paymentFormCard').scrollIntoView({behavior:'smooth',block:'center'});}
-  document.getElementById('paymentForm').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.target),studentId=fd.get('student_id'),bookingId=fd.get('booking_id')||null,amount=Number(fd.get('amount'));if(!studentId||!amount||amount<=0){show('Choose a student and enter a valid payment amount.','error');return;}const {error}=await client.from('fee_payments').insert({student_id:studentId,booking_id:bookingId,amount,paid_on:fd.get('payment_date'),payment_method:fd.get('payment_method'),receipt_number:fd.get('receipt_number')||null,note:fd.get('notes')||null,recorded_by:session.user.id});if(error){show(error.message,'error');return;}show('Payment recorded successfully.','success');e.target.reset();document.getElementById('paymentDate').value=new Date().toISOString().slice(0,10);await load();};
+  const paymentStudentSearch=document.getElementById('paymentStudentSearch');
+  const paymentStudentResults=document.getElementById('paymentStudentResults');
+  const paymentStudentSelected=document.getElementById('paymentStudentSelected');
+  const clearPaymentStudent=document.getElementById('clearPaymentStudent');
+  let paymentSearchTimer=null;
+  let paymentSearchToken=0;
+
+  function setPaymentStudent(student){
+    document.getElementById('paymentStudent').value=student?.id||'';
+    paymentStudentSearch.value=student?(student.full_name||student.email||student.phone||''):'';
+    paymentStudentSelected.textContent=student ? `${student.full_name||'Student'}${student.email?' · '+student.email:''}${student.phone?' · '+student.phone:''}` : 'No student selected';
+    clearPaymentStudent.hidden=!student;
+    paymentStudentResults.innerHTML='';
+    paymentStudentResults.classList.remove('open');
+  }
+
+  function renderPaymentStudentResults(students){
+    if(!students.length){
+      paymentStudentResults.innerHTML='<div class="student-picker-empty">No students found.</div>';
+    }else{
+      paymentStudentResults.innerHTML=students.map(s=>`<button type="button" class="student-picker-option" data-student-id="${esc(s.id)}"><strong>${esc(s.full_name||'Student')}</strong><span>${esc(s.email||'')}${s.phone?' · '+esc(s.phone):''}</span></button>`).join('');
+      paymentStudentResults.querySelectorAll('.student-picker-option').forEach(btn=>btn.onclick=()=>{
+        const student=cached.studentMap?.get(btn.dataset.studentId);
+        if(student)setPaymentStudent(student);
+      });
+    }
+    paymentStudentResults.classList.add('open');
+  }
+
+  async function searchPaymentStudents(term){
+    const q=String(term||'').trim();
+    const token=++paymentSearchToken;
+    if(q.length<2){paymentStudentResults.innerHTML='';paymentStudentResults.classList.remove('open');return;}
+    paymentStudentResults.innerHTML='<div class="student-picker-loading">Searching students…</div>';
+    paymentStudentResults.classList.add('open');
+    const [byName,byEmail,byPhone]=await Promise.all([
+      client.from('student_profiles').select('id,full_name,email,phone').ilike('full_name',`%${q}%`).limit(8),
+      client.from('student_profiles').select('id,full_name,email,phone').ilike('email',`%${q}%`).limit(8),
+      client.from('student_profiles').select('id,full_name,email,phone').ilike('phone',`%${q}%`).limit(8)
+    ]);
+    if(token!==paymentSearchToken)return;
+    const firstError=byName.error||byEmail.error||byPhone.error;
+    if(firstError){paymentStudentResults.innerHTML=`<div class="student-picker-empty">${esc(firstError.message)}</div>`;return;}
+    const merged=new Map();[...(byName.data||[]),...(byEmail.data||[]),...(byPhone.data||[])].forEach(s=>merged.set(s.id,s));
+    [...merged.values()].slice(0,12).forEach(s=>cached.studentMap?.set(s.id,s));
+    renderPaymentStudentResults([...merged.values()].slice(0,12));
+  }
+
+  paymentStudentSearch.addEventListener('input',()=>{
+    const value=paymentStudentSearch.value;
+    if(document.getElementById('paymentStudent').value && value!==paymentStudentSelected.textContent.split(' · ')[0]){
+      document.getElementById('paymentStudent').value='';
+      paymentStudentSelected.textContent='No student selected';
+      clearPaymentStudent.hidden=true;
+    }
+    clearTimeout(paymentSearchTimer);paymentSearchTimer=setTimeout(()=>searchPaymentStudents(value),220);
+  });
+  paymentStudentSearch.addEventListener('focus',()=>{if(paymentStudentSearch.value.trim().length>=2)searchPaymentStudents(paymentStudentSearch.value);});
+  clearPaymentStudent.onclick=()=>{setPaymentStudent(null);paymentStudentSearch.focus();};
+  document.addEventListener('click',e=>{if(!e.target.closest('.student-picker'))paymentStudentResults.classList.remove('open');});
+
+  function openPayment(studentId,bookingId,fee){const student=cached.studentMap?.get(studentId);setPaymentStudent(student||null);document.getElementById('paymentBooking').value=bookingId||'';document.getElementById('paymentBookingDisplay').value=bookingId||'General course payment';document.querySelector('#paymentForm [name="amount"]').value=Number(fee||0)||'';document.getElementById('paymentFormCard').scrollIntoView({behavior:'smooth',block:'center'});}
+  document.getElementById('paymentForm').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.target),studentId=fd.get('student_id'),bookingId=fd.get('booking_id')||null,amount=Number(fd.get('amount'));if(!studentId||!amount||amount<=0){show('Choose a student from the search results and enter a valid payment amount.','error');return;}const {error}=await client.from('fee_payments').insert({student_id:studentId,booking_id:bookingId,amount,paid_on:fd.get('payment_date'),payment_method:fd.get('payment_method'),receipt_number:fd.get('receipt_number')||null,note:fd.get('notes')||null,recorded_by:session.user.id});if(error){show(error.message,'error');return;}show('Payment recorded successfully.','success');e.target.reset();setPaymentStudent(null);document.getElementById('paymentDate').value=new Date().toISOString().slice(0,10);await load();};
   document.getElementById('blockForm').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.target),start=new Date(fd.get('start_at')),end=new Date(fd.get('end_at'));if(end<=start){show('The end time must be after the start time.','error');return;}const {error}=await client.from('instructor_unavailability').insert({instructor_id:fd.get('instructor_id'),start_at:start.toISOString(),end_at:end.toISOString(),reason:fd.get('reason')||null,created_by:session.user.id});if(error)show(error.message,'error');else{show('Instructor time blocked.','success');e.target.reset();await load();}};
   document.getElementById('settingsForm').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.target),{error}=await client.from('school_settings').upsert({id:1,hourly_class_fee:Number(fd.get('hourly_class_fee')),updated_at:new Date().toISOString()});if(error)show(error.message,'error');else show('Hourly fee updated.','success');};
   document.getElementById('addInstructorForm').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.target),name=String(fd.get('name')||'').trim();if(!name)return;const {error}=await client.from('instructors').insert({name,active:true});if(error)show(error.message,'error');else{show('Instructor added.','success');e.target.reset();await loadInstructors();await load();}};

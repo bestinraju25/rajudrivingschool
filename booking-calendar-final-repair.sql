@@ -1,7 +1,6 @@
--- RAJU DRIVING SCHOOL - BOOKING CALENDAR REPAIR V7
--- Run this ONCE in Supabase SQL Editor after the previous booking repair.
--- Fixes the ambiguous `status` reference inside get_instructor_day_slots.
--- Also keeps the booking status set used by the website.
+-- RAJU DRIVING SCHOOL - BOOKING CALENDAR FINAL REPAIR
+-- Run this ONCE in Supabase SQL Editor.
+-- Fixes: calendar status ambiguity + India timezone half-hour validation + booking creation.
 
 create or replace function public.get_instructor_day_slots(
   p_instructor_id uuid,
@@ -21,8 +20,8 @@ declare
   tz text := 'Asia/Kolkata';
   day_start timestamptz;
   slot timestamptz;
-  b record;
-  u record;
+  bk record;
+  ub record;
 begin
   if auth.uid() is null then
     raise exception 'Authentication required.';
@@ -45,7 +44,7 @@ begin
     is_mine := false;
 
     select true as found, (bk.student_id = auth.uid()) as mine
-    into b
+    into bk
     from public.bookings bk
     where bk.assigned_instructor_id = p_instructor_id
       and bk.status in ('pending_payment','payment_recorded','approved','completed')
@@ -56,19 +55,19 @@ begin
     order by bk.requested_start
     limit 1;
 
-    if coalesce(b.found, false) then
-      status := case when b.mine then 'mine' else 'booked' end;
-      is_mine := coalesce(b.mine, false);
+    if coalesce(bk.found, false) then
+      status := case when bk.mine then 'mine' else 'booked' end;
+      is_mine := coalesce(bk.mine, false);
     else
       select true as found
-      into u
+      into ub
       from public.instructor_unavailability ub
       where ub.instructor_id = p_instructor_id
         and tstzrange(ub.start_at, ub.end_at, '[)')
             && tstzrange(slot_start, slot_end, '[)')
       limit 1;
 
-      if coalesce(u.found, false) then
+      if coalesce(ub.found, false) then
         status := 'unavailable';
       end if;
     end if;
@@ -80,21 +79,6 @@ $$;
 
 grant execute on function public.get_instructor_day_slots(uuid,date) to authenticated;
 
--- Keep the status set compatible with the admin UI.
-do $$
-begin
-  if not exists (
-    select 1 from pg_constraint
-    where conrelid = 'public.bookings'::regclass
-      and conname = 'bookings_status_check_calendar'
-  ) then
-    alter table public.bookings add constraint bookings_status_check_calendar
-      check (status in ('pending_payment','payment_recorded','approved','completed','cancelled','rejected'));
-  end if;
-end $$;
-
-
--- Also fix booking creation validation: validate India local time, not UTC.
 create or replace function public.create_booking_request(
   p_instructor_id uuid,
   p_start timestamptz,
@@ -112,40 +96,73 @@ declare
   rate numeric;
   tz text := 'Asia/Kolkata';
 begin
-  if auth.uid() is null then raise exception 'Authentication required.'; end if;
-  if p_duration_minutes not in (60,120) then raise exception 'Class duration must be 1 or 2 hours.'; end if;
-  if p_start <= now() then raise exception 'Please choose a future time.'; end if;
+  if auth.uid() is null then
+    raise exception 'Authentication required.';
+  end if;
+
+  if p_duration_minutes not in (60,120) then
+    raise exception 'Class duration must be 1 or 2 hours.';
+  end if;
+
+  if p_start <= now() then
+    raise exception 'Please choose a future time.';
+  end if;
+
+  -- IMPORTANT: validate the displayed India time, not UTC. India is UTC+05:30.
   if extract(minute from (p_start at time zone tz)) <> 0
      or extract(second from (p_start at time zone tz)) <> 0 then
     raise exception 'Classes must start on the hour.';
   end if;
+
   if extract(hour from (p_start at time zone tz)) < 8
      or extract(hour from (p_start at time zone tz)) >= 19 then
     raise exception 'Choose a class start time between 8:00 AM and 6:00 PM.';
   end if;
+
   p_end := p_start + make_interval(mins => p_duration_minutes);
+
   if extract(hour from (p_end at time zone tz)) > 19
-     or (extract(hour from (p_end at time zone tz)) = 19 and extract(minute from (p_end at time zone tz)) > 0) then
+     or (extract(hour from (p_end at time zone tz)) = 19
+         and extract(minute from (p_end at time zone tz)) > 0) then
     raise exception 'The selected class must finish by 7:00 PM.';
   end if;
-  if not exists (select 1 from public.instructors i where i.id = p_instructor_id and i.active = true) then
+
+  if not exists (
+    select 1 from public.instructors i
+    where i.id = p_instructor_id and i.active = true
+  ) then
     raise exception 'The selected instructor is not available.';
   end if;
-  if exists (select 1 from public.instructor_unavailability u
+
+  if exists (
+    select 1 from public.instructor_unavailability u
     where u.instructor_id = p_instructor_id
-      and tstzrange(u.start_at,u.end_at,'[)') && tstzrange(p_start,p_end,'[)')) then
+      and tstzrange(u.start_at,u.end_at,'[)')
+          && tstzrange(p_start,p_end,'[)')
+  ) then
     raise exception 'The selected instructor is not available for that time.';
   end if;
-  select hourly_class_fee into rate from public.school_settings where id = 1;
-  insert into public.bookings (student_id, requested_start, requested_end, preferred_instructor_id, assigned_instructor_id, status, class_fee, student_note)
-  values (auth.uid(), p_start, p_end, p_instructor_id, p_instructor_id, 'pending_payment', coalesce(rate,0) * (p_duration_minutes::numeric / 60), nullif(trim(p_student_note),''))
-  returning * into result;
+
+  select hourly_class_fee into rate
+  from public.school_settings
+  where id = 1;
+
+  insert into public.bookings (
+    student_id, requested_start, requested_end, preferred_instructor_id,
+    assigned_instructor_id, status, class_fee, student_note
+  ) values (
+    auth.uid(), p_start, p_end, p_instructor_id, p_instructor_id,
+    'pending_payment', coalesce(rate,0) * (p_duration_minutes::numeric / 60),
+    nullif(trim(p_student_note),'')
+  ) returning * into result;
+
   return result;
-exception when exclusion_violation then
-  raise exception 'That instructor is already booked for one or more of the selected hours. Please choose another slot.';
+exception
+  when exclusion_violation then
+    raise exception 'That instructor is already booked for one or more of the selected hours. Please choose another slot.';
 end;
 $$;
 
 grant execute on function public.create_booking_request(uuid,timestamptz,integer,text) to authenticated;
 
-select 'Raju Driving School V7 booking calendar repair completed successfully.' as message;
+select 'Raju Driving School booking calendar FINAL repair completed successfully.' as message;

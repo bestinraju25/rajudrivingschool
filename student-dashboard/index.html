@@ -50,17 +50,30 @@
   <section class="booking-card" id="my-profile"><div class="section-title-row"><div><h2>My profile</h2><p>Review and edit the personal details saved during registration.</p></div><button class="booking-btn secondary" id="editProfileBtn" type="button">Edit profile</button></div><div class="profile-grid">
     <div><span class="muted">Name</span><strong id="profileName">—</strong></div><div><span class="muted">Email</span><strong id="profileEmail">—</strong></div><div><span class="muted">Phone</span><strong id="profilePhone">—</strong></div><div><span class="muted">Date of birth</span><strong id="profileDob">—</strong></div><div><span class="muted">Blood group</span><strong id="profileBloodGroup">—</strong></div><div><span class="muted">Applying for</span><strong id="profileApplyingFor">—</strong></div><div><span class="muted">Pincode</span><strong id="profilePincode">—</strong></div><div class="profile-wide"><span class="muted">Full address</span><strong id="profileAddress">—</strong></div>
   </div>
-  <form id="profileEditForm" class="profile-edit-card" hidden><div class="profile-edit-grid">
-    <label>Full name<input name="full_name" id="editFullName" required maxlength="120"></label>
-    <label>Email<input class="readonly-email" id="editEmail" type="email" readonly></label>
-    <label>Mobile number<input name="phone" id="editPhone" maxlength="20"></label>
-    <label>Date of birth<input name="date_of_birth" id="editDob" type="date"></label>
-    <label>Blood group<select name="blood_group" id="editBloodGroup"><option value="">Select</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></label>
-    <label>Applying for<select name="applying_for" id="editApplyingFor"><option value="">Select</option><option>Car</option><option>Two Wheeler</option><option>Car + Two Wheeler</option><option>Heavy Vehicle</option><option>Other</option></select></label>
-    <label>Pincode<input name="pincode" id="editPincode" inputmode="numeric" maxlength="10"></label>
-    <label class="profile-edit-wide">Full address<textarea name="address" id="editAddress" maxlength="500"></textarea></label>
-  </div><div class="profile-edit-actions"><button class="profile-edit-cancel" id="cancelProfileEdit" type="button">Cancel</button><button class="profile-edit-save" id="saveProfileBtn" type="submit">Save changes</button></div></form>
   </section>
+
+  <div id="profileModal" class="profile-modal" hidden aria-hidden="true">
+    <div class="profile-modal-backdrop" data-close-profile></div>
+    <div class="profile-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
+      <div class="profile-modal-head">
+        <div><span class="auth-kicker">STUDENT PROFILE</span><h2 id="profileModalTitle">Edit your profile</h2><p>Update the personal details saved in your student account.</p></div>
+        <button id="closeProfileModal" class="profile-modal-close" type="button" aria-label="Close">×</button>
+      </div>
+      <form id="profileEditForm">
+        <div class="profile-edit-grid">
+          <label>Full name<input name="full_name" id="editFullName" required maxlength="120"></label>
+          <label>Email<input class="readonly-email" id="editEmail" type="email" readonly></label>
+          <label>Mobile number<input name="phone" id="editPhone" maxlength="20"></label>
+          <label>Date of birth<input name="date_of_birth" id="editDob" type="date"></label>
+          <label>Blood group<select name="blood_group" id="editBloodGroup"><option value="">Select</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></label>
+          <label>Applying for<select name="applying_for" id="editApplyingFor"><option value="">Select</option><option>Car</option><option>Two Wheeler</option><option>Car + Two Wheeler</option><option>Heavy Vehicle</option><option>Other</option></select></label>
+          <label>Pincode<input name="pincode" id="editPincode" inputmode="numeric" maxlength="10"></label>
+          <label class="profile-edit-wide">Full address<textarea name="address" id="editAddress" maxlength="500"></textarea></label>
+        </div>
+        <div class="profile-edit-actions"><button class="profile-edit-cancel" id="cancelProfileEdit" type="button">Cancel</button><button class="profile-edit-save" id="saveProfileBtn" type="submit">Save changes</button></div>
+      </form>
+    </div>
+  </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../student-config.js"></script><script src="../student-dashboard.js"></script>
 </body></html>

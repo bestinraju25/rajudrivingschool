@@ -43,14 +43,24 @@
     document.getElementById('editAddress').value = profile.address || '';
   }
 
-  document.getElementById('editProfileBtn').onclick = () => {
+  const profileModal = document.getElementById('profileModal');
+  const closeProfileModal = () => {
+    profileModal.hidden = true;
+    profileModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('profile-modal-open');
+  };
+  const openProfileModal = () => {
     populateProfileEditor();
-    document.getElementById('profileEditForm').hidden = false;
-    document.getElementById('profileEditForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    profileModal.hidden = false;
+    profileModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('profile-modal-open');
+    setTimeout(() => document.getElementById('editFullName').focus(), 50);
   };
-  document.getElementById('cancelProfileEdit').onclick = () => {
-    document.getElementById('profileEditForm').hidden = true;
-  };
+  document.getElementById('editProfileBtn').onclick = openProfileModal;
+  document.getElementById('cancelProfileEdit').onclick = closeProfileModal;
+  document.getElementById('closeProfileModal').onclick = closeProfileModal;
+  profileModal.querySelectorAll('[data-close-profile]').forEach(el => el.addEventListener('click', closeProfileModal));
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && !profileModal.hidden) closeProfileModal(); });
   document.getElementById('profileEditForm').onsubmit = async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -72,7 +82,7 @@
       show(error.message, 'error');
     } else {
       await loadProfile();
-      document.getElementById('profileEditForm').hidden = true;
+      closeProfileModal();
       show('Your profile was updated successfully.', 'success');
     }
     saveBtn.disabled = false; saveBtn.textContent = 'Save changes';

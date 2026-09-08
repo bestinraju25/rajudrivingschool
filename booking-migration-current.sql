@@ -130,16 +130,16 @@ begin
     status := 'available';
     is_mine := false;
 
-    select true as found, (student_id = auth.uid()) as mine
+    select true as found, (bk.student_id = auth.uid()) as mine
     into b
-    from public.bookings
-    where assigned_instructor_id = p_instructor_id
-      and status in ('pending_payment','payment_recorded','approved','completed')
-      and requested_start is not null
-      and requested_end is not null
-      and tstzrange(requested_start, requested_end, '[)')
+    from public.bookings bk
+    where bk.assigned_instructor_id = p_instructor_id
+      and bk.status in ('pending_payment','payment_recorded','approved','completed')
+      and bk.requested_start is not null
+      and bk.requested_end is not null
+      and tstzrange(bk.requested_start, bk.requested_end, '[)')
           && tstzrange(slot_start, slot_end, '[)')
-    order by requested_start
+    order by bk.requested_start
     limit 1;
 
     if coalesce(b.found, false) then
@@ -196,7 +196,8 @@ begin
     raise exception 'Please choose a future time.';
   end if;
 
-  if extract(minute from p_start) <> 0 or extract(second from p_start) <> 0 then
+  if extract(minute from (p_start at time zone tz)) <> 0
+     or extract(second from (p_start at time zone tz)) <> 0 then
     raise exception 'Classes must start on the hour.';
   end if;
 

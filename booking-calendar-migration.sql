@@ -98,12 +98,12 @@ begin
     status := 'available';
     is_mine := false;
 
-    select true as found, (student_id = auth.uid()) as mine into b
-    from public.bookings
-    where assigned_instructor_id = p_instructor_id
-      and status in ('pending_payment','payment_recorded','approved','completed')
-      and tstzrange(requested_start, requested_end, '[)') && tstzrange(slot_start, slot_end, '[)')
-    order by requested_start
+    select true as found, (bk.student_id = auth.uid()) as mine into b
+    from public.bookings bk
+    where bk.assigned_instructor_id = p_instructor_id
+      and bk.status in ('pending_payment','payment_recorded','approved','completed')
+      and tstzrange(bk.requested_start, bk.requested_end, '[)') && tstzrange(slot_start, slot_end, '[)')
+    order by bk.requested_start
     limit 1;
 
     if b.found then
@@ -140,11 +140,13 @@ as $$
 declare
   result public.bookings;
   p_end timestamptz;
+  tz text := 'Asia/Kolkata';
 begin
   if auth.uid() is null then raise exception 'Authentication required.'; end if;
   if p_duration_minutes not in (60,120) then raise exception 'Class duration must be 1 or 2 hours.'; end if;
   if p_start <= now() then raise exception 'Please choose a future time.'; end if;
-  if extract(minute from p_start) <> 0 or extract(second from p_start) <> 0 then raise exception 'Classes must start on the hour.'; end if;
+  if extract(minute from (p_start at time zone tz)) <> 0
+     or extract(second from (p_start at time zone tz)) <> 0 then raise exception 'Classes must start on the hour.'; end if;
   if extract(hour from (p_start at time zone 'Asia/Kolkata')) < 8 or extract(hour from (p_start at time zone 'Asia/Kolkata')) >= 19 then raise exception 'Choose a class start time between 8:00 AM and 6:00 PM.'; end if;
   p_end := p_start + make_interval(mins => p_duration_minutes);
 
