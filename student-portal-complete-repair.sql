@@ -165,6 +165,28 @@ $$;
 
 grant execute on function public.get_instructor_day_slots(uuid,date) to authenticated;
 
+-- 5.5) Older installations may still have legacy booking columns marked NOT NULL.
+-- The current calendar uses requested_start/requested_end and the instructor
+-- assignment fields below, so legacy columns must be optional.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='bookings' AND column_name='instructor_id') THEN
+    ALTER TABLE public.bookings ALTER COLUMN instructor_id DROP NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='bookings' AND column_name='start_at') THEN
+    ALTER TABLE public.bookings ALTER COLUMN start_at DROP NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='bookings' AND column_name='end_at') THEN
+    ALTER TABLE public.bookings ALTER COLUMN end_at DROP NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='bookings' AND column_name='fee_amount') THEN
+    ALTER TABLE public.bookings ALTER COLUMN fee_amount DROP NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='bookings' AND column_name='notes') THEN
+    ALTER TABLE public.bookings ALTER COLUMN notes DROP NOT NULL;
+  END IF;
+END $$;
+
 -- 6) Repair booking creation RPC. Validate the local Indian time, not UTC.
 create or replace function public.create_booking_request(
   p_instructor_id uuid,
