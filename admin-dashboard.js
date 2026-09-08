@@ -48,29 +48,42 @@
 
   function renderBookings(bookings,payments,studentMap,instructorMap){
     const root=document.getElementById('bookingTable');
-    if(!bookings.length){root.innerHTML='<div class="empty">No student booking requests yet.</div>';return;}
-    root.innerHTML=`<table class="admin-table"><thead><tr><th>Student</th><th>Requested class</th><th>Instructor</th><th>Fee / paid</th><th>Status</th><th>Admin note</th><th>Actions</th></tr></thead><tbody>${bookings.map(b=>{
+    const pending=bookings.filter(b=>['pending_payment','payment_recorded'].includes(b.status));
+    const badge=pending.length?`<span class="request-count-badge">${pending.length} new</span>`:'';
+    const heading=root.parentElement?.querySelector('.admin-section-title h2');
+    if(heading)heading.innerHTML=`New booking requests ${badge}`;
+    if(!pending.length){
+      root.innerHTML='<div class="booking-inbox-empty"><div class="booking-inbox-icon">✓</div><div><strong>No new booking requests</strong><p>New student requests will appear here like notifications. Once you approve one, it leaves this inbox.</p></div></div>';
+      return;
+    }
+    root.innerHTML=`<div class="booking-inbox">${pending.map(b=>{
       const student=studentMap.get(b.student_id)||{};
-      const paid=payments.filter(p=>p.booking_id===b.id).reduce((s,p)=>s+Number(p.amount||0),0);
-      const opts='<option value="">Unassigned</option>'+instructors.map(i=>`<option value="${i.id}" ${i.id===b.assigned_instructor_id?'selected':''}>${esc(i.name)}${i.active?'':' (inactive)'}</option>`).join('');
-      const statusLabel=String(b.status||'').replaceAll('_',' ');
-      return `<tr><td><strong>${esc(student.full_name||'Student')}</strong><br><small>${esc(student.phone||'')}<br>${esc(student.email||'')}</small></td>
-      <td><strong>${fmt(b.requested_start)}</strong><br><small>${b.duration_minutes/60} hour${b.duration_minutes===60?'':'s'}${b.student_note?' · '+esc(b.student_note):''}</small></td>
-      <td><select class="assign-instructor" data-id="${b.id}">${opts}</select>${b.preferred_instructor_id?`<small>Preferred: ${esc(instructorMap.get(b.preferred_instructor_id)?.name||'Instructor')}</small>`:''}<br><button class="admin-btn secondary save-assignment" data-id="${b.id}">Save</button></td>
-      <td><input class="booking-fee" data-id="${b.id}" type="number" min="0" step="0.01" value="${Number(b.class_fee||0)}"><br><button class="admin-btn secondary save-fee" data-id="${b.id}">Save fee</button><br><small>Paid: ${money(paid)} / ${money(b.class_fee)}</small></td>
-      <td><span class="status-pill status-${esc(b.status)}">${esc(statusLabel)}</span></td>
-      <td><input class="admin-note-input booking-note" data-id="${b.id}" maxlength="300" value="${esc(b.admin_note||'')}" placeholder="Optional note"><br><button class="admin-btn secondary save-note" data-id="${b.id}">Save note</button></td>
-      <td><div class="admin-actions"><button class="admin-btn record-payment" data-id="${b.id}" data-student="${b.student_id}" data-fee="${Number(b.class_fee||0)}">Payment</button>${!['approved','completed','cancelled','rejected'].includes(b.status)?`<button class="admin-btn success-btn approve-booking" data-id="${b.id}">Approve</button><button class="admin-btn warning-btn reject-booking" data-id="${b.id}">Reject</button>`:''}${b.status==='approved'?`<button class="admin-btn complete-booking" data-id="${b.id}">Complete</button>`:''}${!['cancelled','completed','rejected'].includes(b.status)?`<button class="admin-btn danger cancel-booking" data-id="${b.id}">Cancel</button>`:''}</div></td></tr>`;
-    }).join('')}</tbody></table>`;
+      const instructor=instructorMap.get(b.assigned_instructor_id)||instructorMap.get(b.preferred_instructor_id);
+      const paid=payments.filter(p=>p.booking_id===b.id).reduce((sum,p)=>sum+Number(p.amount||0),0);
+      const fee=Number(b.class_fee||0);
+      const paymentReady=paid>=fee && fee>0;
+      const statusLabel=b.status==='payment_recorded'?'Payment recorded':'Payment pending';
+      return `<article class="booking-request-card">
+        <div class="booking-request-main">
+          <div class="booking-request-avatar">${esc((student.full_name||'S').trim().charAt(0).toUpperCase())}</div>
+          <div class="booking-request-copy">
+            <div class="booking-request-top"><strong>${esc(student.full_name||'Student')}</strong><span class="request-status ${paymentReady?'ready':''}">${esc(statusLabel)}</span></div>
+            <div class="booking-request-class"><strong>${fmt(b.requested_start)}</strong><span>· ${b.duration_minutes/60} hour${b.duration_minutes===60?'':'s'}</span></div>
+            <div class="booking-request-meta">${esc(instructor?.name||'Instructor not assigned')} · ${money(fee)} · Paid ${money(paid)}</div>
+            ${student.phone||student.email?`<div class="booking-request-contact">${esc(student.phone||'')}${student.phone&&student.email?' · ':''}${esc(student.email||'')}</div>`:''}
+          </div>
+        </div>
+        <div class="booking-request-action"><button class="admin-btn success-btn approve-booking" data-id="${b.id}">Approve</button></div>
+      </article>`;
+    }).join('')}</div>`;
 
-    root.querySelectorAll('.save-assignment').forEach(btn=>btn.onclick=async()=>{const s=root.querySelector(`.assign-instructor[data-id="${btn.dataset.id}"]`);const {error}=await client.from('bookings').update({assigned_instructor_id:s.value||null}).eq('id',btn.dataset.id);if(error)show(error.message,'error');else{show('Instructor assignment saved.','success');await load();}});
-    root.querySelectorAll('.save-fee').forEach(btn=>btn.onclick=async()=>{const i=root.querySelector(`.booking-fee[data-id="${btn.dataset.id}"]`);const {error}=await client.from('bookings').update({class_fee:Number(i.value)}).eq('id',btn.dataset.id);if(error)show(error.message,'error');else{show('Class fee updated.','success');await load();}});
-    root.querySelectorAll('.save-note').forEach(btn=>btn.onclick=async()=>{const i=root.querySelector(`.booking-note[data-id="${btn.dataset.id}"]`);const {error}=await client.from('bookings').update({admin_note:i.value.trim()||null}).eq('id',btn.dataset.id);if(error)show(error.message,'error');else{show('Admin note saved.','success');await load();}});
-    root.querySelectorAll('.approve-booking').forEach(btn=>btn.onclick=async()=>{if(!confirm('Approve this class? Make sure an instructor is assigned and the full booking fee has been recorded.'))return;const {error}=await client.rpc('approve_booking',{p_booking_id:btn.dataset.id});if(error)show(error.message,'error');else{show('Class approved.','success');await load();}});
-    root.querySelectorAll('.reject-booking').forEach(btn=>btn.onclick=async()=>{const note=prompt('Optional reason for rejection:','');if(note===null)return;const {error}=await client.from('bookings').update({status:'rejected',assigned_instructor_id:null,admin_note:note.trim()||'Rejected by admin'}).eq('id',btn.dataset.id);if(error)show(error.message,'error');else{show('Booking rejected.','success');await load();}});
-    root.querySelectorAll('.complete-booking').forEach(btn=>btn.onclick=async()=>{if(!confirm('Mark this class as completed?'))return;const {error}=await client.from('bookings').update({status:'completed'}).eq('id',btn.dataset.id);if(error)show(error.message,'error');else{show('Class marked completed.','success');await load();}});
-    root.querySelectorAll('.cancel-booking').forEach(btn=>btn.onclick=async()=>{if(!confirm('Cancel this booking?'))return;const {error}=await client.from('bookings').update({status:'cancelled',assigned_instructor_id:null}).eq('id',btn.dataset.id);if(error)show(error.message,'error');else{show('Booking cancelled.','success');await load();}});
-    root.querySelectorAll('.record-payment').forEach(btn=>btn.onclick=()=>openPayment(btn.dataset.student,btn.dataset.id,btn.dataset.fee));
+    root.querySelectorAll('.approve-booking').forEach(btn=>btn.onclick=async()=>{
+      if(!confirm('Approve this class?'))return;
+      btn.disabled=true;btn.textContent='Approving…';
+      const {error}=await client.rpc('approve_booking',{p_booking_id:btn.dataset.id});
+      if(error){show(error.message,'error');btn.disabled=false;btn.textContent='Approve';}
+      else{show('Class approved. The request has been cleared from the new-request inbox.','success');await load();}
+    });
   }
 
   function renderAdminCalendar(){

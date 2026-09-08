@@ -119,6 +119,7 @@ declare
   day_start timestamptz;
   slot timestamptz;
   booking_hit record;
+  student_hit record;
   block_hit record;
 begin
   if auth.uid() is null then raise exception 'Authentication required.'; end if;
@@ -135,8 +136,10 @@ begin
     status := 'available';
     is_mine := false;
     booking_hit := null;
+    student_hit := null;
     block_hit := null;
 
+    -- First protect the instructor's own timetable.
     select b.id, (b.student_id = auth.uid()) as mine
       into booking_hit
     from public.bookings b
@@ -150,12 +153,26 @@ begin
       status := case when booking_hit.mine then 'mine' else 'booked' end;
       is_mine := coalesce(booking_hit.mine,false);
     else
-      select u.id into block_hit
-      from public.instructor_unavailability u
-      where u.instructor_id = p_instructor_id
-        and tstzrange(u.start_at,u.end_at,'[)') && tstzrange(slot_start,slot_end,'[)')
+      -- A student cannot reserve the same time with a different instructor.
+      select b.id into student_hit
+      from public.bookings b
+      where b.student_id = auth.uid()
+        and b.status in ('pending_payment','payment_recorded','approved','completed')
+        and tstzrange(b.requested_start,b.requested_end,'[)') && tstzrange(slot_start,slot_end,'[)')
+      order by b.requested_start
       limit 1;
-      if block_hit.id is not null then status := 'unavailable'; end if;
+
+      if student_hit.id is not null then
+        status := 'mine';
+        is_mine := true;
+      else
+        select u.id into block_hit
+        from public.instructor_unavailability u
+        where u.instructor_id = p_instructor_id
+          and tstzrange(u.start_at,u.end_at,'[)') && tstzrange(slot_start,slot_end,'[)')
+        limit 1;
+        if block_hit.id is not null then status := 'unavailable'; end if;
+      end if;
     end if;
 
     return next;
@@ -186,6 +203,48 @@ BEGIN
     ALTER TABLE public.bookings ALTER COLUMN notes DROP NOT NULL;
   END IF;
 END $$;
+
+-- 5.75) Prevent one student from booking overlapping classes with different instructors.
+-- The RPC check below gives a friendly message; this trigger also protects against
+-- two simultaneous requests reaching the database at the same time.
+create or replace function public.prevent_student_booking_overlap()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.student_id is null or new.requested_start is null or new.requested_end is null
+     or new.status not in ('pending_payment','payment_recorded','approved','completed') then
+    return new;
+  end if;
+
+  -- Serialize booking attempts for the same student so concurrent requests cannot race.
+  perform pg_advisory_xact_lock(hashtextextended(new.student_id::text, 0));
+
+  if exists (
+    select 1
+    from public.bookings b
+    where b.student_id = new.student_id
+      and b.id <> new.id
+      and b.status in ('pending_payment','payment_recorded','approved','completed')
+      and tstzrange(b.requested_start,b.requested_end,'[)') && tstzrange(new.requested_start,new.requested_end,'[)')
+  ) then
+    raise exception 'You already have a driving class booked for part or all of this time. Please choose another time.';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_prevent_student_booking_overlap on public.bookings;
+create trigger trg_prevent_student_booking_overlap
+before insert or update of student_id,requested_start,requested_end,status
+on public.bookings
+for each row execute function public.prevent_student_booking_overlap();
+
+create index if not exists bookings_student_time_idx
+  on public.bookings(student_id, requested_start, requested_end);
 
 -- 6) Repair booking creation RPC. Validate the local Indian time, not UTC.
 create or replace function public.create_booking_request(
@@ -233,6 +292,15 @@ begin
     where u.instructor_id = p_instructor_id
       and tstzrange(u.start_at,u.end_at,'[)') && tstzrange(p_start,p_end,'[)')
   ) then raise exception 'The selected instructor is not available for that time.'; end if;
+
+  if exists (
+    select 1 from public.bookings b
+    where b.student_id = auth.uid()
+      and b.status in ('pending_payment','payment_recorded','approved','completed')
+      and tstzrange(b.requested_start,b.requested_end,'[)') && tstzrange(p_start,p_end,'[)')
+  ) then
+    raise exception 'You already have a driving class booked for part or all of this time. Please choose another time.';
+  end if;
 
   select hourly_class_fee into rate from public.school_settings where id = 1;
 
@@ -285,4 +353,19 @@ $$;
 -- Ask PostgREST to reload the relationship cache.
 notify pgrst, 'reload schema';
 
-select 'Raju Driving School complete student portal repair installed successfully.' as message;
+select 'Raju Driving School complete student portal repair installed successfully. Student overlapping bookings are now blocked.' as message;
+
+-- 8) Admin read access for the student detail dashboard.
+alter table public.student_learning_progress enable row level security;
+drop policy if exists "Admins view all learning progress" on public.student_learning_progress;
+create policy "Admins view all learning progress"
+on public.student_learning_progress for select to authenticated
+using (public.is_admin());
+
+alter table public.student_mock_test_attempts enable row level security;
+drop policy if exists "Admins view all mock attempts" on public.student_mock_test_attempts;
+create policy "Admins view all mock attempts"
+on public.student_mock_test_attempts for select to authenticated
+using (public.is_admin());
+
+notify pgrst, 'reload schema';

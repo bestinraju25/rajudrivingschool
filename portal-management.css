@@ -9,3 +9,28 @@
 
 /* Student profile editor modal */
 .profile-modal[hidden]{display:none}.profile-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}.profile-modal-backdrop{position:absolute;inset:0;background:rgba(10,25,43,.48);backdrop-filter:blur(4px)}.profile-modal-dialog{position:relative;width:min(760px,100%);max-height:min(88vh,820px);overflow:auto;background:#fff;border:1px solid #dce5ee;border-radius:22px;box-shadow:0 28px 80px rgba(16,36,58,.25);padding:24px;box-sizing:border-box}.profile-modal-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:18px}.profile-modal-head .auth-kicker{display:block;margin-bottom:5px}.profile-modal-head h2{margin:0;color:#10243a;font-size:1.55rem}.profile-modal-head p{margin:6px 0 0;color:#657487;font-size:.9rem}.profile-modal-close{border:0;background:#eef3f8;color:#10243a;width:40px;height:40px;border-radius:12px;font-size:1.55rem;line-height:1;cursor:pointer;flex:0 0 auto}.profile-modal-close:hover{background:#e3ebf3}.profile-modal-open{overflow:hidden}.profile-modal .profile-edit-grid{gap:14px}.profile-modal .profile-edit-actions{padding-top:6px;border-top:1px solid #edf1f5}.profile-modal .profile-edit-cancel{border:1px solid #dce5ee}.profile-modal .profile-edit-save{box-shadow:0 8px 18px rgba(7,87,201,.18)}
+
+/* Booking requests inbox */
+.booking-inbox-card .admin-section-title{align-items:center}
+.request-count-badge{display:inline-flex;align-items:center;margin-left:10px;padding:5px 9px;border-radius:999px;background:#eaf3ff;color:#0757c9;font-size:.62rem;font-weight:900;vertical-align:middle}
+.booking-inbox{display:grid;gap:10px}
+.booking-request-card{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:17px 18px;background:#fff;border:1px solid var(--rds-line);border-radius:18px;box-shadow:0 8px 24px rgba(10,48,105,.045);transition:.18s}
+.booking-request-card:hover{transform:translateY(-1px);box-shadow:0 12px 30px rgba(10,48,105,.08)}
+.booking-request-main{display:flex;align-items:center;gap:13px;min-width:0}
+.booking-request-avatar{width:43px;height:43px;flex:0 0 43px;border-radius:14px;display:grid;place-items:center;background:#eaf3ff;color:#0757c9;font:900 .8rem Manrope}
+.booking-request-copy{min-width:0}
+.booking-request-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.booking-request-top strong{font:900 .9rem Manrope;color:var(--rds-dark)}
+.request-status{padding:4px 8px;border-radius:999px;background:#fff4d9;color:#966100;font-size:.56rem;font-weight:900}
+.request-status.ready{background:#e2f7ea;color:#17633d}
+.booking-request-class{display:flex;align-items:center;gap:5px;margin-top:4px;color:#24405c;font-size:.72rem}
+.booking-request-class strong{font-weight:900}
+.booking-request-meta{margin-top:5px;color:#718299;font-size:.63rem}
+.booking-request-contact{margin-top:3px;color:#8a99aa;font-size:.58rem}
+.booking-request-action{flex:0 0 auto}
+.booking-request-action .admin-btn{min-width:92px}
+.booking-inbox-empty{display:flex;align-items:center;gap:15px;padding:22px 20px;border:1px dashed #cfdbe8;border-radius:18px;background:#f8fbfe}
+.booking-inbox-icon{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#e2f7ea;color:#17633d;font-weight:900}
+.booking-inbox-empty strong{font:900 .85rem Manrope;color:var(--rds-dark)}
+.booking-inbox-empty p{margin:4px 0 0;color:#718299;font-size:.65rem}
+@media(max-width:650px){.booking-request-card{align-items:flex-start;flex-direction:column}.booking-request-action{width:100%}.booking-request-action .admin-btn{width:100%}}
