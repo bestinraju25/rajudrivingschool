@@ -1,31 +1,55 @@
 <!DOCTYPE html>
 <html lang="en-IN">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta name="robots" content="noindex,nofollow">
 <link rel="icon" type="image/png" href="../images/raju-logo.png"><link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../student-auth.css"><link rel="stylesheet" href="../booking.css">
-<title>Student Dashboard | Raju Driving School</title>
+<title>Book a Driving Class | Raju Driving School</title>
 </head>
 <body class="booking-page">
-<header class="nav auth-nav dashboard-nav"><a aria-label="Raju Driving School home" class="brand" href="../"><img alt="Raju Driving School" class="brand-logo" src="../images/raju-logo.png"></a><div class="dashboard-actions"><a href="../">Website</a><button id="logoutBtn" type="button">Log out</button></div></header>
-<main class="booking-shell">
-<section class="booking-header"><div><span class="auth-kicker">STUDENT PORTAL</span><h1>Welcome, <span id="studentName">Student</span> 👋</h1><p>Book your hourly driving classes, see confirmation status and keep track of manually collected fees.</p></div><div class="dashboard-actions"><a class="booking-btn secondary" href="#booking">Book a class</a><button class="booking-btn secondary" id="refreshBtn" type="button">Refresh</button></div></section>
-<div id="dashboardMessage" class="notice"></div>
-<section class="booking-card"><div class="fee-summary"><div class="fee-box"><span>COURSE FEE</span><strong id="totalCourseFee">₹0.00</strong></div><div class="fee-box"><span>PAID</span><strong id="totalPaid">₹0.00</strong></div><div class="fee-box"><span>BALANCE</span><strong id="balanceDue">₹0.00</strong></div></div></section>
-<section class="booking-card" id="booking"><h2>Book a driving class</h2><p>Choose a preferred time. You may optionally request an instructor; the school admin will assign and approve the final class.</p><form id="bookingForm" class="booking-form"><div class="booking-form-grid"><label>Date & time<input id="requestedStart" type="datetime-local" required></label><label>Class duration<select id="durationMinutes"><option value="60">1 hour</option><option value="120">2 hours</option><option value="180">3 hours</option></select></label><label>Preferred instructor<select id="preferredInstructor"></select></label><label>Note (optional)<input id="studentNote" maxlength="300" placeholder="Any preferred timing or request"></label></div><div class="booking-form-actions"><button class="booking-btn" type="submit">Request booking</button></div></form></section>
-<section class="booking-card"><h2>My bookings</h2><p>Requests stay pending until the admin assigns an instructor, records the fee and approves the class.</p><div id="bookingList" class="booking-list"></div></section>
-<section class="booking-card"><h2>Fee payments</h2><p>Payments are recorded by the school after collecting money manually.</p><div id="paymentList" class="payment-table"></div></section>
-<section class="booking-card"><h2>My profile</h2><div class="admin-grid">
-<div><span class="muted">Name</span><strong id="profileName">—</strong></div>
-<div><span class="muted">Email</span><strong id="profileEmail">—</strong></div>
-<div><span class="muted">Phone</span><strong id="profilePhone">—</strong></div>
-<div><span class="muted">Date of birth</span><strong id="profileDob">—</strong></div>
-<div><span class="muted">Blood group</span><strong id="profileBloodGroup">—</strong></div>
-<div><span class="muted">Applying for</span><strong id="profileApplyingFor">—</strong></div>
-<div><span class="muted">Pincode</span><strong id="profilePincode">—</strong></div>
-<div style="grid-column:1/-1"><span class="muted">Full address</span><strong id="profileAddress">—</strong></div>
-<div><span class="muted">Course</span><strong id="profileCourse">—</strong></div>
-<div><span class="muted">Account status</span><strong id="profileStatus">—</strong></div>
-</div></section>
+<header class="nav auth-nav dashboard-nav">
+  <a aria-label="Raju Driving School home" class="brand" href="../"><img alt="Raju Driving School" class="brand-logo" src="../images/raju-logo.png"></a>
+  <div class="dashboard-actions"><a href="../">Website</a><button id="logoutBtn" type="button">Log out</button></div>
+</header>
+
+<main class="booking-shell student-booking-shell">
+  <section class="booking-header student-booking-header">
+    <div><span class="auth-kicker">STUDENT PORTAL</span><h1>Book a driving class</h1><p>Choose your instructor, pick a date and tap an available hourly slot. Two-hour classes require two consecutive available hours.</p></div>
+    <div class="student-welcome"><strong>Welcome, <span id="studentName">Student</span> 👋</strong><a class="booking-btn secondary" href="#my-bookings">My bookings</a></div>
+  </section>
+  <div id="dashboardMessage" class="notice" role="status" aria-live="polite"></div>
+
+  <section class="booking-card calendar-booking-card" id="booking">
+    <div class="booking-step"><span>1</span><div><h2>Select instructor</h2><p>The calendar will show this instructor's live availability.</p></div></div>
+    <label class="calendar-instructor-label">Instructor
+      <select id="bookingInstructor" aria-label="Select instructor"></select>
+    </label>
+
+    <div class="booking-step"><span>2</span><div><h2>Select date</h2><p>Choose a day to see the hourly schedule.</p></div></div>
+    <div class="calendar-wrap">
+      <div class="calendar-head"><button id="prevMonth" class="calendar-nav" type="button" aria-label="Previous month">‹</button><strong id="calendarMonth">September 2026</strong><button id="nextMonth" class="calendar-nav" type="button" aria-label="Next month">›</button></div>
+      <div class="calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+      <div id="calendarGrid" class="calendar-grid"></div>
+    </div>
+
+    <div class="booking-step slots-step"><span>3</span><div><h2>Choose time</h2><p id="selectedDateLabel">Select a date above.</p></div></div>
+    <div class="slot-legend"><span><i class="dot available"></i>Available</span><span><i class="dot booked"></i>Booked</span><span><i class="dot unavailable"></i>Not available</span><span><i class="dot mine"></i>Your booking</span></div>
+    <div id="slotList" class="slot-list"><div class="empty">Choose an instructor and date to see available slots.</div></div>
+
+    <div class="booking-duration">
+      <div><strong>Class duration</strong><small>Select 1 hour or 2 consecutive hours.</small></div>
+      <div class="duration-options"><button class="duration-option active" type="button" data-duration="60">1 Hour</button><button class="duration-option" type="button" data-duration="120">2 Hours</button></div>
+    </div>
+    <div id="bookingSelection" class="booking-selection" hidden></div>
+    <button id="bookSelectedBtn" class="booking-btn booking-confirm-btn" type="button" disabled>Book selected slot</button>
+  </section>
+
+  <section class="booking-card" id="my-bookings"><div class="section-title-row"><div><h2>My bookings</h2><p>Your request is reserved in the selected instructor's calendar. The admin will confirm it after collecting the fee.</p></div><button class="booking-btn secondary" id="refreshBtn" type="button">Refresh</button></div><div id="bookingList" class="booking-list"></div></section>
+
+  <section class="booking-card"><h2>Fee summary</h2><div class="fee-summary"><div class="fee-box"><span>COURSE FEE</span><strong id="totalCourseFee">₹0.00</strong></div><div class="fee-box"><span>PAID</span><strong id="totalPaid">₹0.00</strong></div><div class="fee-box"><span>BALANCE</span><strong id="balanceDue">₹0.00</strong></div></div><div id="paymentList" class="payment-table payment-list-spaced"></div></section>
+
+  <section class="booking-card"><div class="section-title-row"><div><h2>My profile</h2><p>These are the details you entered during registration.</p></div></div><div class="profile-grid">
+    <div><span class="muted">Name</span><strong id="profileName">—</strong></div><div><span class="muted">Email</span><strong id="profileEmail">—</strong></div><div><span class="muted">Phone</span><strong id="profilePhone">—</strong></div><div><span class="muted">Date of birth</span><strong id="profileDob">—</strong></div><div><span class="muted">Blood group</span><strong id="profileBloodGroup">—</strong></div><div><span class="muted">Applying for</span><strong id="profileApplyingFor">—</strong></div><div><span class="muted">Pincode</span><strong id="profilePincode">—</strong></div><div class="profile-wide"><span class="muted">Full address</span><strong id="profileAddress">—</strong></div>
+  </div></section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../student-config.js"></script><script src="../student-dashboard.js"></script>
 </body></html>

@@ -3,19 +3,19 @@
   const msg = document.getElementById('dashboardMessage');
   const show = (text, type = '') => { msg.textContent = text; msg.className = 'notice ' + type; };
   const money = n => '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fmt = iso => new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
   const esc = s => String(s ?? '').replace(/[&<>\'"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[c]));
+  const localFmt = d => new Intl.DateTimeFormat('en-IN', { dateStyle:'medium', timeStyle:'short' }).format(new Date(d));
+  const dateLabel = d => new Intl.DateTimeFormat('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' }).format(d);
+  const timeLabel = d => new Intl.DateTimeFormat('en-IN', { hour:'numeric', minute:'2-digit' }).format(d);
 
   const { data: { session } } = await client.auth.getSession();
   if (!session) { location.href = '../student/'; return; }
 
-  let profile = null;
-  let instructors = [];
+  let profile = null, instructors = [], selectedDate = new Date(), selectedDuration = 60, slots = [], selectedStart = null;
+  selectedDate.setHours(12,0,0,0);
 
   async function loadProfile() {
-    const { data, error } = await client.from('student_profiles')
-      .select('full_name,phone,email,date_of_birth,blood_group,address,pincode,applying_for,course,total_course_fee,student_status')
-      .eq('id', session.user.id).single();
+    const { data, error } = await client.from('student_profiles').select('full_name,phone,email,date_of_birth,blood_group,address,pincode,applying_for,total_course_fee').eq('id', session.user.id).single();
     if (error) throw error;
     profile = data;
     const name = profile.full_name || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Student';
@@ -28,8 +28,6 @@
     document.getElementById('profileApplyingFor').textContent = profile.applying_for || '—';
     document.getElementById('profilePincode').textContent = profile.pincode || '—';
     document.getElementById('profileAddress').textContent = profile.address || '—';
-    document.getElementById('profileCourse').textContent = profile.course || '—';
-    document.getElementById('profileStatus').textContent = profile.student_status || 'active';
     document.getElementById('totalCourseFee').textContent = money(profile.total_course_fee);
   }
 
@@ -37,99 +35,118 @@
     const { data, error } = await client.from('instructors').select('id,name,active').eq('active', true).order('name');
     if (error) throw error;
     instructors = data || [];
-    const select = document.getElementById('preferredInstructor');
-    select.innerHTML = '<option value="">Any available instructor</option>' + instructors.map(i => `<option value="${i.id}">${esc(i.name)}</option>`).join('');
+    const select = document.getElementById('bookingInstructor');
+    select.innerHTML = '<option value="">Select an instructor</option>' + instructors.map(i => `<option value="${i.id}">${esc(i.name)}</option>`).join('');
+    if (instructors.length) { select.value = instructors[0].id; }
+  }
+
+  function sameDay(a,b) { return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+  function ymd(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+  function isPastDay(d) { const n = new Date(); n.setHours(0,0,0,0); const x = new Date(d); x.setHours(0,0,0,0); return x < n; }
+
+  function renderCalendar() {
+    const grid = document.getElementById('calendarGrid');
+    const month = selectedDate.getMonth(), year = selectedDate.getFullYear();
+    document.getElementById('calendarMonth').textContent = new Intl.DateTimeFormat('en-IN',{month:'long',year:'numeric'}).format(selectedDate);
+    const first = new Date(year, month, 1), last = new Date(year, month+1, 0);
+    grid.innerHTML = '';
+    for (let i=0; i<first.getDay(); i++) grid.insertAdjacentHTML('beforeend','<span class="calendar-day empty-day"></span>');
+    for (let day=1; day<=last.getDate(); day++) {
+      const d = new Date(year, month, day); const disabled = isPastDay(d); const selected = sameDay(d, selectedDate);
+      const button = document.createElement('button'); button.type='button'; button.className='calendar-day' + (selected?' selected':'') + (disabled?' disabled':''); button.textContent=day; button.disabled=disabled;
+      button.onclick=()=>{ selectedDate=new Date(year,month,day,12); selectedStart=null; renderCalendar(); loadDaySlots(); };
+      grid.appendChild(button);
+    }
+  }
+
+  async function loadDaySlots() {
+    selectedStart = null; updateSelection();
+    const instructorId = document.getElementById('bookingInstructor').value;
+    const root = document.getElementById('slotList');
+    document.getElementById('selectedDateLabel').textContent = dateLabel(selectedDate);
+    if (!instructorId) { root.innerHTML='<div class="empty">Select an instructor first.</div>'; return; }
+    root.innerHTML='<div class="slot-loading">Checking live availability…</div>';
+    const { data, error } = await client.rpc('get_instructor_day_slots', { p_instructor_id: instructorId, p_date: ymd(selectedDate) });
+    if (error) { root.innerHTML='<div class="empty">Could not load availability. Please refresh.</div>'; show(error.message,'error'); return; }
+    slots = data || [];
+    renderSlots();
+  }
+
+  function slotDate(s) { return new Date(s.slot_start); }
+  function renderSlots() {
+    const root = document.getElementById('slotList');
+    const available = slots.filter(s=>s.status==='available');
+    if (!slots.length) { root.innerHTML='<div class="empty">No class slots are configured for this date.</div>'; return; }
+    root.innerHTML = slots.map((s,idx)=>{
+      const start=slotDate(s), label=timeLabel(start), cls='time-slot '+s.status+(selectedStart===s.slot_start?' selected':'');
+      const isDisabled=s.status!=='available' || isPastTime(start);
+      return `<button type="button" class="${cls}" data-index="${idx}" ${isDisabled?'disabled':''}><strong>${label}</strong><small>${s.status==='available'?'Available':s.status==='booked'?'Booked':s.status==='mine'?'Your booking':'Not available'}</small></button>`;
+    }).join('');
+    root.querySelectorAll('.time-slot:not(:disabled)').forEach(btn=>btn.onclick=()=>selectSlot(Number(btn.dataset.index)));
+    if (available.length===0) root.insertAdjacentHTML('afterbegin','<div class="slot-info">No free hours for this instructor on this date. Try another instructor or date.</div>');
+  }
+  function isPastTime(d) { return d <= new Date(); }
+
+  function selectSlot(index) {
+    const slot=slots[index];
+    if (!slot || slot.status!=='available') return;
+    const needed=selectedDuration===120?2:1;
+    const chosen=slots.slice(index,index+needed);
+    if (chosen.length!==needed || chosen.some(s=>s.status!=='available')) { show(selectedDuration===120?'Two-hour classes need two consecutive available slots.':'That slot is no longer available.','error'); return; }
+    selectedStart=slot.slot_start; renderSlots(); updateSelection();
+  }
+
+  function updateSelection() {
+    const box=document.getElementById('bookingSelection'), btn=document.getElementById('bookSelectedBtn');
+    if (!selectedStart) { box.hidden=true; btn.disabled=true; return; }
+    const start=new Date(selectedStart), end=new Date(start.getTime()+selectedDuration*60000);
+    const instructor=instructors.find(i=>i.id===document.getElementById('bookingInstructor').value);
+    box.hidden=false; box.innerHTML=`<span>Selected</span><strong>${esc(instructor?.name||'Instructor')}</strong><b>${dateLabel(start)}</b><b>${timeLabel(start)} – ${timeLabel(end)} · ${selectedDuration/60} hour${selectedDuration===120?'s':''}</b>`;
+    btn.disabled=false;
+  }
+
+  document.querySelectorAll('.duration-option').forEach(btn=>btn.onclick=()=>{
+    document.querySelectorAll('.duration-option').forEach(b=>b.classList.toggle('active',b===btn));
+    selectedDuration=Number(btn.dataset.duration); selectedStart=null; renderSlots(); updateSelection();
+  });
+
+  document.getElementById('bookingInstructor').onchange=()=>{ selectedStart=null; loadDaySlots(); };
+  document.getElementById('prevMonth').onclick=()=>{ selectedDate=new Date(selectedDate.getFullYear(),selectedDate.getMonth()-1,1,12); renderCalendar(); loadDaySlots(); };
+  document.getElementById('nextMonth').onclick=()=>{ selectedDate=new Date(selectedDate.getFullYear(),selectedDate.getMonth()+1,1,12); renderCalendar(); loadDaySlots(); };
+
+  document.getElementById('bookSelectedBtn').onclick=async()=>{
+    if (!selectedStart) return;
+    const instructorId=document.getElementById('bookingInstructor').value, btn=document.getElementById('bookSelectedBtn'); btn.disabled=true; btn.textContent='Booking…';
+    try {
+      const { data, error } = await client.rpc('create_booking_request', { p_instructor_id: instructorId, p_start: selectedStart, p_duration_minutes: selectedDuration, p_student_note: null });
+      if(error) throw error;
+      show('Booking request submitted successfully. It is reserved for you and is waiting for admin approval after fee collection.','success');
+      selectedStart=null; updateSelection(); await loadDaySlots(); await loadBookings(); document.getElementById('my-bookings').scrollIntoView({behavior:'smooth',block:'start'});
+    } catch(e) { show(e.message||'Could not create booking. Please choose another slot.','error'); await loadDaySlots(); }
+    finally { btn.textContent='Book selected slot'; btn.disabled=!selectedStart; }
+  };
+
+  async function loadBookings() {
+    const { data, error } = await client.from('bookings').select('id,requested_start,requested_end,duration_minutes,status,class_fee,admin_note,assigned_instructor_id,preferred_instructor_id,instructors:assigned_instructor_id(name)').eq('student_id',session.user.id).order('requested_start',{ascending:false});
+    if(error){ document.getElementById('bookingList').innerHTML='<div class="empty">Could not load bookings.</div>'; return; }
+    const root=document.getElementById('bookingList');
+    if(!data?.length){ root.innerHTML='<div class="empty">No class bookings yet. Choose a date and hourly slot above to make your first booking.</div>'; return; }
+    root.innerHTML=data.map(b=>`<div class="booking-row"><div><strong>${localFmt(b.requested_start)}</strong><small>${esc(b.instructors?.name||'Instructor')} · ${b.duration_minutes/60} hour${b.duration_minutes===60?'':'s'}</small></div><div><span class="status-pill status-${esc(b.status)}">${esc(String(b.status).replaceAll('_',' '))}</span><small>${Number(b.class_fee)?money(b.class_fee):'Fee pending'}</small></div><div>${['pending_payment','payment_recorded'].includes(b.status)?`<button class="booking-btn secondary cancel-booking" data-id="${b.id}">Cancel</button>`:''}</div></div>`).join('');
+    root.querySelectorAll('.cancel-booking').forEach(btn=>btn.onclick=async()=>{if(!confirm('Cancel this booking request?'))return;const {error}=await client.rpc('cancel_own_booking',{p_booking_id:btn.dataset.id});if(error)show(error.message,'error');else{show('Booking cancelled.','success');loadBookings();loadDaySlots();}});
   }
 
   async function loadFees() {
-    const { data, error } = await client.from('student_payments')
-      .select('amount,payment_date,payment_method,receipt_number,notes,booking_id')
-      .eq('student_id', session.user.id).order('payment_date', { ascending: false });
-    if (error) throw error;
-    const paid = (data || []).reduce((sum, p) => sum + Number(p.amount || 0), 0);
-    document.getElementById('totalPaid').textContent = money(paid);
-    document.getElementById('balanceDue').textContent = money(Math.max(0, Number(profile?.total_course_fee || 0) - paid));
-    const root = document.getElementById('paymentList');
-    if (!data?.length) { root.innerHTML = '<div class="empty">No payments have been recorded yet.</div>'; return; }
-    root.innerHTML = `<table class="payment-table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Receipt</th><th>Note</th></tr></thead><tbody>${data.map(p => `<tr><td>${esc(p.payment_date)}</td><td><strong>${money(p.amount)}</strong></td><td>${esc(p.payment_method || '—')}</td><td>${esc(p.receipt_number || '—')}</td><td>${esc(p.notes || '')}</td></tr>`).join('')}</tbody></table>`;
+    const { data, error } = await client.from('fee_payments').select('amount,paid_on,payment_method,receipt_number,note,booking_id').eq('student_id',session.user.id).order('paid_on',{ascending:false});
+    if(error){show(error.message,'error');return;}
+    const paid=(data||[]).reduce((sum,p)=>sum+Number(p.amount||0),0); document.getElementById('totalPaid').textContent=money(paid); document.getElementById('balanceDue').textContent=money(Math.max(0,Number(profile?.total_course_fee||0)-paid));
+    const root=document.getElementById('paymentList'); if(!data?.length){root.innerHTML='<div class="empty">No manual payments have been recorded yet.</div>';return;}
+    root.innerHTML=`<table class="payment-table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Receipt</th><th>Note</th></tr></thead><tbody>${data.map(p=>`<tr><td>${esc(p.paid_on)}</td><td><strong>${money(p.amount)}</strong></td><td>${esc(p.payment_method||'—')}</td><td>${esc(p.receipt_number||'—')}</td><td>${esc(p.note||'')}</td></tr>`).join('')}</tbody></table>`;
   }
 
-  async function loadBlocks() {
-    const { data, error } = await client.from('instructor_availability')
-      .select('instructor_id,start_at,end_at,availability_type,reason,instructors(name)')
-      .in('availability_type', ['unavailable','leave','blocked']);
-    if (error) throw error;
-    return data || [];
-  }
+  document.getElementById('logoutBtn').onclick=async()=>{await client.auth.signOut();location.href='../student/';};
+  document.getElementById('refreshBtn').onclick=async()=>{try{await Promise.all([loadBookings(),loadFees(),loadDaySlots()]);show('Dashboard refreshed.','success');}catch(e){show(e.message,'error');}};
 
-  async function loadBookings() {
-    const { data, error } = await client.from('bookings')
-      .select('id,start_at,end_at,duration_minutes,status,fee_amount,admin_notes,instructor_id,preferred_instructor_id,instructors:instructor_id(name),preferred:preferred_instructor_id(name)')
-      .eq('student_id', session.user.id).order('start_at', { ascending: false });
-    if (error) throw error;
-    const root = document.getElementById('bookingList');
-    if (!data?.length) { root.innerHTML = '<div class="empty">No class booking requests yet. Your first booking can be made above.</div>'; return; }
-    root.innerHTML = data.map(b => `<div class="booking-row">
-      <div><strong>${fmt(b.start_at)}</strong><small>${b.duration_minutes} minutes · ${esc(b.instructors?.name || 'Instructor to be assigned')}${b.preferred?.name ? ` · Preferred: ${esc(b.preferred.name)}` : ''}</small></div>
-      <div><span class="status-pill status-${esc(b.status)}">${esc(b.status.replaceAll('_',' '))}</span><small>${b.fee_amount ? money(b.fee_amount) : 'Fee to be confirmed'}</small></div>
-      <div>${b.status === 'pending' ? `<button class="booking-btn secondary cancel-booking" data-id="${b.id}">Cancel</button>` : ''}</div>
-    </div>`).join('');
-    root.querySelectorAll('.cancel-booking').forEach(btn => btn.onclick = async () => {
-      if (!confirm('Cancel this booking request?')) return;
-      const { error } = await client.from('bookings').update({ status: 'cancelled' }).eq('id', btn.dataset.id).eq('student_id', session.user.id).eq('status', 'pending');
-      if (error) show(error.message, 'error'); else { show('Booking request cancelled.', 'success'); loadBookings(); }
-    });
-  }
-
-  function localDateTimeToISO(value) { return new Date(value).toISOString(); }
-
-  document.getElementById('bookingForm').onsubmit = async e => {
-    e.preventDefault();
-    const button = e.target.querySelector('button[type="submit"]'); button.disabled = true;
-    try {
-      const startValue = document.getElementById('requestedStart').value;
-      const duration = Number(document.getElementById('durationMinutes').value);
-      if (!startValue) throw new Error('Choose a date and time.');
-      const start = new Date(startValue);
-      const end = new Date(start.getTime() + duration * 60000);
-      if (start <= new Date()) throw new Error('Please choose a future time.');
-      if (start.getHours() < 6 || start.getHours() > 20) throw new Error('Please choose a class start time between 6:00 AM and 8:00 PM.');
-
-      // Check visible blocks before submitting. Database rules remain the final protection.
-      const blocks = await loadBlocks();
-      const preferred = document.getElementById('preferredInstructor').value || null;
-      const overlap = preferred && blocks.some(b => b.instructor_id === preferred && new Date(b.start_at) < end && new Date(b.end_at) > start);
-      if (overlap) throw new Error('The selected time is blocked for the preferred instructor. Choose another time or select Any available instructor.');
-
-      const { error } = await client.from('bookings').insert({
-        student_id: session.user.id,
-        instructor_id: null,
-        preferred_instructor_id: preferred,
-        start_at: localDateTimeToISO(startValue),
-        end_at: end.toISOString(),
-        duration_minutes: duration,
-        status: 'pending',
-        fee_amount: 0,
-        student_note: document.getElementById('studentNote').value.trim() || null,
-        admin_notes: null
-      });
-      if (error) throw error;
-      show('Booking request submitted. The school will assign an instructor and approve it after fee collection.', 'success');
-      e.target.reset();
-      loadBookings();
-    } catch (err) { show(err.message || 'Could not create the booking.', 'error'); }
-    finally { button.disabled = false; }
-  };
-
-  document.getElementById('logoutBtn').onclick = async () => { await client.auth.signOut(); location.href = '../student/'; };
-  document.getElementById('refreshBtn').onclick = async () => { try { await Promise.all([loadBookings(), loadFees()]); show('Dashboard refreshed.', 'success'); } catch (e) { show(e.message, 'error'); } };
-
-  try {
-    await Promise.all([loadProfile(), loadInstructors()]);
-    await Promise.all([loadBookings(), loadFees()]);
-    const min = new Date(Date.now() + 60 * 60 * 1000);
-    min.setMinutes(Math.ceil(min.getMinutes() / 30) * 30, 0, 0);
-    document.getElementById('requestedStart').min = min.toISOString().slice(0, 16);
-  } catch (e) { show(e.message || 'Could not load your student dashboard.', 'error'); }
-  client.auth.onAuthStateChange((_event, s) => { if (!s) location.href = '../student/'; });
+  try { await loadProfile(); await loadInstructors(); renderCalendar(); await loadDaySlots(); await Promise.all([loadBookings(),loadFees()]); }
+  catch(e){show(e.message||'Could not load your student dashboard.','error');}
+  client.auth.onAuthStateChange((_event,s)=>{if(!s)location.href='../student/';});
 })();

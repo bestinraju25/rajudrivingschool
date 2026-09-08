@@ -17,6 +17,27 @@ where not exists (
 );
 
 -- 2) Ensure the supporting tables/columns exist.
+-- If an older booking table is still present, its legacy columns are kept
+-- for compatibility but made optional so the new calendar can insert rows.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='bookings' AND column_name='instructor_id') THEN
+    ALTER TABLE public.bookings ALTER COLUMN instructor_id DROP NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='bookings' AND column_name='start_at') THEN
+    ALTER TABLE public.bookings ALTER COLUMN start_at DROP NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='bookings' AND column_name='end_at') THEN
+    ALTER TABLE public.bookings ALTER COLUMN end_at DROP NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='bookings' AND column_name='fee_amount') THEN
+    ALTER TABLE public.bookings ALTER COLUMN fee_amount DROP NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='bookings' AND column_name='notes') THEN
+    ALTER TABLE public.bookings ALTER COLUMN notes DROP NOT NULL;
+  END IF;
+END $$;
+
 alter table public.bookings add column if not exists requested_start timestamptz;
 alter table public.bookings add column if not exists requested_end timestamptz;
 alter table public.bookings add column if not exists preferred_instructor_id uuid references public.instructors(id) on delete set null;
@@ -62,6 +83,33 @@ create table if not exists public.school_settings (
 insert into public.school_settings (id, hourly_class_fee)
 select 1, 0
 where not exists (select 1 from public.school_settings where id = 1);
+
+-- Remove legacy status checks that may reject the new workflow.
+DO $$
+DECLARE c record;
+BEGIN
+  FOR c IN
+    SELECT conname
+    FROM pg_constraint
+    WHERE conrelid = 'public.bookings'::regclass
+      AND contype = 'c'
+      AND pg_get_constraintdef(oid) ILIKE '%status%'
+  LOOP
+    EXECUTE format('ALTER TABLE public.bookings DROP CONSTRAINT %I', c.conname);
+  END LOOP;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid='public.bookings'::regclass
+      AND conname='bookings_status_check_calendar'
+  ) THEN
+    ALTER TABLE public.bookings ADD CONSTRAINT bookings_status_check_calendar
+      CHECK (status IN ('pending_payment','payment_recorded','approved','completed','cancelled','rejected'));
+  END IF;
+END $$;
 
 -- 3) Keep the instructor overlap exclusion constraint already installed.
 --    If it somehow does not exist, create it.
