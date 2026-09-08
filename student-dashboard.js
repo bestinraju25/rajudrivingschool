@@ -31,6 +31,53 @@
     document.getElementById('totalCourseFee').textContent = money(profile.total_course_fee);
   }
 
+  function populateProfileEditor() {
+    if (!profile) return;
+    document.getElementById('editFullName').value = profile.full_name || '';
+    document.getElementById('editEmail').value = profile.email || session.user.email || '';
+    document.getElementById('editPhone').value = profile.phone || '';
+    document.getElementById('editDob').value = profile.date_of_birth || '';
+    document.getElementById('editBloodGroup').value = profile.blood_group || '';
+    document.getElementById('editApplyingFor').value = profile.applying_for || '';
+    document.getElementById('editPincode').value = profile.pincode || '';
+    document.getElementById('editAddress').value = profile.address || '';
+  }
+
+  document.getElementById('editProfileBtn').onclick = () => {
+    populateProfileEditor();
+    document.getElementById('profileEditForm').hidden = false;
+    document.getElementById('profileEditForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  document.getElementById('cancelProfileEdit').onclick = () => {
+    document.getElementById('profileEditForm').hidden = true;
+  };
+  document.getElementById('profileEditForm').onsubmit = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const saveBtn = document.getElementById('saveProfileBtn');
+    const fd = new FormData(form);
+    const updates = {
+      full_name: String(fd.get('full_name') || '').trim(),
+      phone: String(fd.get('phone') || '').trim() || null,
+      date_of_birth: String(fd.get('date_of_birth') || '') || null,
+      blood_group: String(fd.get('blood_group') || '').trim() || null,
+      applying_for: String(fd.get('applying_for') || '').trim() || null,
+      pincode: String(fd.get('pincode') || '').trim() || null,
+      address: String(fd.get('address') || '').trim() || null
+    };
+    if (!updates.full_name) { show('Please enter your full name.', 'error'); return; }
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+    const { error } = await client.from('student_profiles').update(updates).eq('id', session.user.id);
+    if (error) {
+      show(error.message, 'error');
+    } else {
+      await loadProfile();
+      document.getElementById('profileEditForm').hidden = true;
+      show('Your profile was updated successfully.', 'success');
+    }
+    saveBtn.disabled = false; saveBtn.textContent = 'Save changes';
+  };
+
   async function loadInstructors() {
     const { data, error } = await client.from('instructors').select('id,name,active').eq('active', true).order('name');
     if (error) throw error;

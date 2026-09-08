@@ -2,7 +2,7 @@
 <html lang="en-IN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta name="robots" content="noindex,nofollow">
-<link rel="icon" type="image/png" href="../images/raju-logo.png"><link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../student-auth.css"><link rel="stylesheet" href="../booking.css">
+<link rel="icon" type="image/png" href="../images/raju-logo.png"><link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../student-auth.css"><link rel="stylesheet" href="../booking.css"><link rel="stylesheet" href="../portal-management.css">
 <title>Book a Driving Class | Raju Driving School</title>
 </head>
 <body class="booking-page">
@@ -47,9 +47,20 @@
 
   <section class="booking-card"><h2>Fee summary</h2><div class="fee-summary"><div class="fee-box"><span>COURSE FEE</span><strong id="totalCourseFee">₹0.00</strong></div><div class="fee-box"><span>PAID</span><strong id="totalPaid">₹0.00</strong></div><div class="fee-box"><span>BALANCE</span><strong id="balanceDue">₹0.00</strong></div></div><div id="paymentList" class="payment-table payment-list-spaced"></div></section>
 
-  <section class="booking-card"><div class="section-title-row"><div><h2>My profile</h2><p>These are the details you entered during registration.</p></div></div><div class="profile-grid">
+  <section class="booking-card" id="my-profile"><div class="section-title-row"><div><h2>My profile</h2><p>Review and edit the personal details saved during registration.</p></div><button class="booking-btn secondary" id="editProfileBtn" type="button">Edit profile</button></div><div class="profile-grid">
     <div><span class="muted">Name</span><strong id="profileName">—</strong></div><div><span class="muted">Email</span><strong id="profileEmail">—</strong></div><div><span class="muted">Phone</span><strong id="profilePhone">—</strong></div><div><span class="muted">Date of birth</span><strong id="profileDob">—</strong></div><div><span class="muted">Blood group</span><strong id="profileBloodGroup">—</strong></div><div><span class="muted">Applying for</span><strong id="profileApplyingFor">—</strong></div><div><span class="muted">Pincode</span><strong id="profilePincode">—</strong></div><div class="profile-wide"><span class="muted">Full address</span><strong id="profileAddress">—</strong></div>
-  </div></section>
+  </div>
+  <form id="profileEditForm" class="profile-edit-card" hidden><div class="profile-edit-grid">
+    <label>Full name<input name="full_name" id="editFullName" required maxlength="120"></label>
+    <label>Email<input class="readonly-email" id="editEmail" type="email" readonly></label>
+    <label>Mobile number<input name="phone" id="editPhone" maxlength="20"></label>
+    <label>Date of birth<input name="date_of_birth" id="editDob" type="date"></label>
+    <label>Blood group<select name="blood_group" id="editBloodGroup"><option value="">Select</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></label>
+    <label>Applying for<select name="applying_for" id="editApplyingFor"><option value="">Select</option><option>Car</option><option>Two Wheeler</option><option>Car + Two Wheeler</option><option>Heavy Vehicle</option><option>Other</option></select></label>
+    <label>Pincode<input name="pincode" id="editPincode" inputmode="numeric" maxlength="10"></label>
+    <label class="profile-edit-wide">Full address<textarea name="address" id="editAddress" maxlength="500"></textarea></label>
+  </div><div class="profile-edit-actions"><button class="profile-edit-cancel" id="cancelProfileEdit" type="button">Cancel</button><button class="profile-edit-save" id="saveProfileBtn" type="submit">Save changes</button></div></form>
+  </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../student-config.js"></script><script src="../student-dashboard.js"></script>
 </body></html>

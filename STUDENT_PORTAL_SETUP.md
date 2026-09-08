@@ -102,3 +102,17 @@ values ('PASTE-AUTH-USER-UUID-HERE', 'admin@rajudrivingschool.com', 'Raju Drivin
 5. Change the temporary password after the first login.
 
 Never put a Supabase secret/service-role key in `student-config.js` or any browser file.
+
+
+## V7 updates
+
+- Student dashboard now has an **Edit profile** form for name, phone, date of birth, blood group, applying-for category, pincode and address.
+- Admin dashboard now has **Approve, Reject, Cancel and Complete** actions, instructor assignment, fee editing, admin notes, payment recording and instructor activation/deactivation.
+- Admin has a daily **instructor timetable** showing Available, Pending/Payment, Approved/Completed and Blocked/Leave slots.
+- Admin can add instructors and block/remove instructor time from the availability section.
+- `booking-calendar-repair-v7.sql` fixes the PostgreSQL `column reference "status" is ambiguous` error in the student calendar RPC.
+- Admin payment queries no longer rely on a missing Supabase relationship between `fee_payments` and `student_profiles`; the dashboard maps student IDs in the browser.
+
+### Important database step
+
+If the student booking page currently says **"column reference status is ambiguous"**, run the entire `booking-calendar-repair-v7.sql` file once in Supabase SQL Editor. A successful result will say: **Raju Driving School V7 booking calendar repair completed successfully.**
