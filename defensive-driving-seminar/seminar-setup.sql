@@ -22,7 +22,7 @@ create table if not exists public.seminar_registrations (
   booking_code text not null unique,
   full_name text not null,
   phone text not null,
-  email text not null,
+  email text,
   license_number text,
   date_of_birth date,
   seat_number integer not null check (seat_number > 0 and seat_number <= 90),
@@ -77,7 +77,7 @@ begin
   if ev.capacity <> 90 then ev.capacity := 90; end if;
   if length(regexp_replace(coalesce(p_phone,''),'[^0-9]','','g')) <> 10 then raise exception 'INVALID_PHONE'; end if;
   if coalesce(length(trim(p_full_name)),0) < 2 then raise exception 'INVALID_NAME'; end if;
-  if position('@' in coalesce(p_email,'')) < 2 then raise exception 'INVALID_EMAIL'; end if;
+  if nullif(trim(coalesce(p_email,'')),'') is not null and position('@' in trim(p_email)) < 2 then raise exception 'INVALID_EMAIL'; end if;
 
   select * into existing from public.seminar_registrations
    where event_id=p_event_id and status <> 'cancelled'
@@ -89,9 +89,12 @@ begin
   if next_seat >= ev.capacity then raise exception 'FULLY_BOOKED'; end if;
   next_seat := next_seat + 1;
   new_id := gen_random_uuid();
-  new_code := 'RDS-DS-' || to_char(ev.event_date,'YYYYMMDD') || '-' || lpad(next_seat::text,2,'0');
+  loop
+    new_code := 'RDS-DS-' || to_char(ev.event_date,'YYYYMMDD') || '-' || lpad(next_seat::text,2,'0') || '-' || upper(substr(encode(gen_random_bytes(4),'hex'),1,8));
+    exit when not exists (select 1 from public.seminar_registrations r where r.booking_code=new_code);
+  end loop;
   insert into public.seminar_registrations(id,event_id,booking_code,full_name,phone,email,license_number,date_of_birth,seat_number)
-  values(new_id,p_event_id,new_code,trim(p_full_name),regexp_replace(p_phone,'[^0-9]','','g'),lower(trim(p_email)),nullif(trim(p_license_number),''),p_date_of_birth,next_seat);
+  values(new_id,p_event_id,new_code,trim(p_full_name),regexp_replace(p_phone,'[^0-9]','','g'),nullif(lower(trim(p_email)),''),nullif(trim(p_license_number),''),p_date_of_birth,next_seat);
   return jsonb_build_object('id',new_id,'booking_code',new_code,'full_name',trim(p_full_name),'phone',regexp_replace(p_phone,'[^0-9]','','g'),'seat_number',next_seat,'event_date',ev.event_date,'start_time',ev.start_time,'end_time',ev.end_time,'venue',ev.venue,'title',ev.title);
 end;
 $$;

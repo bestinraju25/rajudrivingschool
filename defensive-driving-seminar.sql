@@ -89,7 +89,10 @@ begin
   if next_seat >= ev.capacity then raise exception 'FULLY_BOOKED'; end if;
   next_seat := next_seat + 1;
   new_id := gen_random_uuid();
-  new_code := 'RDS-DS-' || to_char(ev.event_date,'YYYYMMDD') || '-' || lpad(next_seat::text,2,'0');
+  loop
+    new_code := 'RDS-DS-' || to_char(ev.event_date,'YYYYMMDD') || '-' || lpad(next_seat::text,2,'0') || '-' || upper(substr(encode(gen_random_bytes(4),'hex'),1,8));
+    exit when not exists (select 1 from public.seminar_registrations r where r.booking_code=new_code);
+  end loop;
   insert into public.seminar_registrations(id,event_id,booking_code,full_name,phone,email,license_number,date_of_birth,seat_number)
   values(new_id,p_event_id,new_code,trim(p_full_name),regexp_replace(p_phone,'[^0-9]','','g'),nullif(lower(trim(p_email)),''),nullif(trim(p_license_number),''),p_date_of_birth,next_seat);
   return jsonb_build_object('id',new_id,'booking_code',new_code,'full_name',trim(p_full_name),'phone',regexp_replace(p_phone,'[^0-9]','','g'),'seat_number',next_seat,'event_date',ev.event_date,'start_time',ev.start_time,'end_time',ev.end_time,'venue',ev.venue,'title',ev.title);
