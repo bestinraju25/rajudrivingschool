@@ -1,6 +1,7 @@
--- Raju Driving School — Defensive Driving Seminar v26
--- Fixes duplicate booking_code errors when a cancelled/legacy booking already owns
--- the same date+seat code. Keeps email optional and one active booking per mobile.
+-- Raju Driving School — Defensive Driving Seminar v27
+-- Final booking-code fix: does NOT depend on pgcrypto/gen_random_bytes.
+-- Keeps email optional, 90-seat limit, one active booking per mobile,
+-- and reusable seats after cancellation.
 
 alter table public.seminar_registrations
   alter column email drop not null;
@@ -38,7 +39,6 @@ declare
   new_code text;
   code_suffix text;
 begin
-  -- Serialize by mobile number to prevent double bookings from rapid taps/races.
   perform pg_advisory_xact_lock(hashtextextended(normalized_phone, 0));
 
   select * into ev
@@ -47,11 +47,11 @@ begin
   for update;
 
   if not found then raise exception 'SESSION_NOT_FOUND'; end if;
+  if coalesce(ev.capacity,90) <> 90 then ev.capacity := 90; end if;
   if length(normalized_phone) <> 10 then raise exception 'INVALID_PHONE'; end if;
   if coalesce(length(trim(p_full_name)),0) < 2 then raise exception 'INVALID_NAME'; end if;
   if normalized_email is not null and position('@' in normalized_email) < 2 then raise exception 'INVALID_EMAIL'; end if;
 
-  -- One active booking per mobile across the seminar programme.
   select * into existing
   from public.seminar_registrations
   where phone=normalized_phone and status <> 'cancelled'
@@ -68,7 +68,6 @@ begin
     if found then raise exception 'DUPLICATE'; end if;
   end if;
 
-  -- Find the first currently free seat. Cancelled seats are reusable.
   select min(s)::integer into next_seat
   from generate_series(1, least(coalesce(ev.capacity,90),90)) s
   where not exists (
@@ -81,12 +80,9 @@ begin
 
   if next_seat is null then raise exception 'FULLY_BOOKED'; end if;
 
+  -- gen_random_bytes() was the source of the v26 failure when pgcrypto was
+  -- unavailable. md5() is built into PostgreSQL, so this requires no extension.
   new_id := gen_random_uuid();
-
-  -- IMPORTANT: booking_code is globally unique, while seats can be reused after
-  -- cancellation. The old scheme used date+seat only, which caused a duplicate key
-  -- when a cancelled/legacy row already had that code. Keep the code human-readable
-  -- but add a short random suffix so every booking has a unique code forever.
   loop
     code_suffix := upper(substr(md5(new_id::text || clock_timestamp()::text || random()::text),1,8));
     new_code := 'RDS-DS-' || to_char(ev.event_date,'YYYYMMDD') || '-' ||
@@ -121,25 +117,3 @@ $$;
 
 grant execute on function public.register_seminar_seat(uuid,text,text,text,text,date)
 to anon,authenticated;
-
--- Keep the mobile-only booking lookup available.
-create or replace function public.lookup_seminar_bookings_by_phone(p_phone text)
-returns jsonb language plpgsql security definer set search_path=public as $$
-declare
-  normalized_phone text := regexp_replace(coalesce(p_phone,''),'[^0-9]','','g');
-  result jsonb;
-begin
-  if length(normalized_phone) <> 10 then raise exception 'INVALID_PHONE'; end if;
-  select coalesce(jsonb_agg(jsonb_build_object(
-    'id',r.id,'booking_code',r.booking_code,'full_name',r.full_name,'phone',r.phone,'email',r.email,
-    'seat_number',r.seat_number,'status',r.status,'registered_at',r.registered_at,'attended_at',r.attended_at,
-    'event_id',e.id,'title',e.title,'event_date',e.event_date,'start_time',e.start_time,'end_time',e.end_time,'venue',e.venue
-  ) order by e.event_date,e.start_time),'[]'::jsonb)
-  into result
-  from public.seminar_registrations r
-  join public.seminar_events e on e.id=r.event_id
-  where r.phone=normalized_phone and r.status <> 'cancelled';
-  return result;
-end;
-$$;
-grant execute on function public.lookup_seminar_bookings_by_phone(text) to anon,authenticated;

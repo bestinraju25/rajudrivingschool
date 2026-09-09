@@ -90,7 +90,7 @@ begin
   next_seat := next_seat + 1;
   new_id := gen_random_uuid();
   loop
-    new_code := 'RDS-DS-' || to_char(ev.event_date,'YYYYMMDD') || '-' || lpad(next_seat::text,2,'0') || '-' || upper(substr(encode(gen_random_bytes(4),'hex'),1,8));
+    new_code := 'RDS-DS-' || to_char(ev.event_date,'YYYYMMDD') || '-' || lpad(next_seat::text,2,'0') || '-' || upper(substr(md5(new_id::text || clock_timestamp()::text || random()::text),1,8));
     exit when not exists (select 1 from public.seminar_registrations r where r.booking_code=new_code);
   end loop;
   insert into public.seminar_registrations(id,event_id,booking_code,full_name,phone,email,license_number,date_of_birth,seat_number)
