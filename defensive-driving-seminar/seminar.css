@@ -15,3 +15,46 @@
 @media(min-width:700px){body{padding:20px 0}.app-shell{border-radius:26px}.app-top{border-radius:26px 26px 0 0}.bottom-nav{bottom:24px}.modal-v22{align-items:center}.sheet-v22{border-radius:28px;max-height:88vh}}
 @media(max-width:390px){.hero-copy-v22 h1{font-size:41px}.hero-features{margin-top:19px}.pass-actions{grid-template-columns:1fr}.form-progress small{display:none}}
 @media print{body{background:#fff}.app-top,.hero-v22,.content-v22>.section-head,.session-list-v22,.my-booking-card,.bottom-nav,.app-footer,.pass-success,.pass-actions{display:none!important}.pass-card-v22{display:block!important;margin:0;border:0;box-shadow:none}.pass-inner{padding:25px}}
+
+/* v36 — mobile-first visual refresh for the public seminar page */
+.seminar-v36{background:#03111f}
+.seminar-v36 .hero-v22{min-height:500px;background:linear-gradient(180deg,rgba(5,21,37,.05),rgba(4,17,31,.93)),url('../images/training-method/real-road-training.jpg') center/cover}
+.seminar-v36 .hero-v22:before{background:linear-gradient(180deg,rgba(5,21,37,.02) 0%,rgba(5,21,37,.10) 38%,rgba(4,18,32,.98) 96%)}
+.seminar-v36 .hero-v22:after{bottom:-125px;height:190px}
+.seminar-v36 .hero-copy-v22{padding:44px 24px 54px}
+.seminar-v36 .hero-copy-v22 h1{font-size:54px;line-height:.9;letter-spacing:-.07em;margin-top:18px}
+.seminar-v36 .hero-copy-v22 p{font-size:15px;margin-top:14px}
+.seminar-v36 .hero-cta{margin-top:26px;min-height:58px;border-radius:18px;font-size:15px;padding:0 19px;box-shadow:0 14px 30px rgba(255,201,0,.18)}
+.seminar-v36 .hero-tagline{margin-top:20px;font-size:8px;letter-spacing:.22em;color:#a9c0d1}
+.seminar-v36 .content-v22{padding-top:0}
+.seminar-v36 .section-head{padding:26px 6px 15px}
+.seminar-v36 .section-head h2{font-size:31px;margin-top:6px}
+.seminar-v36 .section-head p{font-size:12px;max-width:330px}
+.seminar-v36 .session-list-v22{gap:16px}
+.seminar-v36 .session-card-v22{border-radius:23px;box-shadow:0 15px 38px rgba(0,0,0,.25)}
+.seminar-v36 .session-btn{min-height:52px;border-radius:15px;font-size:14px;margin-bottom:14px}
+.seminar-v36 .modal-v22{align-items:center;padding:14px;overscroll-behavior:contain}
+.seminar-v36 .sheet-v22{width:min(520px,100%);max-height:min(88vh,760px);border-radius:28px;overflow:auto;overscroll-behavior:contain;box-shadow:0 24px 80px rgba(0,0,0,.45)}
+.seminar-v36 .sheet-top{padding:21px 20px 13px}
+.seminar-v36 .sheet-top h2{font-size:29px;letter-spacing:-.045em}
+.seminar-v36 .form-progress{padding:14px 20px 3px}
+.seminar-v36 .sheet-v22 form{padding:12px 20px 20px;gap:13px}
+.seminar-v36 .sheet-v22 input:not([type=checkbox]){height:54px;border-radius:15px;font-size:16px}
+.seminar-v36 .big{min-height:58px;border-radius:16px;font-size:15px}
+@media(max-width:480px){
+ .seminar-v36 .hero-v22{min-height:500px}
+ .seminar-v36 .hero-copy-v22{padding:38px 20px 48px}
+ .seminar-v36 .hero-copy-v22 h1{font-size:45px}
+ .seminar-v36 .hero-copy-v22 p{font-size:13px}
+ .seminar-v36 .hero-cta{margin-top:24px;min-height:56px}
+ .seminar-v36 .hero-tagline{margin-top:18px}
+ .seminar-v36 .section-head{padding:24px 4px 14px}
+ .seminar-v36 .section-head h2{font-size:27px}
+ .seminar-v36 .modal-v22{padding:12px;align-items:center}
+ .seminar-v36 .sheet-v22{max-height:88vh;border-radius:26px}
+ .seminar-v36 .sheet-top{padding:18px 16px 12px}
+ .seminar-v36 .sheet-top h2{font-size:26px}
+ .seminar-v36 .form-progress{padding:12px 16px 2px}
+ .seminar-v36 .sheet-v22 form{padding:10px 16px 17px}
+}
+@media(max-width:390px){.seminar-v36 .hero-copy-v22 h1{font-size:41px}}
