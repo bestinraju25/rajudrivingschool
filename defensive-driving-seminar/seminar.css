@@ -137,3 +137,18 @@
   .qr-pass-title{font-size:18px}
   .qr-code-box canvas,.qr-code-box img{width:168px!important;height:168px!important}
 }
+
+/* v41 — show the newly confirmed entry pass in a dedicated popup instead of the page */
+.confirmation-modal{align-items:flex-end;padding:0;background:rgba(2,12,22,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.confirmation-sheet{position:relative;width:min(540px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:30px 30px 0 0;box-shadow:0 -24px 80px rgba(0,0,0,.48);overscroll-behavior:contain}
+.confirmation-close{position:absolute;right:14px;top:14px;z-index:20;background:rgba(238,244,248,.94);border:1px solid rgba(23,51,74,.08);box-shadow:0 8px 20px rgba(0,0,0,.10)}
+.confirmation-sheet .pass-card-v22{margin:0;border:0;border-radius:0;box-shadow:none}
+.confirmation-sheet .pass-success{padding:34px 22px 25px}
+.confirmation-sheet .pass-success h2{font-size:27px}
+.confirmation-sheet .pass-inner{padding:18px 18px 20px}
+.confirmation-sheet .pass-brand img{display:block;width:40px;height:40px;object-fit:contain}
+.confirmation-sheet .pass-title{margin-top:16px}
+.confirmation-sheet .pass-actions{padding-bottom:2px}
+.confirmation-sheet .secondary-btn{min-height:48px;border-radius:15px}
+@media(min-width:700px){.confirmation-modal{align-items:center;padding:18px}.confirmation-sheet{border-radius:30px;max-height:90vh}}
+@media(max-width:480px){.confirmation-sheet{max-height:94vh;border-radius:26px 26px 0 0}.confirmation-sheet .pass-success{padding:31px 18px 22px}.confirmation-sheet .pass-success h2{font-size:25px}.confirmation-sheet .pass-inner{padding:16px 15px 18px}.confirmation-sheet .pass-actions{grid-template-columns:1fr 1fr;gap:8px}.confirmation-close{right:12px;top:12px}}
