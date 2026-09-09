@@ -1,20 +1,19 @@
-# Defensive Driving Seminar Booking — Setup
+# Defensive Driving Seminar — Setup
 
-1. Open Supabase SQL Editor for the Raju Driving School project.
-2. Run `defensive-driving-seminar.sql` once.
-3. Insert or create the real seminar session. The admin page can create/edit sessions after the SQL has been run.
-4. Open `/admin-dashboard/seminars/` and create the event with the real date, time and venue. Capacity is capped at 90.
-5. Publish the complete website build.
+## Original setup
+Run `defensive-driving-seminar.sql` once in the Supabase SQL Editor.
 
-Public booking page: `/defensive-driving-seminar/`
+## If v17 is already installed
+Run `defensive-seminar-management-migration.sql` to add the management upgrade without recreating the tables.
 
-Features:
-- Public registration without student login.
-- Hard 90-seat capacity enforced in a database transaction.
-- Duplicate protection by mobile number and email for the same event.
-- Automatic seat number and booking ID.
-- Mobile-friendly QR entry pass.
-- Admin participant list, search, cancel/restore and attendance marking.
-- Seminar sessions can be activated/hidden from the admin dashboard.
+## New in this upgrade
+- Admin venue check-in panel: search Booking ID, mobile or participant name and mark confirmed participants as **Attended**.
+- Admin participant table also has **✓ Mark attended**, **Undo attendance**, **Restore**, and **Delete** actions.
+- Admin **Delete** permanently removes a seminar booking and releases its seat.
+- Public page has **Already registered? Manage your booking**.
+- User can enter Booking ID + registration mobile to retrieve booking details and **Cancel my booking**.
+- User cancellation releases the seat automatically.
+- Attended bookings cannot be cancelled online.
 
-Important: do not put a Supabase service-role key in the website. The existing publishable key is used in the browser and the registration RPC is protected with database-side capacity locking.
+## Important
+The 90-seat limit remains database-enforced. Cancellation or admin deletion releases the seat, so it can be booked again.

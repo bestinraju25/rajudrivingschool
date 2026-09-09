@@ -92,7 +92,7 @@ begin
   new_code := 'RDS-DS-' || to_char(ev.event_date,'YYYYMMDD') || '-' || lpad(next_seat::text,2,'0');
   insert into public.seminar_registrations(id,event_id,booking_code,full_name,phone,email,license_number,date_of_birth,seat_number)
   values(new_id,p_event_id,new_code,trim(p_full_name),regexp_replace(p_phone,'[^0-9]','','g'),lower(trim(p_email)),nullif(trim(p_license_number),''),p_date_of_birth,next_seat);
-  return jsonb_build_object('id',new_id,'booking_code',new_code,'full_name',trim(p_full_name),'seat_number',next_seat,'event_date',ev.event_date,'start_time',ev.start_time,'end_time',ev.end_time,'venue',ev.venue,'title',ev.title);
+  return jsonb_build_object('id',new_id,'booking_code',new_code,'full_name',trim(p_full_name),'phone',regexp_replace(p_phone,'[^0-9]','','g'),'seat_number',next_seat,'event_date',ev.event_date,'start_time',ev.start_time,'end_time',ev.end_time,'venue',ev.venue,'title',ev.title);
 end;
 $$;
 
@@ -118,3 +118,42 @@ grant execute on function public.active_seminar_events() to anon,authenticated;
 -- Example session. Update this row with the real date/time/venue before publishing bookings.
 -- insert into public.seminar_events(title,description,event_date,start_time,end_time,venue,capacity)
 -- values ('Defensive Driving Seminar','Practical defensive driving, hazard awareness and road-safety techniques.','2026-09-26','09:00','12:00','Raju Driving School',90);
+
+
+-- Public booking management: users can securely look up and cancel their own booking
+-- by providing BOTH the booking ID and the mobile number used at registration.
+create or replace function public.lookup_seminar_booking(
+  p_booking_code text, p_phone text
+) returns jsonb
+language plpgsql security definer set search_path=public
+as $$
+declare r public.seminar_registrations%rowtype; e public.seminar_events%rowtype;
+begin
+  select * into r from public.seminar_registrations
+   where booking_code=upper(trim(p_booking_code))
+     and phone=regexp_replace(p_phone,'[^0-9]','','g') limit 1;
+  if not found then raise exception 'NOT_FOUND'; end if;
+  select * into e from public.seminar_events where id=r.event_id;
+  return jsonb_build_object('id',r.id,'booking_code',r.booking_code,'full_name',r.full_name,'phone',r.phone,'email',r.email,'seat_number',r.seat_number,'status',r.status,'registered_at',r.registered_at,'event_id',e.id,'title',e.title,'event_date',e.event_date,'start_time',e.start_time,'end_time',e.end_time,'venue',e.venue);
+end;
+$$;
+grant execute on function public.lookup_seminar_booking(text,text) to anon,authenticated;
+
+create or replace function public.cancel_seminar_booking(
+  p_booking_code text, p_phone text
+) returns jsonb
+language plpgsql security definer set search_path=public
+as $$
+declare r public.seminar_registrations%rowtype;
+begin
+  select * into r from public.seminar_registrations
+   where booking_code=upper(trim(p_booking_code))
+     and phone=regexp_replace(p_phone,'[^0-9]','','g') limit 1 for update;
+  if not found then raise exception 'NOT_FOUND'; end if;
+  if r.status='attended' then raise exception 'ALREADY_ATTENDED'; end if;
+  if r.status='cancelled' then return jsonb_build_object('id',r.id,'status','cancelled','booking_code',r.booking_code); end if;
+  update public.seminar_registrations set status='cancelled',cancelled_at=now() where id=r.id;
+  return jsonb_build_object('id',r.id,'status','cancelled','booking_code',r.booking_code,'seat_number',r.seat_number);
+end;
+$$;
+grant execute on function public.cancel_seminar_booking(text,text) to anon,authenticated;
