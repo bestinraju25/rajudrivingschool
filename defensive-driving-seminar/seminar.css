@@ -58,3 +58,25 @@
  .seminar-v36 .sheet-v22 form{padding:10px 16px 17px}
 }
 @media(max-width:390px){.seminar-v36 .hero-copy-v22 h1{font-size:41px}}
+
+
+/* v37 — compact hero: sessions begin immediately after the hero message */
+.seminar-v37 .hero-v22{min-height:0;height:auto;background:linear-gradient(180deg,rgba(5,21,37,.05),rgba(4,17,31,.92)),url('../images/training-method/real-road-training.jpg') center/cover}
+.seminar-v37 .hero-v22:after{display:none}
+.seminar-v37 .hero-copy-v22{padding:42px 24px 30px}
+.seminar-v37 .hero-copy-v22 h1{font-size:54px;line-height:.9;margin:16px 0 13px}
+.seminar-v37 .hero-copy-v22 p{font-size:15px;margin:0}
+.seminar-v37 .content-v22{padding-top:0}
+.seminar-v37 .section-head{padding:22px 6px 12px}
+.seminar-v37 .section-head h2{font-size:31px;margin-top:6px}
+.seminar-v37 .section-head p{font-size:12px;max-width:340px}
+@media(max-width:480px){
+ .seminar-v37 .hero-v22{min-height:0}
+ .seminar-v37 .hero-copy-v22{padding:34px 20px 24px}
+ .seminar-v37 .hero-copy-v22 h1{font-size:45px;line-height:.91;margin-top:15px;margin-bottom:12px}
+ .seminar-v37 .hero-copy-v22 p{font-size:13px}
+ .seminar-v37 .section-head{padding:18px 4px 12px}
+ .seminar-v37 .section-head h2{font-size:27px}
+ .seminar-v37 .section-head p{font-size:12px}
+}
+@media(max-width:390px){.seminar-v37 .hero-copy-v22 h1{font-size:41px}}
