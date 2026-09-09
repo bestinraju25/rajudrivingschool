@@ -80,3 +80,13 @@
  .seminar-v37 .section-head p{font-size:12px}
 }
 @media(max-width:390px){.seminar-v37 .hero-copy-v22 h1{font-size:41px}}
+
+/* v38 booking phone UX: India +91 is fixed; users enter only 10 digits. */
+.phone-field{display:flex;align-items:center;width:100%;height:51px;border:1px solid #d4e0e8;border-radius:14px;background:#fff;overflow:hidden;transition:.18s}
+.phone-field:focus-within{border-color:#75aee9;box-shadow:0 0 0 4px #eaf3ff}
+.phone-code{height:100%;display:flex;align-items:center;padding:0 13px;border-right:1px solid #dce5eb;background:#f5f8fa;color:#17334a;font-weight:900;font-size:14px;white-space:nowrap}
+.phone-field input{height:100%!important;border:0!important;border-radius:0!important;box-shadow:none!important;flex:1;min-width:0;padding:0 14px!important;background:#fff}
+.booking-phone{margin-top:0}
+.field-hint{font-size:9px;color:#7b8d9b;font-weight:600;line-height:1.35;margin-top:-2px}
+.sheet-v22 label>input#license{height:51px}
+@media(max-width:480px){.phone-code{padding:0 12px}.phone-field{height:54px}.field-hint{font-size:8.5px}}
