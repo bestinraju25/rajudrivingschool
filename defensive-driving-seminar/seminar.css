@@ -155,3 +155,38 @@
 .seminar-v37 .seminar-card-image{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;object-position:center;background:#071a2d}
 .seminar-v37 .card-video-overlay{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(4,18,32,.26) 0%,rgba(4,18,32,.04) 42%,rgba(4,18,32,.45) 100%);pointer-events:none}
 .seminar-v37 .card-image .feature-chip,.seminar-v37 .card-image .seat-chip{z-index:4}
+
+
+/* v45 — final premium seminar hero: use the supplied finished artwork directly. */
+.seminar-v45 .app-top{
+  position:sticky;
+  top:0;
+  z-index:50;
+  margin-bottom:-68px;
+  background:rgba(4,20,36,.62);
+  border-bottom:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(18px) saturate(125%);
+  -webkit-backdrop-filter:blur(18px) saturate(125%);
+  box-shadow:0 10px 30px rgba(0,0,0,.10);
+}
+.seminar-v45 .hero-v22.hero-v45{
+  height:430px;
+  min-height:430px;
+  margin:0;
+  background-image:url('defensive-seminar-hero-final.png');
+  background-repeat:no-repeat;
+  background-position:center center;
+  background-size:cover;
+  overflow:hidden;
+}
+.seminar-v45 .hero-v45:before,
+.seminar-v45 .hero-v45:after,
+.seminar-v45 .hero-copy-v22{display:none!important}
+.seminar-v45 .content-v22{padding-top:0}
+@media(max-width:480px){
+  .seminar-v45 .app-top{margin-bottom:-68px}
+  .seminar-v45 .hero-v22.hero-v45{height:410px;min-height:410px;background-position:24% center}
+}
+@media(max-width:390px){
+  .seminar-v45 .hero-v22.hero-v45{height:385px;min-height:385px;background-position:23% center}
+}
