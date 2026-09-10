@@ -1,1 +1,67 @@
-<!DOCTYPE html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="../images/raju-logo.png"><link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../student-auth.css"><link rel="stylesheet" href="../booking.css"><title>Admin Login | Raju Driving School</title></head><body class="student-auth-page"><header class="nav auth-nav"><a class="brand" href="../"><img alt="Raju Driving School" class="brand-logo" src="../images/raju-logo.png"></a><a class="auth-home-link" href="../">Back to website</a></header><main class="auth-shell"><section class="auth-intro"><span class="auth-kicker">ADMIN PORTAL</span><h1>Run the school <em>smoothly.</em></h1><p>Manage student bookings, assign instructors, block unavailable times and record manually collected fees from one place.</p><div class="auth-points"><span>Bookings</span><span>Instructor schedule</span><span>Fee ledger</span><span>Approval</span></div></section><section class="auth-card"><div id="adminAuthMessage" class="notice"></div><form id="adminLoginForm" class="auth-form active"><div class="auth-form-head"><span>RAJU DRIVING SCHOOL</span><h2>Admin login</h2><p>Use the admin email and password created in Supabase Authentication.</p></div><label>Email<input name="email" type="email" autocomplete="username" required placeholder="admin@rajudrivingschool.com"></label><label>Password<input name="password" type="password" autocomplete="current-password" required placeholder="Your admin password"></label><button class="auth-submit" type="submit">Sign in</button><p class="auth-note">Admin access is controlled by Supabase Auth + the admin_users table.</p></form></section></main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../student-config.js"></script><script src="../admin-auth.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="../images/raju-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="admin-login.css">
+<title>Admin Login | Raju Driving School</title>
+</head>
+<body class="admin-login-page">
+<div class="admin-login-shell">
+  <header class="admin-login-top">
+    <a class="admin-brand" href="../">
+      <span class="admin-logo-wrap"><img src="../images/raju-logo.png" alt="Raju Driving School"></span>
+      <span><strong>RAJU DRIVING SCHOOL</strong><small>ADMIN CONSOLE</small></span>
+    </a>
+    <a class="back-site" href="../">Back to website <span>↗</span></a>
+  </header>
+
+  <main class="admin-login-main">
+    <section class="admin-welcome">
+      <div class="console-label"><i></i> SCHOOL OPERATIONS</div>
+      <h1>Everything your school needs.<br><em>One secure console.</em></h1>
+      <p>Manage bookings, instructors, student records, schedules and manually collected fees from one focused workspace.</p>
+      <div class="operation-grid">
+        <div><span>01</span><b>Bookings</b><small>Review & arrange classes</small></div>
+        <div><span>02</span><b>Instructors</b><small>Schedules & availability</small></div>
+        <div><span>03</span><b>Students</b><small>Profiles & progress</small></div>
+        <div><span>04</span><b>Finance</b><small>Manual payment records</small></div>
+      </div>
+      <div class="secure-strip"><span class="shield">✓</span><span><b>Private admin area</b><small>Access is verified with Supabase Authentication and your admin account.</small></span></div>
+    </section>
+
+    <section class="admin-login-card">
+      <div class="card-glow"></div>
+      <div class="login-card-inner">
+        <div class="login-heading">
+          <span class="login-kicker">RAJU DRIVING SCHOOL</span>
+          <h2>Welcome back</h2>
+          <p>Sign in to continue to the school operations dashboard.</p>
+        </div>
+        <div id="adminAuthMessage" class="notice"></div>
+        <form id="adminLoginForm" class="admin-form active">
+          <label>Email address
+            <div class="input-shell"><span>✉</span><input name="email" type="email" autocomplete="username" required placeholder="admin@rajudrivingschool.com"></div>
+          </label>
+          <label>Password
+            <div class="input-shell"><span>●</span><input name="password" type="password" autocomplete="current-password" required placeholder="Enter your admin password"></div>
+          </label>
+          <button class="admin-submit" type="submit"><span>Sign in securely</span><b>→</b></button>
+          <p class="login-note">Your admin credentials are handled by Supabase Authentication. They are never stored by this page.</p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="admin-login-footer"><span>RAJU DRIVING SCHOOL</span><i></i><span>SECURE ADMIN ACCESS</span></footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../student-config.js"></script>
+<script src="../admin-auth.js"></script>
+</body>
+</html>

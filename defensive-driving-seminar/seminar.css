@@ -190,3 +190,66 @@
 @media(max-width:390px){
   .seminar-v45 .hero-v22.hero-v45{height:385px;min-height:385px;background-position:23% center}
 }
+
+
+/* v41 — show the newly confirmed entry pass in a dedicated popup instead of the page */
+.confirmation-modal{align-items:flex-end;padding:0;background:rgba(2,12,22,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.confirmation-sheet{position:relative;width:min(540px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:30px 30px 0 0;box-shadow:0 -24px 80px rgba(0,0,0,.48);overscroll-behavior:contain}
+.confirmation-close{position:absolute;right:14px;top:14px;z-index:20;background:rgba(238,244,248,.94);border:1px solid rgba(23,51,74,.08);box-shadow:0 8px 20px rgba(0,0,0,.10)}
+.confirmation-sheet .pass-card-v22{margin:0;border:0;border-radius:0;box-shadow:none}
+.confirmation-sheet .pass-success{padding:34px 22px 25px}
+.confirmation-sheet .pass-success h2{font-size:27px}
+.confirmation-sheet .pass-inner{padding:18px 18px 20px}
+.confirmation-sheet .pass-brand img{display:block;width:40px;height:40px;object-fit:contain}
+.confirmation-sheet .pass-title{margin-top:16px}
+.confirmation-sheet .pass-actions{padding-bottom:2px}
+.confirmation-sheet .secondary-btn{min-height:48px;border-radius:15px}
+@media(min-width:700px){.confirmation-modal{align-items:center;padding:18px}.confirmation-sheet{border-radius:30px;max-height:90vh}}
+@media(max-width:480px){.confirmation-sheet{max-height:94vh;border-radius:26px 26px 0 0}.confirmation-sheet .pass-success{padding:31px 18px 22px}.confirmation-sheet .pass-success h2{font-size:25px}.confirmation-sheet .pass-inner{padding:16px 15px 18px}.confirmation-sheet .pass-actions{grid-template-columns:1fr 1fr;gap:8px}.confirmation-close{right:12px;top:12px}}
+
+
+/* v42 — give session cards their own visual so the card image is not a repeat of the hero. */
+.seminar-v42 .card-image{background-image:linear-gradient(90deg,rgba(7,26,46,.42),rgba(7,26,46,.05)),url('../images/training-method/test-ready.jpg');background-position:center;background-size:cover}
+.seminar-v42 .card-image:after{background:#0b2944}
+
+
+/* v46 — mobile-safe full artwork hero + reliable seminar card image */
+.seminar-v45 .hero-v22.hero-v45{
+  height:auto;
+  min-height:0;
+  aspect-ratio:1536 / 652;
+  margin:0;
+  background-color:#071a2e;
+  background-image:url('defensive-seminar-hero-final.png');
+  background-repeat:no-repeat;
+  background-position:center center;
+  background-size:100% 100%;
+  overflow:hidden;
+}
+.seminar-v45 .app-top{
+  position:sticky;
+  top:0;
+  margin-bottom:-68px;
+  z-index:50;
+  background:rgba(4,20,36,.62);
+  backdrop-filter:blur(18px) saturate(125%);
+  -webkit-backdrop-filter:blur(18px) saturate(125%);
+}
+.seminar-v45 .hero-v45:before,.seminar-v45 .hero-v45:after,.seminar-v45 .hero-copy-v22{display:none!important}
+.seminar-v45 .content-v22{padding-top:0}
+.seminar-v45 .card-image{background:#071a2d}
+.seminar-v45 .seminar-card-image{
+  position:absolute;
+  inset:0;
+  z-index:0;
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+  object-position:center center;
+  background:#071a2d;
+}
+.seminar-v45 .card-video-overlay{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(4,18,32,.10) 0%,rgba(4,18,32,.05) 45%,rgba(4,18,32,.38) 100%);pointer-events:none}
+.seminar-v45 .card-image .feature-chip,.seminar-v45 .card-image .seat-chip{z-index:4}
+@media(max-width:480px){.seminar-v45 .hero-v22.hero-v45{aspect-ratio:1536 / 652;height:auto;min-height:0}.seminar-v45 .app-top{margin-bottom:-68px}.seminar-v45 .card-image{height:158px}}
+@media(max-width:390px){.seminar-v45 .card-image{height:150px}}
