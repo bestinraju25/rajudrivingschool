@@ -152,6 +152,6 @@
 /* v43 — animated seminar card media */
 .seminar-v37 .card-image{background:#071a2d}
 .seminar-v37 .card-image:before,.seminar-v37 .card-image:after{display:none}
-.seminar-v37 .seminar-card-video{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;object-position:center;background:#071a2d}
+.seminar-v37 .seminar-card-image{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;object-position:center;background:#071a2d}
 .seminar-v37 .card-video-overlay{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(4,18,32,.26) 0%,rgba(4,18,32,.04) 42%,rgba(4,18,32,.45) 100%);pointer-events:none}
 .seminar-v37 .card-image .feature-chip,.seminar-v37 .card-image .seat-chip{z-index:4}
