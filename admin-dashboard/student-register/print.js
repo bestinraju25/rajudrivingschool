@@ -36,8 +36,8 @@
       <div class="f14-row"><span>10. Date of passing the test of competence<br>to drive</span><b>:</b><span>${date(s.competency_test_date)}</span></div>
       <div class="f14-row"><span>11. Driving licence number and date<br>of issue and the licensing authority<br>which issued the licence</span><b>:</b><span>${esc(s.driving_license_number)}${s.driving_license_issue_date?' &nbsp; '+date(s.driving_license_issue_date):''}${s.driving_license_authority?' &nbsp; '+esc(s.driving_license_authority):''}</span></div>
       <div class="f14-row"><span>12. Remarks</span><b>:</b><span>${esc(s.remarks)}</span></div>
+      <div class="bottom-sign">13. Signature of the licence holder<br>instructor<br><span class="blank-line"></span></div>
     </div>
-    <div class="bottom-sign">13. Signature of the licence holder<br>instructor<br><span class="blank-line"></span></div>
   </section>`}
 
   function form15(){

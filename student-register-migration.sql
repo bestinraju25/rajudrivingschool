@@ -300,3 +300,24 @@ on public.student_driving_hours for all to authenticated
 using(public.is_admin()) with check(public.is_admin());
 
 notify pgrst,'reload schema';
+
+
+-- Students cannot directly SELECT the hours table because it is protected by RLS.
+-- This controlled function returns only the hours belonging to the matching mobile + DOB.
+create or replace function public.student_register_hours(p_phone text,p_dob date)
+returns table(date date,from_time time,to_time time,vehicle_class text)
+language sql
+security definer
+set search_path=public
+as $$
+  select h.date,h.from_time,h.to_time,h.vehicle_class
+  from public.student_driving_hours h
+  join public.student_register_entries r on r.id=h.student_register_id
+  where regexp_replace(coalesce(r.phone,''),'[^0-9]','','g') = regexp_replace(coalesce(p_phone,''),'[^0-9]','','g')
+    and r.date_of_birth = p_dob
+  order by h.date asc,h.from_time asc;
+$$;
+
+revoke all on function public.student_register_hours(text,date) from public;
+grant execute on function public.student_register_hours(text,date) to anon,authenticated;
+notify pgrst,'reload schema';
