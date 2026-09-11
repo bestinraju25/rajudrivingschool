@@ -243,6 +243,22 @@ begin
     updated_at = now()
   where id = v_id;
 
+  -- Replace Form 15 rows only for the matched register entry.
+  if jsonb_typeof(coalesce(p_payload->'driving_hours','[]'::jsonb))='array' then
+    delete from public.student_driving_hours where student_register_id=v_id;
+    insert into public.student_driving_hours(student_register_id,date,from_time,to_time,vehicle_class)
+    select v_id,
+      nullif(x->>'date','')::date,
+      nullif(x->>'from_time','')::time,
+      nullif(x->>'to_time','')::time,
+      nullif(trim(coalesce(x->>'vehicle_class','')), '')
+    from jsonb_array_elements(p_payload->'driving_hours') x
+    where nullif(x->>'date','') is not null
+       or nullif(x->>'from_time','') is not null
+       or nullif(x->>'to_time','') is not null
+       or nullif(trim(coalesce(x->>'vehicle_class','')), '') is not null;
+  end if;
+
   return v_id;
 end;
 $$;
