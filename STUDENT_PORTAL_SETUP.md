@@ -116,3 +116,8 @@ Never put a Supabase secret/service-role key in `student-config.js` or any brows
 ### Important database step
 
 If the student booking page currently says **"column reference status is ambiguous"**, run the entire `booking-calendar-repair-v7.sql` file once in Supabase SQL Editor. A successful result will say: **Raju Driving School V7 booking calendar repair completed successfully.**
+
+## Digital Student Register — current access
+Students can use the direct page `/digital-student-register.html` with their mobile number and date of birth in `DD/MM/YYYY` format. No SMS/OTP is required.
+
+For the latest Digital Student Register repair, run `student-register-repair-v3.sql` once in Supabase. It removes duplicate register rows for the same mobile + DOB, prevents new duplicates, and installs the admin/student RPCs used by the register.
