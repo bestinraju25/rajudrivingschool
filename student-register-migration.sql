@@ -32,6 +32,9 @@ create table if not exists public.student_register_entries (
   updated_at timestamptz not null default now()
 );
 
+-- Keep the register flexible: every Form 14 field can be entered or updated later.
+alter table public.student_register_entries alter column full_name drop not null;
+
 create unique index if not exists student_register_entries_enrolment_idx
 on public.student_register_entries(enrolment_number)
 where enrolment_number is not null and enrolment_number <> '';
