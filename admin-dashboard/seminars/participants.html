@@ -8,54 +8,54 @@ else{data=active.filter(r=>r.status==='confirmed');title='Not Attended Participa
 if(!data.length){alert(kind==='all'?'No participants to export yet.':kind==='attended'?'No attended participants to export yet.':'No not-attended participants to export.');return}
 if(!window.jspdf?.jsPDF){alert('PDF generator is still loading. Please try again.');return}
 const {jsPDF}=window.jspdf;
-const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-const pageW=297,pageH=210;
-const navy=[9,39,62],blue=[31,111,180],lightBlue=[237,246,252],line=[211,223,231],text=[28,49,66],muted=[105,120,132],green=[21,116,72],greenBg=[231,248,238],amber=[154,108,0],amberBg=[255,248,224];
+const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+const pageW=210,pageH=297;
+const navy=[9,39,62],line=[211,223,231],text=[28,49,66],muted=[105,120,132],green=[21,116,72],greenBg=[231,248,238],amber=[154,108,0],amberBg=[255,248,224];
 const total=active.length,attendedCount=active.filter(r=>r.status==='attended').length,pendingCount=active.filter(r=>r.status==='confirmed').length;
-function fmtDate(v){if(!v)return '—';const d=new Date(v+'T00:00:00');return d.toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})}
+function fmtDate(v){if(!v)return '—';const d=new Date(v+'T00:00:00');return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
 function fmtTime(v){if(!v)return '';const [h,m]=(v||'').split(':').map(Number);if(Number.isNaN(h))return v;const ap=h>=12?'PM':'AM',hh=(h%12)||12;return `${hh}:${String(m||0).padStart(2,'0')} ${ap}`}
 function fmtBookingDate(v){if(!v)return '—';return new Date(v).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
 function drawRoundedRect(x,y,w,h,r,fill,stroke=fill){doc.setFillColor(...fill);doc.setDrawColor(...stroke);doc.roundedRect(x,y,w,h,r,r,'FD')}
 function drawHeader(){
- doc.setFillColor(...navy);doc.rect(0,0,pageW,27,'F');
- doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(255,255,255);doc.text('RAJU DRIVING SCHOOL',14,12);
- doc.setFontSize(7.5);doc.setTextColor(190,214,229);doc.text('RAJU DRIVING SCHOOL CHALAKUDY SINCE 1969',14,19);
- doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(245,199,55);doc.text('DEFENSIVE DRIVING SEMINAR',pageW-14,11,{align:'right'});
- doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(210,226,237);doc.text('PARTICIPANT REGISTER',pageW-14,18,{align:'right'});
+ doc.setFillColor(...navy);doc.rect(0,0,pageW,23,'F');
+ doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(255,255,255);doc.text('RAJU DRIVING SCHOOL',12,9.5);
+ doc.setFontSize(5.3);doc.setTextColor(190,214,229);doc.text('RAJU DRIVING SCHOOL CHALAKUDY SINCE 1969',12,15.5);
+ doc.setFont('helvetica','bold');doc.setFontSize(5.8);doc.setTextColor(245,199,55);doc.text('DEFENSIVE DRIVING SEMINAR',pageW-12,9,{align:'right'});
+ doc.setFont('helvetica','normal');doc.setFontSize(5.2);doc.setTextColor(210,226,237);doc.text('PARTICIPANT REGISTER',pageW-12,15.5,{align:'right'});
 }
 function drawTitle(){
- doc.setTextColor(...text);doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text(title,14,39);
- doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...muted);
+ doc.setTextColor(...text);doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(title,12,33);
+ doc.setFont('helvetica','normal');doc.setFontSize(6.7);doc.setTextColor(...muted);
  const sessionDate=fmtDate(ev?.event_date);const timeRange=[fmtTime(ev?.start_time),fmtTime(ev?.end_time)].filter(Boolean).join(' – ');
- doc.text(`${ev?.title||'Defensive Driving Seminar'}  |  ${sessionDate}${timeRange?'  |  '+timeRange:''}`,14,46);
+ doc.text(`${ev?.title||'Defensive Driving Seminar'}  |  ${sessionDate}${timeRange?'  |  '+timeRange:''}`,12,39);
 }
-function stat(x,label,value,accent,bg){drawRoundedRect(x,52,56,22,4,bg,line);doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(...accent);doc.text(String(value),x+7,64);doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...muted);doc.text(label.toUpperCase(),x+7,70)}
-function drawSummary(){stat(14,'Total participants',total,navy,[242,246,249]);stat(75,'Attended',attendedCount,green,greenBg);stat(136,'Not attended',pendingCount,amber,amberBg)}
+function stat(x,label,value,accent,bg){drawRoundedRect(x,44,54,15,3,bg,line);doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...accent);doc.text(String(value),x+6,52.5);doc.setFont('helvetica','normal');doc.setFontSize(5.2);doc.setTextColor(...muted);doc.text(label.toUpperCase(),x+6,56.5)}
+function drawSummary(){stat(12,'Total participants',total,navy,[242,246,249]);stat(72,'Attended',attendedCount,green,greenBg);stat(132,'Not attended',pendingCount,amber,amberBg)}
 function drawTableHeader(y){
- doc.setFillColor(...navy);doc.roundedRect(14,y,pageW-28,10,2,2,'F');
- doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,255,255);
- const cols=[['S.NO.',20],['PARTICIPANT NAME',38],['MOBILE NUMBER',128],['BOOKING DATE',173],['ATTENDANCE',238]];
- cols.forEach(([label,x])=>doc.text(label,x,y+6.5));
- return y+10;
+ doc.setFillColor(...navy);doc.roundedRect(12,y,pageW-24,8,1.8,1.8,'F');
+ doc.setFont('helvetica','bold');doc.setFontSize(5.8);doc.setTextColor(255,255,255);
+ const cols=[['S.NO.',17],['PARTICIPANT NAME',29],['MOBILE NUMBER',91],['BOOKING DATE',132],['ATTENDANCE',164]];
+ cols.forEach(([label,x])=>doc.text(label,x,y+5.3));
+ return y+8;
 }
 function drawFooter(pageNo){
- doc.setDrawColor(...line);doc.line(14,pageH-13,pageW-14,pageH-13);
- doc.setFont('helvetica','normal');doc.setFontSize(6.8);doc.setTextColor(...muted);doc.text('Raju Driving School • Seminar Admin',14,pageH-7);
- doc.text(`Page ${pageNo}`,pageW-14,pageH-7,{align:'right'});
+ doc.setDrawColor(...line);doc.line(12,pageH-10,pageW-12,pageH-10);
+ doc.setFont('helvetica','normal');doc.setFontSize(5.5);doc.setTextColor(...muted);doc.text('Raju Driving School • Seminar Admin',12,pageH-5.5);
+ doc.text(`Page ${pageNo}`,pageW-12,pageH-5.5,{align:'right'});
 }
 function drawPageChrome(pageNo){drawHeader();drawFooter(pageNo)}
 let pageNo=1;drawPageChrome(pageNo);drawTitle();drawSummary();
-let y=83;y=drawTableHeader(y);
-const rowH=12;
+let y=65;y=drawTableHeader(y);
+const rowH=9;
 data.forEach((r,i)=>{
- if(y+rowH>pageH-18){doc.addPage();pageNo++;drawPageChrome(pageNo);y=35;y=drawTableHeader(y)}
- const rowBg=i%2===0?[255,255,255]:[248,251,253];doc.setFillColor(...rowBg);doc.setDrawColor(...line);doc.rect(14,y,pageW-28,rowH,'FD');
- doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...text);doc.text(String(i+1),20,y+7.6);
- doc.setFont('helvetica','bold');doc.setFontSize(8.3);doc.text(String(r.full_name||'—').slice(0,42),38,y+7.6);
- doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(String(r.phone||'—'),128,y+7.6);doc.text(fmtBookingDate(r.registered_at),173,y+7.6);
- const isAtt=r.status==='attended';const pillText=isAtt?'ATTENDED':'NOT ATTENDED';const pillW=isAtt?28:36;const pillX=238;
- drawRoundedRect(pillX,y+2.8,pillW,6.4,3,isAtt?greenBg:amberBg,isAtt?[194,229,209]:[244,226,166]);
- doc.setFont('helvetica','bold');doc.setFontSize(6.2);doc.setTextColor(...(isAtt?green:amber));doc.text(pillText,pillX+pillW/2,y+7.1,{align:'center'});
+ if(y+rowH>pageH-14){doc.addPage();pageNo++;drawPageChrome(pageNo);y=18;y=drawTableHeader(y)}
+ const rowBg=i%2===0?[255,255,255]:[248,251,253];doc.setFillColor(...rowBg);doc.setDrawColor(...line);doc.rect(12,y,pageW-24,rowH,'FD');
+ doc.setFont('helvetica','normal');doc.setFontSize(6.4);doc.setTextColor(...text);doc.text(String(i+1),17,y+5.8);
+ doc.setFont('helvetica','bold');doc.setFontSize(6.4);doc.text(String(r.full_name||'—').slice(0,31),29,y+5.8);
+ doc.setFont('helvetica','normal');doc.setFontSize(6.2);doc.text(String(r.phone||'—'),91,y+5.8);doc.text(fmtBookingDate(r.registered_at),132,y+5.8);
+ const isAtt=r.status==='attended';const pillText=isAtt?'ATTENDED':'NOT ATTENDED';const pillW=isAtt?24:29;const pillX=164;
+ drawRoundedRect(pillX,y+1.6,pillW,5.8,2.8,isAtt?greenBg:amberBg,isAtt?[194,229,209]:[244,226,166]);
+ doc.setFont('helvetica','bold');doc.setFontSize(4.8);doc.setTextColor(...(isAtt?green:amber));doc.text(pillText,pillX+pillW/2,y+5.55,{align:'center'});
  y+=rowH;
 });
 drawFooter(pageNo);
