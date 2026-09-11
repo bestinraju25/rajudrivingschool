@@ -26,21 +26,23 @@ async function load(){
 }
 $('form').onsubmit=async e=>{
   e.preventDefault();
-  const payload={};fields.forEach(k=>payload[k]=$(k).value||null);payload.student_id=$("student_id").value||null;payload.photo_data=photoData||null;
-  let registerId=id;
-  if(!registerId){
-    const q=await db.from('student_register_entries').insert(payload).select('id').single();
-    if(q.error){msg(q.error.message,'error');return} registerId=q.data.id;
-  }else{
-    const q=await db.from('student_register_entries').update(payload).eq('id',registerId);
-    if(q.error){msg(q.error.message,'error');return}
-  }
-  const del=await db.from('student_driving_hours').delete().eq('student_register_id',registerId);
-  if(del.error){msg(del.error.message,'error');return}
-  const hours=readHours().map(x=>({...x,student_register_id:registerId}));
-  if(hours.length){const q=await db.from('student_driving_hours').insert(hours);if(q.error){msg(q.error.message,'error');return}}
-  msg('Register entry saved.');
-  setTimeout(()=>location.href=`print.html?id=${encodeURIComponent(registerId)}&form=14`,500)
+  const button=$('form').querySelector('button[type="submit"]');
+  if(button) button.disabled=true;
+  try{
+    const payload={};fields.forEach(k=>payload[k]=$(k).value||'');
+    payload.student_id=$("student_id").value||'';
+    payload.photo_data=photoData||'';
+    const {data:registerId,error}=await db.rpc('admin_upsert_student_register',{p_id:id||null,p_payload:payload});
+    if(error) throw error;
+    const hours=readHours();
+    const hq=await db.rpc('admin_replace_student_driving_hours',{p_register_id:registerId,p_hours:hours});
+    if(hq.error) throw hq.error;
+    msg('Register entry saved successfully.');
+    setTimeout(()=>location.href=`print.html?id=${encodeURIComponent(registerId)}&form=14`,500);
+  }catch(err){
+    console.error(err);
+    msg(err?.message||'Could not save the register entry. Please try again.','error');
+  }finally{if(button)button.disabled=false;}
 };
 load();
 })();
