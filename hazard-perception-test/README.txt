@@ -1,9 +1,23 @@
-RAJU HPT EXAM-STYLE REDESIGN v2
+RAJU HPT — FULL-SCREEN EXAM REDESIGN
+====================================
 
-Fresh standalone implementation. Separate dashboard, Practice Test and Actual Test pages.
-Actual Test collects candidate name and phone for reference and keeps them visible during the session.
-Exam-style header, clip progress, countdown, restricted navigation, response timeline, scoring and result screen.
-Uses the four supplied local Kerala video clips. Clips 05-10 are reserved for the remaining video assets.
-No remote video URLs. No Raju Defensive Driving Seminar files or code are included.
+This build was remade from the earlier prototype rather than patching the old UI.
 
-Scoring per developing hazard: 0-1.5s = 5, 1.5-2.5s = 4, 2.5-3.5s = 3, 3.5-5s = 2, after 5s = 0. Each hazard can score once. More than 5 responses makes the clip score zero.
+KEY CHANGES
+- Full-screen, no normal page scrolling during Practice or Actual Test.
+- Driving-school themed red / charcoal / white visual system.
+- Raju Motor Driving School brand lockup with R mark, Chalakudy and Since 1969.
+- Candidate name + phone collected only for Actual Test and displayed during the exam.
+- 10 local video clips, randomized independently on every new session.
+- Two developing hazards are annotated for every clip, so every clip can score 0–10.
+- 100 total marks; 60 required to pass.
+- Timing score per hazard: 5 / 4 / 3 / 2 / 0 depending on response timing.
+- One hazard can score only once.
+- Maximum 5 responses; a sixth response makes that clip score 0.
+- Actual Test has no replay / previous controls.
+- Practice allows replay / previous and gives a hazard review after each completed clip.
+- Video controls are hidden; interaction happens through the full video click/tap layer.
+- Response flags and NEXT button are overlaid on the video so the learner can operate without scrolling.
+
+HAZARD ANNOTATION NOTE
+The new hazard times are internal training annotations based on visual review of the supplied clips and the user's scenario descriptions. They are not official DVSA annotations.
