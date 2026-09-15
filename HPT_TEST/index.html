@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Raju Motor Driving School — HPT</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <section id="dashboard" class="screen">
+    <header class="dash-top">
+      <div class="brand"><div class="logo small-logo">R</div><div><b>RAJU MOTOR DRIVING SCHOOL</b><span>HAZARD PERCEPTION CENTRE</span></div></div>
+      <div class="student"><span id="studentLabel">HPT Training Centre</span></div>
+    </header>
+    <main class="dash-main">
+      <div class="welcome"><span class="kicker">HPT CENTRE</span><h2>Choose your session</h2><p>Train first. Then take the 10-clip examination simulation.</p></div>
+      <div class="mode-grid">
+        <button id="practiceBtn" class="mode-card practice">
+          <div class="mode-icon">◎</div><div><span class="tag">TRAINING MODE</span><h3>Practice Test</h3><p>Replay clips, review responses and learn from your timing.</p></div><span class="arrow">→</span>
+        </button>
+        <button id="actualBtn" class="mode-card actual">
+          <div class="mode-icon">✓</div><div><span class="tag">EXAMINATION MODE</span><h3>Actual Test</h3><p>10 clips • 100 marks • 60 to pass • no replay during the test.</p></div><span class="arrow">→</span>
+        </button>
+      </div>
+      <div class="info-row">
+        <div><b>100</b><span>Total marks</span></div><div><b>60</b><span>Pass mark</span></div><div><b>10</b><span>Clips</span></div><div><b>5</b><span>Max responses / clip</span></div>
+      </div>
+      <div class="notice"><b>Current build:</b> Clips 01–04 are loaded with your approved videos. Clips 05–10 are reserved for the remaining uploads/generated footage.</div>
+    </main>
+  </section>
+
+  <section id="test" class="screen hidden">
+    <header class="test-top">
+      <div class="brand"><div class="logo small-logo">R</div><div><b>RAJU MOTOR DRIVING SCHOOL</b><span id="modeLabel">PRACTICE TEST</span></div></div>
+      <div class="test-progress"><b id="clipNo">01</b><span>/ 10</span><div class="progress"><i id="progress"></i></div></div>
+      <div class="test-score"><span>SCORE</span><b id="totalScore">0</b><em>/100</em></div>
+    </header>
+    <main class="test-main">
+      <div class="video-wrap" id="videoWrap">
+        <video id="video" playsinline preload="metadata"></video>
+        <div class="hud top-hud"><span class="pill" id="modePill">PRACTICE</span><span class="pill">RESPONSES <b id="clickCount">0</b>/5</span></div>
+        <div id="countdown" class="countdown hidden">3</div>
+        <div id="toast" class="toast hidden"></div>
+        <div class="video-controls">
+          <div class="timeline"><i id="played"></i><div id="flags"></div></div>
+          <div class="time-line"><span id="clock">0:00 / 0:00</span><span>Click when you identify a developing hazard</span></div>
+          <div class="buttons">
+            <button id="backDash" class="control">← Dashboard</button>
+            <button id="prev" class="control">‹ Previous</button>
+            <button id="start" class="primary">▶ Start Clip</button>
+            <button id="next" class="control">Next ›</button>
+            <button id="full" class="control">⛶</button>
+          </div>
+        </div>
+      </div>
+      <div class="under-video">
+        <div class="response-strip"><div class="strip-title"><span>RESPONSE TIMELINE</span><b id="responseSummary">0 / 5</b></div><div id="responses" class="chips"><span class="empty">Your clicks will appear here.</span></div></div>
+        <div class="hazard-strip"><div class="strip-title"><span>CLIP HAZARDS</span><b id="hazardSummary">0 / 2</b></div><div id="hazards" class="chips"></div></div>
+      </div>
+    </main>
+  </section>
+
+  <section id="result" class="screen hidden result-screen">
+    <div class="result-card">
+      <div class="logo">R</div><span class="kicker" id="resultKicker">HPT RESULT</span>
+      <h2 id="resultTitle">Test complete</h2>
+      <div class="big-score"><b id="finalScore">0</b><span>/100</span></div>
+      <div id="resultStatus" class="result-status">RESULT</div>
+      <p id="resultCopy"></p>
+      <div id="clipResults" class="clip-results"></div>
+      <div class="result-actions"><button id="again" class="primary">Take Again</button><button id="resultDash" class="ghost dark">Dashboard</button></div>
+    </div>
+  </section>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
