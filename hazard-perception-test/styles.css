@@ -4,3 +4,81 @@
 @media(max-width:1050px){.mainExam{grid-template-columns:1fr}.side{display:none}.examPage{grid-template-rows:58px 50px minmax(0,1fr)}.stage{border-radius:10px}.home{padding-left:28px;padding-right:28px}}
 @media(max-width:700px){.modeGrid,.fields{grid-template-columns:1fr}.hero h1{font-size:54px}.hero p{font-size:15px}.homeTag{display:none}.homeHeader .logo{width:280px}.examRight .exit{display:none}.candidateInfo{gap:10px}.candidateInfo div:nth-child(2){display:none}.examProgress{display:none}.mainExam{padding:6px}.bottomOverlay{padding-left:8px;padding-right:8px}.hint{font-size:8px}.introCard,.resultCard{padding:22px}.formatRow{grid-template-columns:1fr 1fr}.resultGrid{grid-template-columns:repeat(5,1fr)}}
 .reviewModal{position:fixed;inset:0;z-index:50;background:#071016cc;display:grid;place-items:center;padding:20px}.reviewCard{width:min(720px,94vw);max-height:90vh;overflow:hidden;background:#fff;border-radius:18px;padding:24px;box-shadow:0 30px 90px #0008}.reviewCard h2{font-size:52px;margin:4px 0 14px}.reviewHazards{display:grid;grid-template-columns:1fr 1fr;gap:8px}.reviewHaz{padding:12px;border-radius:10px;background:#f1f4f5}.reviewHaz b{display:block;font-size:10px;letter-spacing:.1em;color:#e51f2a}.reviewHaz span{display:block;font-size:12px;font-weight:800;margin:5px 0}.reviewHaz em{font-size:9px;color:#78858c;font-style:normal}.reviewClicks{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 16px;font-size:10px}.reviewClicks b{width:100%;font-size:9px;letter-spacing:.12em;color:#78858c}.reviewClicks span{padding:7px 9px;background:#edf1f3;border-radius:999px;font-weight:800}@media(max-width:650px){.reviewHazards{grid-template-columns:1fr}}
+
+
+/* V5 responsive exam-shell refinements */
+html,body{overflow:hidden;overscroll-behavior:none}
+.examPage{width:100vw;height:100dvh;min-height:0;overflow:hidden}
+.mainExam{height:100%;min-height:0;overflow:hidden}
+.stage{height:100%;min-height:0}
+.video{touch-action:manipulation}
+.clickLayer{touch-action:manipulation}
+.exit,.backBtn{pointer-events:auto;cursor:pointer}
+.introPage,.resultPage{width:100vw;height:100dvh;min-height:0;overflow:hidden}
+.introCard,.resultCard{max-height:calc(100dvh - 32px);overflow:auto;scrollbar-width:none}
+.introCard::-webkit-scrollbar,.resultCard::-webkit-scrollbar{display:none}
+.introActions{display:flex;gap:10px;margin-top:12px}
+.begin{flex:1}
+.backBtn{display:flex;align-items:center;justify-content:center;border:1px solid #cbd4d9;border-radius:10px;background:#fff;color:#17232c;padding:14px 18px;font-size:11px;font-weight:900;letter-spacing:.13em;text-decoration:none}
+.examTop .exit{display:inline-flex;align-items:center;justify-content:center;padding:8px 11px;border:1px solid #ffffff2e;border-radius:9px;color:#fff}
+.examTop .exit:hover{background:#ffffff12;color:#fff}
+.mobileControls{display:none}
+@media(max-width:1050px){
+  .mainExam{grid-template-columns:1fr;padding:8px}
+  .stage{border-radius:10px}
+}
+@media(max-width:700px){
+  .examTop{height:52px;padding:0 10px}
+  .examLogo{height:32px;max-width:220px}
+  .examRight{gap:6px}
+  .modePill{padding:7px 8px;font-size:8px}
+  .examTop .exit{padding:7px 8px;font-size:8px}
+  .candidateStrip{height:42px;padding:0 10px}
+  .candidateInfo{gap:12px}
+  .candidateInfo small{font-size:7px}
+  .candidateInfo strong{font-size:10px;max-width:130px}
+  .mainExam{padding:4px;gap:0}
+  .stage{border-radius:8px}
+  .topOverlay{top:7px;left:7px;right:7px}
+  .clipBadge{padding:7px 8px;font-size:9px}
+  .timer{padding:7px 9px;font-size:14px}
+  .bottomOverlay{padding:42px 7px 7px}
+  .hint{padding:6px 8px;font-size:7px;margin-bottom:5px}
+  .timeline{height:28px;margin-bottom:5px}
+  .timelineTrack{top:12px;height:3px}
+  .flag{width:21px;height:21px;font-size:8px;top:2px}
+  .controlRow{gap:6px}
+  .responsePill{padding:8px 9px;font-size:8px}
+  .examBtn{padding:9px 10px;font-size:8px}
+  .introPage,.resultPage{padding:10px}
+  .introCard,.resultCard{width:min(720px,96vw);max-height:calc(100dvh - 20px);padding:18px;border-radius:15px}
+  .introLogo{width:min(330px,82%)}
+  .introCard h1,.resultCard h1{font-size:28px;margin:12px 0 5px}
+  .introCard p{font-size:12px;margin:7px 0}
+  .fields{gap:8px;margin:12px 0}
+  .field label{font-size:8px;margin-bottom:4px}
+  .field input{padding:10px;font-size:14px}
+  .formatRow{gap:6px;margin:12px 0}
+  .formatBox{padding:9px}
+  .formatBox b{font-size:13px}
+  .formatBox small{font-size:7px}
+  .introActions{margin-top:8px}
+  .backBtn,.begin{padding:11px 9px;font-size:9px}
+  .bigScore{font-size:60px;margin:10px 0 5px}
+  .resultGrid{gap:4px;margin:12px 0}
+  .resultClip{padding:7px 2px;font-size:8px}
+  .resultClip b{font-size:12px}
+}
+@media(max-width:420px){
+  .candidateInfo div:nth-child(2){display:none}
+  .examLogo{max-width:180px}
+  .modePill{display:none}
+  .bottomOverlay{padding-top:36px}
+  .hint{max-width:72%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .responsePill{font-size:7px;padding:7px 8px}
+  .examBtn{padding:8px 9px}
+}
+@media(max-height:650px) and (min-width:701px){
+  .examTop{height:48px}.candidateStrip{height:42px}.mainExam{padding:7px}.bottomOverlay{padding-top:38px}
+  .introCard{padding:22px}.introCard h1{font-size:30px;margin:10px 0 5px}.introCard p{margin:6px 0}.fields{margin:12px 0}.formatRow{margin:12px 0}
+}

@@ -21,3 +21,14 @@ KEY CHANGES
 
 HAZARD ANNOTATION NOTE
 The new hazard times are internal training annotations based on visual review of the supplied clips and the user's scenario descriptions. They are not official DVSA annotations.
+
+
+V5 UI REFINEMENTS
+=================
+- Full viewport / no normal page scrolling.
+- Responsive desktop/tablet/mobile examination layout.
+- Candidate intro pages have an explicit BACK button.
+- Examination pages have an explicit EXIT button.
+- Controls remain overlaid on the video for easier interaction.
+- Existing logo.svg is used as the current logo asset; replace it with the supplied
+  official logo file when provided, keeping the filename logo.svg for zero code changes.
