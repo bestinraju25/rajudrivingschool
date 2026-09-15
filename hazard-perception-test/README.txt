@@ -62,9 +62,3 @@ There is no separate HPT login screen.
 When this module is integrated into the existing Raju website, the existing student
 authentication can identify the student. The HPT module should not ask for mobile/DOB
 again.
-
-V2 FIX — INTERACTION
-====================
-Fixed the JavaScript startup error caused by the removed login screen.
-Practice Test and Actual Test buttons now open the test interface correctly.
-Video clicks are handled on the video area while clicks on the control bar are ignored.

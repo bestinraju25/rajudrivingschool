@@ -11,7 +11,7 @@ const screens={login:$("login"),dashboard:$("dashboard"),test:$("test"),result:$
 const video=$("video"),videoWrap=$("videoWrap");
 let mode="practice",idx=0,running=false,clicks=[],claimed=new Set(),fatal=false,clipScores=Array(10).fill(0),testFinished=false;
 
-function show(s){Object.values(screens).forEach(x=>x.classList.add("hidden"));if(screens[s])screens[s].classList.remove("hidden")}
+function show(s){Object.values(screens).forEach(x=>x.classList.add("hidden"));screens[s].classList.remove("hidden")}
 function fmt(t){return `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}`}
 function available(){return clips.filter(Boolean).length}
 function scoreAt(h,t){const d=t-h.start;if(d<0||d>5)return 0;if(d<=1.5)return 5;if(d<=2.5)return 4;if(d<=3.5)return 3;return 2}
@@ -20,7 +20,7 @@ function resetClip(){running=false;clicks=[];claimed.clear();fatal=false;$("clic
 function loadClip(n,autoplay=false){
  idx=n;resetClip();
  if(!clips[idx]){showPlaceholder();return}
- const c=clips[idx];video.src=c.video;video.load();$("clipNo").textContent=String(idx+1).padStart(2,"0");$("progress").style.width=((idx+1)*10)+"%";
+ const c=clips[idx];video.src=c.video;video.load();$("clipNo").textContent=String(idx+1).padStart(2,"0");$("progress").style.width=((idx+1)*10)+"%";if($("videoTitle")) $("videoTitle").textContent=c.title;
  document.querySelector("#test .brand span").textContent=mode==="practice"?"PRACTICE TEST":"ACTUAL EXAMINATION";
  $("modePill").textContent=mode==="practice"?"PRACTICE":"ACTUAL TEST";$("modeLabel").textContent=mode==="practice"?"PRACTICE TEST":"ACTUAL EXAMINATION";
  $("start").textContent=`▶ Start Clip ${idx+1}`;
@@ -30,7 +30,7 @@ function loadClip(n,autoplay=false){
 function showPlaceholder(){
  video.removeAttribute("src");video.load();$("clipNo").textContent=String(idx+1).padStart(2,"0");$("progress").style.width=((idx+1)*10)+"%";
  $("hazards").innerHTML='<span class="empty">Video not loaded yet — awaiting Clip '+(idx+1)+'.</span>';
- $("hazardSummary").textContent="0 / 2";$("start").textContent="Clip unavailable";if($("status"))$("status").textContent="";
+ $("hazardSummary").textContent="0 / 2";$("start").textContent="Clip unavailable";if($("status")) $("status").textContent="";
 }
 function addResponse(text,good){const e=document.createElement("span");e.className=good?"good":"";e.textContent=text;$("responses").querySelector(".empty")?.remove();$("responses").appendChild(e)}
 function flag(t,good,score){const d=video.duration||1,e=document.createElement("span");e.className="flag "+(good?"good":"");e.style.left=Math.min(99,Math.max(1,t/d*100))+"%";e.textContent=good?"✓"+score:"•";$("flags").appendChild(e)}
@@ -64,7 +64,6 @@ video.addEventListener("ended",()=>{
 $("start").onclick=()=>running?(running=false,video.pause(),$("start").textContent="▶ Resume"):begin();
 $("prev").onclick=()=>{if(mode==="practice"&&idx>0)loadClip(idx-1)};$("next").onclick=()=>{if(mode==="practice"&&idx<9)loadClip(idx+1)};
 $("backDash").onclick=()=>show("dashboard");
-$("logout")?.addEventListener("click",()=>show("dashboard"));
 $("full").onclick=async()=>{try{document.fullscreenElement?await document.exitFullscreen():await videoWrap.requestFullscreen()}catch{}};
 $("practiceBtn").onclick=()=>{mode="practice";idx=0;clipScores=Array(10).fill(0);show("test");loadClip(0)};
 $("actualBtn").onclick=()=>{mode="actual";idx=0;clipScores=Array(10).fill(0);testFinished=false;show("test");loadClip(0)};
