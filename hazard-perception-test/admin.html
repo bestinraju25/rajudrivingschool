@@ -1,81 +1,20 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Raju HPT Admin Dashboard</title><link rel="stylesheet" href="admin.css"><script src="hpt-config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
-<body>
-<div class="admin-shell">
-  <header class="topbar">
-    <div class="brand"><img src="raju-logo.png"><div><strong>RAJU DRIVING SCHOOL</strong><span>HAZARD PERCEPTION TEST • ADMIN</span></div></div>
-    <div class="top-actions"><a href="index.html" class="ghost">Candidate Test</a><button id="logoutBtn" class="ghost" hidden>Log out</button></div>
-  </header>
-
-  <section id="login" class="login-page">
-    <div class="login-card">
-      <img src="raju-logo.png" class="login-logo">
-      <div class="eyebrow">SECURE ADMINISTRATION</div><h1>HPT Admin</h1>
-      <p>Use the same Raju Driving School admin account used for the Defensive Driving Seminar.</p>
-      <label>Email<input id="email" type="email" autocomplete="username" placeholder="Admin email"></label>
-      <label>Password<input id="password" type="password" autocomplete="current-password" placeholder="Password"></label>
-      <button id="loginBtn" class="primary">SIGN IN TO DASHBOARD →</button>
-      <div id="loginMsg" class="message"></div>
-    </div>
-  </section>
-
-  <main id="dashboard" hidden>
-    <section class="welcome"><div><div class="eyebrow">RAJU DRIVING SCHOOL • HPT CONTROL CENTRE</div><h1>Hazard Perception Dashboard</h1><p>Manage candidates, examination results, videos and developing-hazard scoring points.</p></div><button id="refreshAll" class="outline">↻ Refresh</button></section>
-    <div id="notice" class="notice" hidden></div>
-    <section class="stats-grid">
-      <div class="stat"><span>Examinations</span><strong id="statAttempts">—</strong><small>completed attempts</small></div>
-      <div class="stat"><span>Passed</span><strong id="statPassed">—</strong><small>60 / 100 benchmark</small></div>
-      <div class="stat"><span>Average Score</span><strong id="statAverage">—</strong><small>all completed tests</small></div>
-      <div class="stat"><span>Active Clips</span><strong id="statVideos">—</strong><small>with two hazards</small></div>
-    </section>
-
-    <section class="grid-main">
-      <div class="card results-card">
-        <div class="card-head"><div><div class="eyebrow">CANDIDATES</div><h2>Recent Examination Results</h2></div><button id="exportCsv" class="outline">↓ Export CSV</button></div>
-        <div class="filters"><input id="searchResults" placeholder="Search candidate or phone…"><select id="resultFilter"><option value="all">All results</option><option value="pass">Passed</option><option value="fail">Not passed</option></select></div>
-        <div class="table-scroll"><table><thead><tr><th>DATE</th><th>CANDIDATE</th><th>PHONE</th><th>SCORE</th><th>STATUS</th><th></th></tr></thead><tbody id="resultsBody"></tbody></table></div>
-      </div>
-      <aside class="card quick-card"><div class="eyebrow">HPT STATUS</div><h2>System readiness</h2>
-        <div class="readiness"><div><span>Active clips</span><b id="readyVideos">—</b></div><div><span>Two hazards marked</span><b id="readyHazards">—</b></div><div><span>Recommended exam</span><b>10 clips</b></div></div>
-        <button id="openVideos" class="primary full">MANAGE VIDEO LIBRARY →</button>
-        <div class="admin-note">Video files stay outside Supabase. Supabase stores metadata, hazard timestamps, responses and results.</div>
-      </aside>
-    </section>
-
-    <section class="card library-card" id="librarySection">
-      <div class="card-head"><div><div class="eyebrow">VIDEO CONTROL</div><h2>HPT Video Library</h2><p class="muted">Add a static/GitHub video path, preview it, and place exact hazard timestamps on the video timeline.</p></div><button id="newVideo" class="primary">＋ Add Video</button></div>
-      <div id="videoGrid" class="video-grid"></div>
-    </section>
-
-    <section id="editor" class="editor card" hidden>
-      <div class="card-head"><div><div class="eyebrow" id="editorEyebrow">NEW VIDEO</div><h2 id="editorTitle">Add HPT Video</h2></div><button id="closeEditor" class="outline">✕ Close</button></div>
-      <div class="editor-layout">
-        <div class="preview-panel">
-          <div class="video-frame"><video id="preview" controls playsinline preload="metadata"></video><div id="previewEmpty">Choose a local video to preview</div></div>
-          <div class="time-row"><b>Current <span id="now">00:00.0</span></b><span>Duration <b id="dur">00:00.0</b></span></div>
-          <div class="annotation-track" id="annotationTrack"><div class="track-fill"></div><button id="marker1" class="haz-marker h1" title="Hazard 1">1</button><button id="marker2" class="haz-marker h2" title="Hazard 2">2</button></div>
-          <div class="track-help">Click anywhere on the timeline to seek. Use the buttons below to lock the developing-hazard timestamp.</div>
-          <div class="mark-actions"><button id="mark1" class="haz-btn">⚠ MARK HAZARD 1</button><button id="mark2" class="haz-btn">⚠ MARK HAZARD 2</button></div>
-          <div class="jump-actions"><button id="jump1">Go to Hazard 1</button><button id="jump2">Go to Hazard 2</button></div>
-        </div>
-        <div class="form-panel">
-          <div class="form-grid">
-            <label>Clip Code<input id="clipCode" placeholder="01"></label>
-            <label>Title<input id="videoTitle" placeholder="Bridge Traffic Hazard"></label>
-            <label class="wide">Static / GitHub Video Path<input id="videoPath" placeholder="videos/11.webm"></label>
-            <label class="wide">Local Video File<input id="videoFile" type="file" accept="video/*"></label>
-          </div>
-          <div class="hazard-card"><div class="hazard-head"><span class="badge h1badge">01</span><div><b>Developing Hazard 1</b><small>Candidate click scoring point</small></div></div><label>Timestamp (seconds)<input id="h1t" type="number" step="0.1" min="0"></label><label>Description<input id="h1label" placeholder="Describe what develops into a hazard"></label></div>
-          <div class="hazard-card"><div class="hazard-head"><span class="badge h2badge">02</span><div><b>Developing Hazard 2</b><small>Candidate click scoring point</small></div></div><label>Timestamp (seconds)<input id="h2t" type="number" step="0.1" min="0"></label><label>Description<input id="h2label" placeholder="Describe what develops into a hazard"></label></div>
-          <label class="active-row"><input id="active" type="checkbox" checked><span><b>Active in candidate examinations</b><small>Only active videos with two marked hazards are eligible for random selection.</small></span></label>
-          <div class="editor-actions"><button id="saveVideo" class="primary">SAVE VIDEO & HAZARDS</button><button id="deleteVideo" class="danger" hidden>DELETE VIDEO</button></div>
-          <div class="publish-box"><b>GitHub/static publishing</b><p>The browser cannot safely store a GitHub credential. After saving metadata, use your normal Git workflow to place the video at the exact path above.</p><button id="downloadPack" class="outline">↓ DOWNLOAD ANNOTATION JSON</button></div>
-          <div id="editorMsg" class="message"></div>
-        </div>
-      </div>
-    </section>
-  </main>
-</div>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Raju HPT Admin</title><link rel="stylesheet" href="admin.css"><script src="hpt-config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body>
+<div class="app">
+<header class="topbar"><div class="brand"><img src="raju-logo-clean.png" onerror="this.src='raju-logo.png'"><div><b>RAJU DRIVING SCHOOL</b><span>HAZARD PERCEPTION TEST • ADMIN</span></div></div><div id="adminIdentity" hidden></div><div class="actions"><a class="btn ghost" href="./">Candidate Test</a><button id="logoutBtn" class="btn ghost" hidden>Log out</button></div></header>
+<section id="login" class="login"><div class="login-card"><img class="login-logo" src="raju-logo-clean.png" onerror="this.src='raju-logo.png'"><div class="eyebrow">SECURE ADMIN ACCESS</div><h1>HPT Control Centre</h1><p>Use the same Raju Driving School admin account used for the Defensive Driving Seminar.</p><label>Email<input id="email" type="email" autocomplete="username" placeholder="Admin email"></label><label>Password<input id="password" type="password" autocomplete="current-password" placeholder="Password"></label><button id="loginBtn" class="btn primary wide">SIGN IN →</button><div id="loginMsg" class="message"></div></div></section>
+<main id="dashboard" hidden>
+<section class="hero"><div><div class="eyebrow">RAJU DRIVING SCHOOL • HPT CONTROL CENTRE</div><h1>Hazard Perception Dashboard</h1><p>Manage examinations, candidates, videos and developing-hazard scoring points.</p></div><button id="refreshAll" class="btn ghost">↻ Refresh</button></section><div id="notice" class="notice" hidden></div>
+<section class="stats"><div class="stat"><span>EXAMINATIONS</span><b id="statAttempts">0</b><small>all completed attempts</small></div><div class="stat"><span>PASSED</span><b id="statPassed">0</b><small>60 / 100 benchmark</small></div><div class="stat"><span>AVERAGE SCORE</span><b id="statAverage">0</b><small>all completed tests</small></div><div class="stat"><span>READY CLIPS</span><b id="statVideos">0</b><small>2 hazards configured</small></div></section>
+<div class="tabs"><button class="tab active" data-tab="results">Candidates & Results</button><button class="tab" data-tab="videos">Video Library</button></div>
+<section id="resultsPanel" class="panel"><div class="panel-head"><div><div class="eyebrow">CANDIDATES</div><h2>All Examination Results</h2><p>Every completed HPT attempt stored in Supabase.</p></div><button id="exportCsv" class="btn ghost">↓ Export CSV</button></div><div class="filters"><input id="searchResults" placeholder="Search name or phone…"><select id="resultFilter"><option value="all">All results</option><option value="pass">Passed</option><option value="fail">Not passed</option></select></div><div class="result-wrap"><table><thead><tr><th>DATE</th><th>CANDIDATE</th><th>PHONE</th><th>SCORE</th><th>STATUS</th><th>ACTIONS</th></tr></thead><tbody id="resultsBody"></tbody></table></div></section>
+<section id="videosPanel" class="panel" hidden><div class="panel-head"><div><div class="eyebrow">VIDEO LIBRARY</div><h2>HPT Clips</h2><p>Upload, preview, publish, and mark the two developing-hazard timestamps.</p></div><button id="newVideo" class="btn primary">＋ Add New Video</button></div><div id="videoGrid" class="video-grid"></div></section>
+<section id="editor" class="panel editor" hidden><div class="panel-head"><div><div class="eyebrow" id="editorEyebrow">NEW VIDEO</div><h2 id="editorTitle">Add HPT Video</h2><p>Pause at the instant the hazard starts developing, then lock the timestamp.</p></div><button id="closeEditor" class="btn ghost">✕ Close</button></div>
+<div class="editor-grid"><div class="preview-side"><div class="video-shell"><video id="preview" controls playsinline preload="metadata"></video><div id="previewEmpty">Choose a video to preview</div></div><div class="clock"><b>Current <span id="now">00:00.0</span></b><span>Duration <b id="dur">00:00.0</b></span></div><div id="annotationTrack" class="track"><div id="trackFill" class="fill"></div><button id="marker1" class="marker m1">1</button><button id="marker2" class="marker m2">2</button></div><div class="track-help">Click the timeline to seek. The marker is tied directly to the video timestamp.</div><div class="mark-row"><button id="mark1" class="haz">⚠ MARK HAZARD 1</button><button id="mark2" class="haz">⚠ MARK HAZARD 2</button></div><div class="mark-row"><button id="jump1" class="btn ghost">Go to Hazard 1</button><button id="jump2" class="btn ghost">Go to Hazard 2</button></div></div>
+<div class="form-side"><div class="two"><label>Clip Code<input id="clipCode" placeholder="11"></label><label>Title<input id="videoTitle" placeholder="Junction Traffic Hazard"></label></div><label>Published Video Path<input id="videoPath" placeholder="videos/11.webm"></label><label>Video File<input id="videoFile" type="file" accept="video/*"></label><div class="upload-note">Selecting a file only previews it. <b>Publish to GitHub</b> actually uploads it to the repository; saving metadata alone does not.</div>
+<div class="hazard"><div class="h-title"><b>01</b><span><strong>Developing Hazard 1</strong><small>Candidate scoring point</small></span></div><label>Timestamp<input id="h1t" type="number" min="0" step="0.1"></label><label>Description<input id="h1label" placeholder="Describe the developing hazard"></label></div>
+<div class="hazard"><div class="h-title"><b>02</b><span><strong>Developing Hazard 2</strong><small>Candidate scoring point</small></span></div><label>Timestamp<input id="h2t" type="number" min="0" step="0.1"></label><label>Description<input id="h2label" placeholder="Describe the developing hazard"></label></div>
+<label class="active"><input id="active" type="checkbox" checked><span><strong>Active in examinations</strong><small>Only active clips with two hazards can be selected.</small></span></label>
+<div class="publish-actions"><button id="publishVideo" class="btn publish">☁ PUBLISH VIDEO TO GITHUB</button><button id="saveVideo" class="btn primary">SAVE METADATA</button></div><div class="editor-actions"><button id="deleteVideo" class="btn danger" hidden>DELETE CLIP</button><button id="downloadPack" class="btn ghost">↓ Download Annotation JSON</button></div><div id="editorMsg" class="message"></div></div></div></section>
+</main></div>
 <div id="detailModal" class="modal" hidden><div class="modal-card"><button id="closeModal" class="modal-close">✕</button><div class="eyebrow">EXAMINATION DETAIL</div><h2 id="detailTitle">Candidate</h2><div id="detailMeta" class="detail-meta"></div><div id="detailBody"></div></div></div>
 <script src="admin.js"></script></body></html>
