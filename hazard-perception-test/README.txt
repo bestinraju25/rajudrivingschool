@@ -1,25 +1,20 @@
-RAJU DRIVING SCHOOL — HAZARD PERCEPTION TEST
-Production architecture
+RAJU HPT — ADMIN V6
 
-Candidate
-- index.html is the Actual Test only.
-- No Practice section.
-- 10 clips are randomly selected from the active HPT library.
-- Candidate enters name and phone for test reference.
-- Responses are timed against the two hazard timestamps for each clip.
-- Supabase stores attempts, responses, scores and small video metadata only.
+WHAT CHANGED
+- Candidate dashboard has no visible Admin button. Admin is a direct URL: admin.html.
+- Admin login uses the SAME Supabase Auth + admin_users(active=true) identity used by the Defensive Driving Seminar.
+- New responsive dashboard with examination statistics, candidate results, search/filter, CSV export and attempt detail.
+- Video library with add/edit/enable/disable/delete.
+- Video annotation editor: play the actual video, click the custom timeline to seek, and press MARK HAZARD 1/2. Markers reflect the exact timestamp immediately.
+- Hazard timestamps and descriptions are stored in Supabase.
+- Video binaries remain on GitHub/static hosting; the admin generates annotation JSON for Git publishing.
+- No seminar files are included or modified by this package.
 
-Video storage
-- Video binaries are NOT stored in Supabase.
-- Static videos belong in the site's GitHub/static `videos/` directory.
-- Admin can preview a local file, mark Hazard 1 and Hazard 2, and save the metadata to Supabase.
-- "PREPARE GITHUB PUBLISH PACKAGE" downloads the selected video plus a JSON annotation file for publishing.
-- For fully automatic GitHub publishing from the live admin page, use a secure server/edge endpoint; never put a GitHub write token in browser JavaScript.
+SUPABASE
+Run supabase-hpt-v6.sql after your existing Raju schema. It reuses public.is_admin() and public.admin_users from the existing admin system and tightens HPT admin policies.
 
-Supabase
-- Run supabase-schema.sql in the Supabase SQL editor.
-- hpt_videos and hpt_hazards contain metadata only.
-- hpt_attempts and hpt_responses contain candidate results.
-- Existing Defensive Driving Seminar tables/RPCs are not referenced by this HPT package.
+ADMIN URL
+admin.html
 
-Current bundled video files: 1.webm through 10.webm. The application supports adding 11.webm through 36.webm and beyond.
+VIDEO PUBLISHING
+The browser intentionally does not contain a GitHub Personal Access Token. Put the video at the exact static path saved in the HPT video metadata.
