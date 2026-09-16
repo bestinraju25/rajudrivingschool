@@ -35,3 +35,21 @@
   .start h1{font-size:24px}.start p{font-size:11px}.stats{margin:6px 0}.stats div{padding:5px 2px}.stats b{font-size:18px}
   .fields input{padding:8px;font-size:12px}.primary,.secondary{padding:9px 12px;font-size:11px}
 }
+/* V13: compact candidate feedback, stricter scoring, and no-scroll result screen */
+.toast{bottom:24px;left:auto;right:24px;transform:none;padding:7px 12px;border-radius:9px;font-size:12px;min-width:48px;text-align:center}
+.hit{display:none!important}
+.result.panel{padding:22px 30px;justify-content:flex-start;overflow:hidden}
+.resultLogo{width:68px;height:48px;margin-bottom:2px}
+.result h2{font-size:30px;margin:4px 0}
+.result .candidateResult{font-size:13px;margin-bottom:2px}
+.result .finalScore{font-size:64px;line-height:1;margin:3px}
+.result .status{font-size:17px;margin:2px 0 5px}
+.scoreGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;width:min(850px,100%);margin:6px auto}
+.scoreRow{display:flex;justify-content:space-between;gap:8px;background:#0d1d2a;border:1px solid #263a49;border-radius:7px;padding:6px 9px;font-size:11px}
+.scoreRow b{color:var(--yellow)}
+.resultSummary{display:flex;justify-content:center;gap:8px;width:min(850px,100%);margin:5px auto}
+.resultSummary>div{background:#0d1d2a;border:1px solid #263a49;border-radius:8px;padding:6px 15px;min-width:115px}
+.resultSummary span{display:block;color:#7f94a1;font-size:8px;font-weight:900;letter-spacing:1px}
+.resultSummary b{display:block;color:var(--yellow);font-size:16px;margin-top:2px}
+.save-status{font-size:10px;color:#8ea1ad;margin:3px 0}.save-status.ok{color:var(--green)}.save-status.error{color:#ff7181}
+@media(max-width:800px){.result.panel{padding:12px 14px}.resultLogo{width:58px;height:40px}.result h2{font-size:24px}.result .finalScore{font-size:48px}.result .status{font-size:13px}.scoreGrid{grid-template-columns:repeat(2,1fr);gap:4px}.scoreRow{padding:5px 7px;font-size:10px}.resultSummary>div{min-width:85px;padding:5px 8px}.resultSummary b{font-size:14px}.toast{right:10px;bottom:10px}}
