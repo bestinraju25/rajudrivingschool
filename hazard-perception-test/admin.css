@@ -18,3 +18,37 @@
   .login{min-height:calc(100dvh - 70px)}.login-card{padding:20px;border-radius:17px}.login-card h1{font-size:25px}.login-card p{font-size:11px}.login-card label{font-size:10px}.login-card input{padding:10px;font-size:12px}.login-logo{width:85px;height:70px}
 }
 @media(max-width:380px){.stat b{font-size:21px}.stat small{font-size:8px}.panel-head h2{font-size:17px}.result-card h3{font-size:14px}.rc-actions .small{font-size:8px}.actions .btn{padding:6px 7px;font-size:8px}}
+
+/* V17 ADMIN MOBILE UI — touch-first cards and readable controls */
+@media(max-width:700px){
+  body{font-size:14px}
+  .app{padding:9px;max-width:100%}
+  .topbar{padding:7px 0 9px;min-height:58px;margin-bottom:11px;align-items:center}
+  .brand{gap:8px;min-width:0}.brand img{width:47px;height:47px;flex:0 0 47px}
+  .brand b{font-size:12px;letter-spacing:.7px}.brand span{font-size:6.5px;letter-spacing:1px}
+  .actions{gap:5px}.actions .btn{padding:8px 9px;font-size:9px;border-radius:9px}
+  .hero{margin:8px 0 11px;padding:2px 1px;gap:9px}.hero h1{font-size:25px;margin:5px 0}.hero p{font-size:11px}
+  .hero>.btn{width:auto;align-self:stretch;min-width:82px}
+  .stats{gap:7px;margin:0 0 10px}.stat{padding:11px 9px;border-radius:13px}.stat span{font-size:8px}.stat b{font-size:25px;margin:3px 0}.stat small{font-size:8px;line-height:1.2}
+  .tabs{gap:6px;margin-bottom:9px}.tab{padding:10px 8px;border-radius:10px;font-size:10px}
+  .panel{padding:12px;border-radius:15px;margin-bottom:10px}.panel-head{gap:9px;margin-bottom:10px}.panel-head h2{font-size:20px}.panel-head p{font-size:10px;line-height:1.4}
+  .panel-head .btn{width:100%;padding:10px;font-size:10px}
+  .filters{gap:7px;margin-bottom:9px}.filters input,.filters select{padding:11px;font-size:13px;border-radius:10px}
+  .mobile-results{gap:8px}.result-card{padding:12px;border-radius:13px;box-shadow:0 8px 22px rgba(0,0,0,.12)}
+  .rc-head small,.rc-grid small{font-size:7px}.rc-head b{font-size:11px}.result-card h3{font-size:16px;margin:8px 0}
+  .rc-grid{gap:6px}.rc-grid>div{padding:8px;border-radius:9px}.rc-grid b{font-size:12px}.rc-actions{gap:6px;margin-top:9px}.rc-actions .small{padding:9px 4px;font-size:9px;border-radius:9px}
+  .video-grid{gap:8px}.video-card{padding:12px;border-radius:13px}.video-card h3{font-size:15px}.vc-actions{gap:6px}.vc-actions .small{padding:9px;font-size:9px}
+  .workflow{margin-bottom:10px}.step{font-size:8px}.step b{width:27px;height:27px}.line{margin:0 4px}
+  .file-picker{padding:10px;border-radius:11px}.file-btn{padding:10px;font-size:10px}
+  .video-shell{min-height:200px;border-radius:12px}.video-shell video{height:34vh;min-height:180px}
+  .clock{font-size:10px}.track{height:28px}.track-help,.small-note{font-size:9px;line-height:1.4}
+  .mark-grid{grid-template-columns:1fr 1fr;gap:6px}.haz{padding:9px;border-radius:10px}.haz span{font-size:9px}.haz small{font-size:8px}
+  .hazard{padding:11px;border-radius:11px}.form-side input{padding:11px;font-size:13px}.auto-card{padding:10px;border-radius:11px}.auto-card b{font-size:12px}
+  .save-all{padding:13px;font-size:12px;border-radius:11px}.delete-clip{padding:11px;font-size:11px}
+  .modal{padding:8px}.modal-card{width:100%;max-height:90vh;padding:17px;border-radius:15px}.modal-close{padding:8px}
+}
+@media(max-width:380px){
+  .brand img{width:43px;height:43px;flex-basis:43px}.brand b{font-size:11px}.brand span{font-size:6px}.actions .btn{padding:7px 7px;font-size:8px}
+  .hero h1{font-size:22px}.stat{padding:9px 7px}.stat b{font-size:22px}.tab{font-size:9px;padding:9px 6px}
+  .panel{padding:10px}.panel-head h2{font-size:18px}.result-card{padding:10px}.result-card h3{font-size:14px}.rc-actions .small{font-size:8px;padding:8px 3px}
+}
