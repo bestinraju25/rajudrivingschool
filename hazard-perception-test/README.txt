@@ -1,34 +1,25 @@
-RAJU HPT — FULL-SCREEN EXAM REDESIGN
-====================================
+RAJU DRIVING SCHOOL — HAZARD PERCEPTION TEST
+Production architecture
 
-This build was remade from the earlier prototype rather than patching the old UI.
+Candidate
+- index.html is the Actual Test only.
+- No Practice section.
+- 10 clips are randomly selected from the active HPT library.
+- Candidate enters name and phone for test reference.
+- Responses are timed against the two hazard timestamps for each clip.
+- Supabase stores attempts, responses, scores and small video metadata only.
 
-KEY CHANGES
-- Full-screen, no normal page scrolling during Practice or Actual Test.
-- Driving-school themed red / charcoal / white visual system.
-- Raju Motor Driving School brand lockup with R mark, Chalakudy and Since 1969.
-- Candidate name + phone collected only for Actual Test and displayed during the exam.
-- 10 local video clips, randomized independently on every new session.
-- Two developing hazards are annotated for every clip, so every clip can score 0–10.
-- 100 total marks; 60 required to pass.
-- Timing score per hazard: 5 / 4 / 3 / 2 / 0 depending on response timing.
-- One hazard can score only once.
-- Maximum 5 responses; a sixth response makes that clip score 0.
-- Actual Test has no replay / previous controls.
-- Practice allows replay / previous and gives a hazard review after each completed clip.
-- Video controls are hidden; interaction happens through the full video click/tap layer.
-- Response flags and NEXT button are overlaid on the video so the learner can operate without scrolling.
+Video storage
+- Video binaries are NOT stored in Supabase.
+- Static videos belong in the site's GitHub/static `videos/` directory.
+- Admin can preview a local file, mark Hazard 1 and Hazard 2, and save the metadata to Supabase.
+- "PREPARE GITHUB PUBLISH PACKAGE" downloads the selected video plus a JSON annotation file for publishing.
+- For fully automatic GitHub publishing from the live admin page, use a secure server/edge endpoint; never put a GitHub write token in browser JavaScript.
 
-HAZARD ANNOTATION NOTE
-The new hazard times are internal training annotations based on visual review of the supplied clips and the user's scenario descriptions. They are not official DVSA annotations.
+Supabase
+- Run supabase-schema.sql in the Supabase SQL editor.
+- hpt_videos and hpt_hazards contain metadata only.
+- hpt_attempts and hpt_responses contain candidate results.
+- Existing Defensive Driving Seminar tables/RPCs are not referenced by this HPT package.
 
-
-V5 UI REFINEMENTS
-=================
-- Full viewport / no normal page scrolling.
-- Responsive desktop/tablet/mobile examination layout.
-- Candidate intro pages have an explicit BACK button.
-- Examination pages have an explicit EXIT button.
-- Controls remain overlaid on the video for easier interaction.
-- Existing logo.svg is used as the current logo asset; replace it with the supplied
-  official logo file when provided, keeping the filename logo.svg for zero code changes.
+Current bundled video files: 1.webm through 10.webm. The application supports adding 11.webm through 36.webm and beyond.

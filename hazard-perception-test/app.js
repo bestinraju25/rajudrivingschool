@@ -1,75 +1,32 @@
-const clips=[
-{video:"assets/videos/clip-01.mp4",title:"Kerala Road — Clip 1",hazards:[{id:"c1-ped",name:"Pedestrian — possible crossing",start:3.0},{id:"c1-bike",name:"Motorcycle crossing ahead",start:4.3}]},
-{video:"assets/videos/clip-02.mp4",title:"Kerala Road — Clip 2",hazards:[{id:"c2-ped",name:"Pedestrian at centre median — possible crossing",start:3.0},{id:"c2-bike",name:"Motorcycle entering from left",start:3.5}]},
-{video:"assets/videos/clip-03.mp4",title:"Kerala Town Road — Clip 3",hazards:[{id:"c3-reverse",name:"Vehicle reversing into main road",start:2.07},{id:"c3-cycle",name:"Cycle entering the main road",start:10.40}]},
-{video:"assets/videos/clip-04.mp4",title:"Urban Kerala Road — Clip 4",hazards:[{id:"c4-ped",name:"Pedestrian beginning to cross",start:4.30},{id:"c4-auto",name:"Auto-rickshaw entering/crossing",start:23.40}]},
-null,null,null,null,null,null
-];
-
+(()=>{
+'use strict';
 const $=id=>document.getElementById(id);
-const screens={login:$("login"),dashboard:$("dashboard"),test:$("test"),result:$("result")};
-const video=$("video"),videoWrap=$("videoWrap");
-let mode="practice",idx=0,running=false,clicks=[],claimed=new Set(),fatal=false,clipScores=Array(10).fill(0),testFinished=false;
-
-function show(s){Object.values(screens).forEach(x=>x.classList.add("hidden"));screens[s].classList.remove("hidden")}
-function fmt(t){return `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}`}
-function available(){return clips.filter(Boolean).length}
-function scoreAt(h,t){const d=t-h.start;if(d<0||d>5)return 0;if(d<=1.5)return 5;if(d<=2.5)return 4;if(d<=3.5)return 3;return 2}
-function matchHazard(t){let best=null;clips[idx].hazards.forEach(h=>{if(claimed.has(h.id))return;const s=scoreAt(h,t);if(s>0&&!best)best={h,score:s}});return best}
-function resetClip(){running=false;clicks=[];claimed.clear();fatal=false;$("clickCount").textContent="0";$("responseSummary").textContent="0 / 5";$("responses").innerHTML='<span class="empty">Your clicks will appear here.</span>';$("flags").innerHTML="";$("clipScore").textContent="0";$("hazards").innerHTML="";$("hazardSummary").textContent="0 / 2";$("result")?.classList.add("hidden")}
-function loadClip(n,autoplay=false){
- idx=n;resetClip();
- if(!clips[idx]){showPlaceholder();return}
- const c=clips[idx];video.src=c.video;video.load();$("clipNo").textContent=String(idx+1).padStart(2,"0");$("progress").style.width=((idx+1)*10)+"%";if($("videoTitle")) $("videoTitle").textContent=c.title;
- document.querySelector("#test .brand span").textContent=mode==="practice"?"PRACTICE TEST":"ACTUAL EXAMINATION";
- $("modePill").textContent=mode==="practice"?"PRACTICE":"ACTUAL TEST";$("modeLabel").textContent=mode==="practice"?"PRACTICE TEST":"ACTUAL EXAMINATION";
- $("start").textContent=`▶ Start Clip ${idx+1}`;
- c.hazards.forEach((h,i)=>{const e=document.createElement("span");e.textContent=`Hazard ${i+1} • ${h.name} • ${fmt(h.start)}`;$("hazards").appendChild(e)});
- if(autoplay)setTimeout(begin,300);
-}
-function showPlaceholder(){
- video.removeAttribute("src");video.load();$("clipNo").textContent=String(idx+1).padStart(2,"0");$("progress").style.width=((idx+1)*10)+"%";
- $("hazards").innerHTML='<span class="empty">Video not loaded yet — awaiting Clip '+(idx+1)+'.</span>';
- $("hazardSummary").textContent="0 / 2";$("start").textContent="Clip unavailable";if($("status")) $("status").textContent="";
-}
-function addResponse(text,good){const e=document.createElement("span");e.className=good?"good":"";e.textContent=text;$("responses").querySelector(".empty")?.remove();$("responses").appendChild(e)}
-function flag(t,good,score){const d=video.duration||1,e=document.createElement("span");e.className="flag "+(good?"good":"");e.style.left=Math.min(99,Math.max(1,t/d*100))+"%";e.textContent=good?"✓"+score:"•";$("flags").appendChild(e)}
-function updateScore(){const s=fatal?0:clicks.reduce((a,c)=>a+(c.score||0),0);$("clipScore").textContent=s;clipScores[idx]=s;$("totalScore").textContent=clipScores.reduce((a,b)=>a+b,0)}
-async function begin(){
- if(!clips[idx])return;
- if(video.ended)video.currentTime=0;
- resetClip();$("countdown").classList.remove("hidden");
- for(let n=3;n;n--){$("countdown").textContent=n;await new Promise(r=>setTimeout(r,450))}
- $("countdown").classList.add("hidden");running=true;$("start").textContent="⏸ Pause";$("toast").textContent="Click the video when you recognise a developing hazard";$("toast").classList.remove("hidden");setTimeout(()=>$("toast").classList.add("hidden"),2200);await video.play()
-}
-videoWrap.addEventListener("click",e=>{
- if(e.target.closest(".video-controls"))return;
- if(!running||video.paused||fatal)return;
- const t=video.currentTime;
- if(clicks.length>=5){fatal=true;running=false;video.pause();clicks.push({time:t,score:0,fatal:true});flag(t,false,0);$("clickCount").textContent="6";$("responseSummary").textContent="6 / 5";addResponse(`${fmt(t)} • 6th response — clip = 0`,false);$("toast").textContent="More than 5 responses — this clip scores 0";$("toast").classList.remove("hidden");setTimeout(()=>$("toast").classList.add("hidden"),3000);updateScore();return}
- const m=matchHazard(t);clicks.push({time:t,score:m?m.score:0,match:m?.h.id||null});flag(t,!!m,m?.score||0);$("clickCount").textContent=clicks.length;$("responseSummary").textContent=`${clicks.length} / 5`;
- if(m){claimed.add(m.h.id);addResponse(`${fmt(t)} • ${m.h.name} • +${m.score}`,true);const hs=[...$("hazards").children];const pos=clips[idx].hazards.findIndex(h=>h.id===m.h.id);if(hs[pos])hs[pos].classList.add("good")}else addResponse(`${fmt(t)} • No score`,false);
- updateScore()
-});
-video.addEventListener("timeupdate",()=>{$("played").style.width=((video.currentTime/(video.duration||1))*100)+"%";$("clock").textContent=`${fmt(video.currentTime)} / ${fmt(video.duration||0)}`});
-video.addEventListener("ended",()=>{
- running=false;$("start").textContent=`↻ Replay Clip ${idx+1}`;updateScore();
- if(mode==="actual"){
-   if(idx<9){
-     if(!clips[idx+1]){finishActual();return}
-     setTimeout(()=>loadClip(idx+1,true),900)
-   }else finishActual()
- }
-});
-$("start").onclick=()=>running?(running=false,video.pause(),$("start").textContent="▶ Resume"):begin();
-$("prev").onclick=()=>{if(mode==="practice"&&idx>0)loadClip(idx-1)};$("next").onclick=()=>{if(mode==="practice"&&idx<9)loadClip(idx+1)};
-$("backDash").onclick=()=>show("dashboard");
-$("full").onclick=async()=>{try{document.fullscreenElement?await document.exitFullscreen():await videoWrap.requestFullscreen()}catch{}};
-$("practiceBtn").onclick=()=>{mode="practice";idx=0;clipScores=Array(10).fill(0);show("test");loadClip(0)};
-$("actualBtn").onclick=()=>{mode="actual";idx=0;clipScores=Array(10).fill(0);testFinished=false;show("test");loadClip(0)};
-function finishActual(){
- testFinished=true;running=false;const total=clipScores.reduce((a,b)=>a+b,0);$("finalScore").textContent=total;$("resultTitle").textContent="Examination complete";$("resultStatus").textContent=total>=60?"PASS":"FAIL";$("resultStatus").style.background=total>=60?"#dcfce7":"#fee2e2";$("resultStatus").style.color=total>=60?"#166534":"#991b1b";$("resultCopy").textContent=`You scored ${total}/100. The pass requirement is 60/100.`;$("clipResults").innerHTML=clipScores.map((s,i)=>`<span>Clip ${String(i+1).padStart(2,"0")}<br><b>${s}/10</b></span>`).join("");show("result")
-}
-$("again").onclick=()=>{mode==="actual"?($("actualBtn").click()):($("practiceBtn").click())};$("resultDash").onclick=()=>show("dashboard");
-show("dashboard");
-
+const C=window.RAJU_HPT_CONFIG;
+let clips=[], order=[], pos=0, responses=[], scores=[], running=false, finishing=false, timer=null;
+let candidate={name:'',phone:''}, sound=true;
+const video=$('video');
+const fmt=s=>{s=Math.max(0,Math.ceil(Number(s)||0));return `00:${String(s).padStart(2,'0')}`};
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const show=(id,on)=>{$(id).hidden=!on};
+const toast=(t,bad=false)=>{const e=$('toast');e.textContent=t;e.className='toast show'+(bad?' bad':'');clearTimeout(e._t);e._t=setTimeout(()=>e.className='toast',1300)};
+function update(){const d=Math.min(C.clipLimitSeconds,video.duration||C.clipLimitSeconds);$('clipNo').textContent=`${pos+1} / ${order.length}`;$('clipNo2').textContent=`${pos+1} / ${order.length}`;$('timer').textContent=fmt(Math.max(0,C.clipLimitSeconds-video.currentTime));$('elapsed').textContent=fmt(video.currentTime);$('duration').textContent=fmt(d);$('respCount').textContent=`${responses.length} / ${C.maxResponsesPerClip}`}
+function timeline(){const t=$('track');t.innerHTML='';const d=Math.max(1,Math.min(C.clipLimitSeconds,video.duration||C.clipLimitSeconds));responses.forEach(r=>{const m=document.createElement('div');m.className='mark';m.style.left=Math.min(100,r.t/d*100)+'%';m.title=r.points?`+${r.points} marks`:'0 marks';m.textContent='⚑';t.appendChild(m)})}
+function hit(x,y,points){const e=document.createElement('div');e.className='hit';e.style.left=x+'px';e.style.top=y+'px';e.innerHTML=`<b>${points?`+${points} MARKS`:'RESPONSE'}</b>`;$('clickLayer').appendChild(e);setTimeout(()=>e.remove(),900)}
+function resetClip(){responses=[];finishing=false;timeline();update()}
+function staticHazards(code){return (C.staticHazards?.[String(code).padStart(2,'0')]||[]).map((h,i)=>({...h,hazard_no:i+1}))}
+async function supabase(){if(window._sb)return window._sb;try{if(!window.supabase?.createClient)return null;window._sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);return window._sb}catch{return null}}
+async function loadClips(){clips=C.staticClips.map(x=>({...x,hazards:staticHazards(x.clip_code)}));const sb=await supabase();if(sb){const {data:vs}=await sb.from('hpt_videos').select('id,clip_code,title,video_path,duration_seconds,active').eq('active',true);if(vs?.length){const {data:hs}=await sb.from('hpt_hazards').select('video_id,hazard_no,timestamp_seconds,label');const by={};(hs||[]).forEach(h=>(by[h.video_id]??=[]).push({t:Number(h.timestamp_seconds),label:h.label||`Hazard ${h.hazard_no}`,hazard_no:h.hazard_no}));const remote=vs.map(v=>({...v,file:v.video_path.startsWith('http')?v.video_path:(v.video_path.startsWith('./')?v.video_path:C.videoBase+v.video_path.replace(/^videos\//,'')),hazards:(by[v.id]||[])})).filter(v=>v.hazards.length>=2); if(remote.length) clips=remote;}}
+// If Supabase has no videos yet, static local clips remain usable.
+return clips.filter(c=>c.active&&c.video_path&&c.hazards?.length>=2)}
+async function saveAttempt(){const sb=await supabase();if(!sb)return null;const total=scores.reduce((a,b)=>a+b,0);const {data,error}=await sb.from('hpt_attempts').insert({candidate_name:candidate.name,phone:candidate.phone,started_at:new Date(Date.now()-C.examClipCount*C.clipLimitSeconds*1000).toISOString(),completed_at:new Date().toISOString(),total_score:total,passed:total>=C.passMark,clip_order:order.map(c=>c.clip_code)}).select('id').single();if(error)return null;return data.id}
+async function saveResponses(id){const sb=await supabase();if(!sb||!id)return;const rows=[];for(let i=0;i<scores.length;i++){const clip=order[i];const rs=clip._responses||[];for(const r of rs)rows.push({attempt_id:id,video_id:clip.id||null,response_no:r.response_no,click_time_seconds:r.t,hazard_no:r.hazard_no||null,awarded_marks:r.points})}if(rows.length)await sb.from('hpt_responses').insert(rows)}
+function loadClip(){resetClip();running=false;clearTimeout(timer);video.pause();video.removeAttribute('src');video.src=order[pos].file;video.muted=!sound;video.load();$('playOverlay').hidden=true;video.onloadedmetadata=()=>{video.currentTime=0;update();timeline();const p=video.play();if(p?.catch)p.catch(()=>{$('playOverlay').hidden=false});running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000)};video.onerror=()=>{running=false;$('playOverlay').hidden=false;$('playNow').textContent='PLAY CLIP';toast('Video could not be loaded',true)}}
+async function finishClip(){if(finishing)return;finishing=true;running=false;clearTimeout(timer);video.pause();scores.push(Math.max(0,Math.min(10,scoreThis())));pos++;if(pos>=order.length){await finishExam();return}setTimeout(()=>{finishing=false;loadClip()},220)}
+function scoreThis(){return responses.reduce((a,r)=>a+r.points,0)}
+async function finishExam(){const total=scores.reduce((a,b)=>a+b,0);const id=await saveAttempt();await saveResponses(id);show('examScreen',false);show('resultScreen',true);$('candidateResult').textContent=`${candidate.name} • ${candidate.phone}`;$('finalScore').textContent=`${total} / 100`;$('passText').textContent=total>=C.passMark?'PASS — EXAMINATION STANDARD MET':'NOT PASSED — BELOW PASS MARK';$('passText').className='status '+(total>=C.passMark?'pass':'fail');$('resultDetails').innerHTML='<table><thead><tr><th>CLIP</th><th>SCORE</th></tr></thead><tbody>'+scores.map((s,i)=>`<tr><td>Clip ${String(i+1).padStart(2,'0')}</td><td>${s} / 10</td></tr>`).join('')+'</tbody></table>'}
+async function begin(){const n=$('name').value.trim(),p=$('phone').value.trim();if(!n||!p){toast('Enter candidate name and phone number',true);return}clips=await loadClips();if(clips.length<C.examClipCount){toast(`Need ${C.examClipCount} active clips with 2 hazards each`,true);return}candidate={name:n,phone:p};$('candName').textContent=n;$('candPhone').textContent=p;order=shuffle(clips).slice(0,C.examClipCount);pos=0;scores=[];show('startScreen',false);show('resultScreen',false);show('examScreen',true);loadClip()}
+$('startBtn').onclick=begin;$('adminBtn').onclick=()=>location.href='admin.html';$('resultClose').onclick=()=>{show('resultScreen',false);show('startScreen',true)};$('newBtn').onclick=()=>{show('resultScreen',false);show('startScreen',true)};$('skipBtn').onclick=finishClip;$('soundBtn').onclick=()=>{sound=!sound;video.muted=!sound;$('soundBtn').textContent=sound?'🔊':'🔇'};$('fullBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()};$('helpBtn').onclick=()=>toast('Tap when a developing hazard becomes apparent. Maximum 5 responses per clip.');$('exitBtn').onclick=()=>{if(confirm('Exit the examination? This attempt will be incomplete.')){clearTimeout(timer);video.pause();running=false;show('examScreen',false);show('startScreen',true)}};$('playNow').onclick=()=>video.play().then(()=>{$('playOverlay').hidden=true;running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000)}).catch(()=>toast('Video could not start',true));
+video.addEventListener('timeupdate',()=>{update();timeline()});video.addEventListener('ended',finishClip);video.addEventListener('click',async e=>{if(!running||finishing)return;if(responses.length>=C.maxResponses){toast('MAX 5 RESPONSES',true);return}const rect=video.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top,t=video.currentTime,hz=order[pos].hazards||[];let best=null;hz.forEach((h,i)=>{const hn=h.hazard_no||i+1;if(responses.some(r=>r.hazard_no===hn))return;const delta=t-Number(h.t);if(delta>=0&&delta<=5){const pts=delta<=1.5?5:delta<=2.5?4:delta<=3.5?3:2;if(!best||pts>best.points)best={hazard_no:hn,points:pts}}});const r={t,response_no:responses.length+1,hazard_no:best?.hazard_no||null,points:best?.points||0};responses.push(r);hit(x,y,r.points);toast(r.points?`+${r.points} MARKS`:'RESPONSE RECORDED');timeline();update();order[pos]._responses=responses});
+$('startScreen').querySelector('input')?.focus();
+show('startScreen',true);show('examScreen',false);show('resultScreen',false);
+})();
