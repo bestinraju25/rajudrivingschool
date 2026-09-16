@@ -3,7 +3,7 @@
 if(!document.getElementById('hptHiddenFix')){const s=document.createElement('style');s.id='hptHiddenFix';s.textContent='[hidden]{display:none!important}';document.head.appendChild(s);}
 const $=id=>document.getElementById(id);
 const C=window.RAJU_HPT_CONFIG;
-let clips=[], order=[], pos=0, responses=[], scores=[], running=false, finishing=false, timer=null;
+let clips=[], order=[], pos=0, responses=[], scores=[], running=false, finishing=false, timer=null, responseLocked=false;
 let candidate={name:'',phone:''}, sound=true;
 const video=$('video');
 const fmt=s=>{s=Math.max(0,Math.ceil(Number(s)||0));return `00:${String(s).padStart(2,'0')}`};
@@ -13,7 +13,7 @@ const toast=(t,bad=false)=>{const e=$('toast');e.textContent=t;e.className='toas
 function responseLimitWarning(){const m=$('responseLimitModal');if(!m)return;show('responseLimitModal',true);clearTimeout(m._t);m._t=setTimeout(()=>show('responseLimitModal',false),2200)}
 function update(){const d=Math.min(C.clipLimitSeconds,video.duration||C.clipLimitSeconds);const shown=Math.min(pos+1,order.length);$('clipNo').textContent=`${shown} / ${order.length}`;$('clipNo2').textContent=`${shown} / ${order.length}`;$('timer').textContent=fmt(Math.max(0,C.clipLimitSeconds-video.currentTime));$('elapsed').textContent=fmt(video.currentTime);$('duration').textContent=fmt(d);$('respCount').textContent=`${responses.length} / ${C.maxResponsesPerClip}`}
 function timeline(){const t=$('track');if(t)t.innerHTML='';}
-function resetClip(){responses=[];finishing=false;timeline();update()}
+function resetClip(){responses=[];responseLocked=false;finishing=false;timeline();update()}
 function staticHazards(code){return (C.staticHazards?.[String(code).padStart(2,'0')]||[]).map((h,i)=>({...h,hazard_no:i+1}))}
 async function supabase(){if(window._sb)return window._sb;try{if(!window.supabase?.createClient)return null;window._sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);return window._sb}catch{return null}}
 async function loadClips(){clips=C.staticClips.map(x=>({...x,hazards:staticHazards(x.clip_code)}));const sb=await supabase();if(sb){const {data:vs}=await sb.from('hpt_videos').select('id,clip_code,title,video_path,duration_seconds,active').eq('active',true);if(vs?.length){const {data:hs}=await sb.from('hpt_hazards').select('video_id,hazard_no,timestamp_seconds,label');const by={};(hs||[]).forEach(h=>(by[h.video_id]??=[]).push({t:Number(h.timestamp_seconds),label:h.label||`Hazard ${h.hazard_no}`,hazard_no:h.hazard_no}));const remote=vs.map(v=>({...v,file:v.video_path.startsWith('http')?v.video_path:(v.video_path.startsWith('./')?v.video_path:C.videoBase+v.video_path.replace(/^videos\//,'')),hazards:(by[v.id]||[])})).filter(v=>v.hazards.length>=2);const merged=[...clips];remote.forEach(v=>{const i=merged.findIndex(x=>String(x.clip_code).padStart(2,'0')===String(v.clip_code).padStart(2,'0'));if(i>=0)merged[i]=v;else merged.push(v)});clips=merged;}}
@@ -51,6 +51,26 @@ doc.save(`Raju-HPT-Certificate-${String(candidate.name||'Candidate').replace(/[^
 async function imageData(url){return await new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=img.naturalWidth||img.width;c.height=img.naturalHeight||img.height;const x=c.getContext('2d');x.drawImage(img,0,0);resolve(c.toDataURL('image/png'))};img.onerror=reject;img.src=url+'?v='+Date.now()})}
 function setupCandidateCertificate(){$('printCertBtn').onclick=printCertificate}
 $('startBtn').onclick=begin;$('resultClose').onclick=()=>{show('resultScreen',false);show('startScreen',true)};$('newBtn').onclick=()=>{show('resultScreen',false);show('startScreen',true)};$('printCertBtn').onclick=printCertificate;$('skipBtn').onclick=finishClip;$('soundBtn').onclick=()=>{sound=!sound;video.muted=!sound;$('soundBtn').textContent=sound?'🔊':'🔇'};$('fullBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()};$('helpBtn').onclick=()=>toast('Tap when a developing hazard becomes apparent. You can make up to 5 responses per clip.');$('exitBtn').onclick=()=>{if(confirm('Exit the examination? This attempt will be incomplete.')){clearTimeout(timer);video.pause();running=false;show('examScreen',false);show('startScreen',true)}};$('playNow').onclick=()=>video.play().then(()=>{$('playOverlay').hidden=true;running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000)}).catch(()=>toast('Video could not start',true));
-video.addEventListener('timeupdate',()=>{update();timeline()});video.addEventListener('ended',finishClip);video.addEventListener('click',e=>{if(!running||finishing)return;if(responses.length>=C.maxResponses){toast('MAX 5 RESPONSES',true);return}const t=video.currentTime,hz=order[pos].hazards||[];let best=null;hz.forEach((h,i)=>{const hn=h.hazard_no||i+1;if(responses.some(r=>r.hazard_no===hn))return;const delta=t-Number(h.t);if(delta>=0&&delta<=5){let pts=delta<=0.75?5:delta<=1.5?4:delta<=2.5?3:delta<=3.5?2:1;if(!best||pts>best.points)best={hazard_no:hn,points:pts}}});const r={t,response_no:responses.length+1,hazard_no:best?.hazard_no||null,points:best?.points||0};responses.push(r);toast(r.points?`Response ${r.response_no} recorded`:'Response recorded');update();order[pos]._responses=responses});
+video.addEventListener('timeupdate',()=>{update();timeline()});video.addEventListener('ended',finishClip);video.addEventListener('click',e=>{
+  if(!running||finishing)return;
+  const max=Math.max(1,Number(C.maxResponsesPerClip)||5);
+  if(responseLocked||responses.length>=max){responseLocked=true;responseLimitWarning();update();return}
+  const t=video.currentTime,hz=order[pos].hazards||[];
+  let best=null;
+  hz.forEach((h,i)=>{
+    const hn=h.hazard_no||i+1;
+    if(responses.some(r=>r.hazard_no===hn))return;
+    const delta=t-Number(h.t);
+    if(delta>=0&&delta<=5){
+      let pts=delta<=0.75?5:delta<=1.5?4:delta<=2.5?3:delta<=3.5?2:1;
+      if(!best||pts>best.points)best={hazard_no:hn,points:pts};
+    }
+  });
+  const r={t,response_no:responses.length+1,hazard_no:best?.hazard_no||null,points:best?.points||0};
+  responses.push(r);
+  if(responses.length>=max)responseLocked=true;
+  update();
+  order[pos]._responses=responses.slice();
+});
 $('startScreen').querySelector('input')?.focus();show('startScreen',true);show('examScreen',false);show('resultScreen',false);
 })();
