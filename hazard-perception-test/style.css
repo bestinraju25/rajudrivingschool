@@ -35,3 +35,89 @@
   .start h1{font-size:24px}.start p{font-size:11px}.stats{margin:6px 0}.stats div{padding:5px 2px}.stats b{font-size:18px}
   .fields input{padding:8px;font-size:12px}.primary,.secondary{padding:9px 12px;font-size:11px}
 }
+/* Result screen: compact, no-scroll certificate-ready layout */
+.result.panel{padding:22px 34px;justify-content:center;overflow:hidden}
+.resultLogo{width:62px;height:46px;margin-bottom:2px}
+.result .eyebrow{font-size:11px;letter-spacing:2.4px}
+.result h2{font-size:30px;margin:4px 0}
+.candidateResult{font-size:14px;margin-bottom:2px}
+.finalScore{font-size:62px;line-height:1;margin:3px 0}
+.status{font-size:17px;margin:2px 0 5px}
+.result table{margin:5px auto 7px;min-width:520px;font-size:13px;table-layout:fixed}
+.result th,.result td{padding:4px 16px;border-bottom:1px solid #263744}
+.result table tbody{display:grid;grid-template-columns:1fr 1fr;column-gap:22px}
+.result table tr{display:grid;grid-template-columns:1fr 80px;border-bottom:1px solid #263744}
+.result table thead{display:grid;grid-template-columns:1fr 80px;column-gap:22px}
+.result table thead tr{display:contents}
+.result table th,.result table td{text-align:left}
+.result table th:nth-child(2),.result table td:nth-child(2){text-align:right}
+.certificateNote{font-size:12px;color:#aab7c2;margin:2px 0 4px}
+.resultActions{justify-content:center;gap:8px;margin-top:7px;flex-wrap:wrap}
+.resultActions .primary,.resultActions .secondary{padding:10px 15px;font-size:11px}
+@media(max-height:720px) and (min-width:801px){
+ .result.panel{padding:10px 28px}
+ .resultLogo{width:50px;height:38px}
+ .result h2{font-size:26px}
+ .finalScore{font-size:52px}
+ .result table{margin:2px auto 4px;font-size:11px}
+ .result th,.result td{padding:2px 12px}
+ .resultActions{margin-top:3px}
+}
+@media(max-width:800px){
+ .result.panel{padding:12px 10px}
+ .resultLogo{width:52px;height:38px}
+ .result h2{font-size:24px}
+ .candidateResult{font-size:11px}
+ .finalScore{font-size:48px}
+ .status{font-size:14px}
+ .result table{min-width:0;width:100%;font-size:10px;margin:3px auto 5px}
+ .result table tbody{column-gap:8px}
+ .result table tr,.result table thead{grid-template-columns:1fr 52px}
+ .result th,.result td{padding:3px 7px}
+ .resultActions .primary,.resultActions .secondary{font-size:10px;padding:9px 10px}
+ .certificateNote{font-size:10px}
+}
+/* V8: compact no-scroll result + certificate action */
+.result.panel{padding:18px 28px;justify-content:center;overflow:hidden}
+.resultLogo{width:58px;height:42px;object-fit:contain;margin:0 0 2px}
+.result .eyebrow{font-size:10px;letter-spacing:2.2px;margin:0}
+.result h2{font-size:28px;line-height:1;margin:3px 0}
+.candidateResult{font-size:13px;color:#c0ccd5;margin:0 0 2px}
+.finalScore{font-size:58px;line-height:.95;margin:2px 0;color:var(--yellow)}
+.status{font-size:16px;line-height:1.1;margin:3px 0 4px}
+.result table{width:min(620px,100%);min-width:0;margin:4px auto 5px;border-collapse:separate;border-spacing:0 2px;font-size:12px}
+.result table thead,.result table tbody{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px}
+.result table thead tr,.result table tbody tr{display:grid;grid-template-columns:1fr 72px;align-items:center;background:#0d1d2a;border:1px solid #223744;border-radius:7px;padding:3px 10px}
+.result table thead tr{background:transparent;border:0;padding:0 10px;margin-bottom:-1px}
+.result table th,.result table td{padding:0;border:0;text-align:left}
+.result table th:nth-child(2),.result table td:nth-child(2){text-align:right}
+.certificateNote{font-size:10px;color:#aab7c2;margin:2px 0 4px}
+.resultActions{display:flex;justify-content:center;align-items:center;gap:7px;margin-top:4px;flex-wrap:wrap}
+.resultActions button{min-height:34px}
+.resultActions .primary,.resultActions .secondary{padding:9px 13px;font-size:10px}
+@media(max-height:720px) and (min-width:801px){
+ .result.panel{padding:8px 20px}
+ .resultLogo{width:44px;height:32px}
+ .result h2{font-size:24px}
+ .finalScore{font-size:48px}
+ .result table{font-size:10px;margin:2px auto 3px}
+ .result table thead,.result table tbody{gap:2px 8px}
+ .result table thead tr,.result table tbody tr{grid-template-columns:1fr 62px;padding:2px 8px}
+ .certificateNote{font-size:9px}
+ .resultActions .primary,.resultActions .secondary{padding:7px 10px}
+}
+@media(max-width:800px){
+ .result.panel{padding:9px 8px}
+ .resultLogo{width:44px;height:32px}
+ .result .eyebrow{font-size:8px}
+ .result h2{font-size:22px}
+ .candidateResult{font-size:10px}
+ .finalScore{font-size:44px}
+ .status{font-size:12px}
+ .result table{font-size:9px;margin:2px auto 3px}
+ .result table thead,.result table tbody{gap:2px 5px}
+ .result table thead tr,.result table tbody tr{grid-template-columns:1fr 48px;padding:2px 5px;border-radius:5px}
+ .certificateNote{font-size:8px}
+ .resultActions{gap:4px;margin-top:2px}
+ .resultActions .primary,.resultActions .secondary{padding:7px 8px;font-size:9px}
+}
