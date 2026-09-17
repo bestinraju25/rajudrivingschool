@@ -13,16 +13,29 @@ function setupHomeMedia(){
   const att=$('homeAttemptsBtn');if(att)att.onclick=openAttempts;
 }
 function startLoadingScreen(){
-  const screen=$('loadingScreen'),fill=$('loaderFill'),percent=$('loaderPercent');
+  const screen=$('loadingScreen'),fill=$('loaderFill'),percent=$('loaderPercent'),status=$('loaderStatusText'),scene=$('loaderScene');
   if(!screen)return;
-  const started=performance.now(),duration=1550;
+  const started=performance.now(),duration=5600;
   const tick=now=>{
     const t=Math.min(1,(now-started)/duration);
-    const value=Math.min(100,Math.round((1-Math.pow(1-t,2))*100));
+    // The loading percentage follows the traffic-signal story: approach → yellow/slow → stop → red → ready.
+    let value;
+    if(t<.45)value=Math.round((t/.45)*42);
+    else if(t<.68)value=42+Math.round(((t-.45)/.23)*28);
+    else if(t<.82)value=70+Math.round(((t-.68)/.14)*30);
+    else value=100;
     if(fill)fill.style.width=value+'%';
+    if(scene)scene.style.setProperty('--drive-progress',Math.min(1,t/0.67).toFixed(4));
     if(percent)percent.textContent=value+'%';
+    if(status){
+      if(t<.42)status.textContent='GREEN SIGNAL • DRIVE';
+      else if(t<.66)status.textContent='YELLOW SIGNAL • SLOW DOWN';
+      else if(t<.75)status.textContent='BRAKING • STOPPING';
+      else if(t<.84)status.textContent='RED SIGNAL • STOPPED';
+      else status.textContent='READY TO DRIVE';
+    }
     if(t<1)requestAnimationFrame(tick);
-    else setTimeout(()=>{screen.classList.add('loaded');setTimeout(()=>screen.remove(),420)},180);
+    else setTimeout(()=>{screen.classList.add('loaded');setTimeout(()=>screen.remove(),520)},300);
   };
   requestAnimationFrame(tick);
 }

@@ -559,24 +559,131 @@ html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
   .keyboardHint{font-size:6px}
 }
 
-/* V30 — candidate form alignment fix: keep fields flush to the card's left content edge. */
-.examCard > .fields{
-  width:100% !important;
-  max-width:none !important;
-  margin-left:0 !important;
-  margin-right:0 !important;
-}
-.examCard > .fields label{
-  width:100%;
-  display:block;
-  text-align:left;
-}
-.examCard > .fields input{
-  display:block;
-  width:100% !important;
-  margin-left:0 !important;
-  margin-right:0 !important;
-}
+
+/* V33 — road-aware traffic loading: car slows on amber, stops safely before the signal, and yellow liquid fills a tube. */
+.loadingScreen{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;overflow:hidden;background:radial-gradient(circle at 50% 30%,#163442 0,#07141c 48%,#02070b 100%);opacity:1;visibility:visible;transition:opacity .52s ease,visibility .52s ease}
+.loadingScreen.loaded{opacity:0;visibility:hidden}
+.loadingScreen:before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(circle at center,black,transparent 82%)}
+.loaderPanel{position:relative;width:min(900px,94vw);padding:26px 18px 22px;text-align:center}
+.loaderBrandBlock{position:relative;z-index:8}.loaderLogo{width:105px;height:81px;object-fit:contain;filter:drop-shadow(0 12px 28px rgba(0,0,0,.5));animation:loaderPulse 1.5s ease-in-out infinite}.loaderBrand{font-size:16px;font-weight:950;letter-spacing:2.2px;margin-top:4px}.loaderTitle{font-size:9px;font-weight:900;letter-spacing:3.2px;color:var(--yellow);margin-top:6px}
+.loaderScene{position:relative;height:235px;margin:22px auto 16px;overflow:hidden;border:1px solid rgba(67,101,117,.46);border-radius:22px;background:linear-gradient(180deg,#102b39 0%,#0a202b 48%,#071218 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 20px 60px rgba(0,0,0,.3);--drive-progress:0}
+.loaderSkyGlow{position:absolute;width:360px;height:130px;left:72%;top:-58px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,196,0,.16),transparent 68%);filter:blur(2px)}
+.loaderHorizon{position:absolute;bottom:74px;width:130%;height:90px;border-radius:50% 50% 0 0}.horizonOne{left:-10%;background:#0b2630;transform:rotate(-3deg)}.horizonTwo{right:-18%;bottom:64px;background:#0d2029;transform:rotate(4deg)}
+.loaderRoad{position:absolute;left:-5%;right:-5%;bottom:-48px;height:135px;background:linear-gradient(180deg,#1a292f,#080f13);transform:perspective(220px) rotateX(12deg);border-top:1px solid rgba(180,195,200,.14);background-image:linear-gradient(180deg,rgba(255,255,255,.015),transparent 28%),repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 2px,transparent 2px 145px);background-position:calc(-500px * var(--drive-progress)) 0,calc(-700px * var(--drive-progress)) 0;background-size:auto,700px 100%}
+.loaderRoad:after{content:"";position:absolute;left:0;right:0;top:24px;border-top:1px solid rgba(255,196,0,.12)}
+.roadLane{position:absolute;top:42px;width:105px;height:5px;border-radius:99px;background:rgba(230,237,239,.45);animation:none;transform:translateX(calc(-430px * var(--drive-progress)));will-change:transform}.laneOne{left:4%}.laneTwo{left:39%}.laneThree{left:74%}
+.loaderSignal{position:absolute;z-index:5;right:7%;bottom:17px;width:54px;height:145px}.loaderSignalHead{position:absolute;top:0;left:0;width:37px;padding:8px 8px;border-radius:12px;background:#071117;border:1px solid #38505c;box-shadow:0 10px 25px rgba(0,0,0,.5)}
+.loaderSignalHead i{display:block;width:20px;height:20px;margin:0 auto 6px;border-radius:50%;background:#14242b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}.loaderSignalHead i:last-child{margin-bottom:0}.signalGreen{background:#39e78a!important;box-shadow:0 0 20px rgba(57,231,138,.72),inset 0 0 8px rgba(255,255,255,.25)!important;animation:signalGreen 5.6s linear forwards}.signalAmber{animation:signalAmber 5.6s linear forwards}.signalRed{animation:signalRed 5.6s linear forwards}
+.loaderSignalPole{position:absolute;left:17px;top:79px;width:4px;height:57px;background:#53666e}.loaderSignalBase{position:absolute;left:0;bottom:0;width:36px;height:6px;border-radius:99px;background:#53666e}
+.loaderStopLine{position:absolute;z-index:3;right:15%;bottom:25px;width:4px;height:43px;background:rgba(240,245,246,.75);box-shadow:0 0 9px rgba(255,255,255,.12)}
+.loaderCar{position:absolute;z-index:4;left:-390px;bottom:18px;width:360px;height:auto;display:block;filter:drop-shadow(0 18px 13px rgba(0,0,0,.5));animation:loaderCarDrive 5.6s linear forwards;will-change:left}
+.loaderStatus{position:absolute;z-index:9;left:50%;top:14px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid rgba(65,93,106,.55);border-radius:99px;background:rgba(3,11,16,.62);backdrop-filter:blur(8px);white-space:nowrap;color:#b4c3ca;font-size:7px;font-weight:900;letter-spacing:1.5px;box-shadow:0 8px 22px rgba(0,0,0,.2)}.loaderStatus b{color:var(--yellow)}
+/* Yellow liquid tube: the fill rises continuously with the loading percentage. */
+.loaderTrack{position:relative;z-index:4;height:15px;margin-top:0;border-radius:99px;background:rgba(10,25,32,.9);border:1px solid rgba(103,127,139,.48);box-shadow:inset 0 3px 7px rgba(0,0,0,.45),0 2px 0 rgba(255,255,255,.025);overflow:hidden}
+.loaderTrack:before{content:"";position:absolute;inset:2px;border-radius:99px;border:1px solid rgba(255,255,255,.08);pointer-events:none;z-index:2}.loaderTrack:after{content:"";position:absolute;left:0;right:0;top:2px;height:3px;border-radius:99px;background:rgba(255,255,255,.12);pointer-events:none;z-index:3}
+.loaderTrack div{position:relative;height:100%;width:0;background:linear-gradient(180deg,#ffe36a 0%,#ffc400 42%,#e4a800 100%);box-shadow:0 0 16px rgba(255,196,0,.42);transition:width .08s linear;overflow:hidden}
+.loaderTrack div:before{content:"";position:absolute;inset:-7px 0 0;background:repeating-linear-gradient(110deg,rgba(255,255,255,.18) 0 14px,transparent 14px 30px);animation:waterFlow .9s linear infinite;opacity:.75}.loaderTrack div:after{content:"";position:absolute;right:-5px;top:-2px;width:12px;height:18px;border-radius:50%;background:#ffe36a;box-shadow:0 0 10px rgba(255,196,0,.7)}
+.loaderMeta{display:flex;justify-content:space-between;margin-top:9px;color:#667b87;font-size:7px;font-weight:900;letter-spacing:1.5px}.loaderMeta strong{color:#dce4e8;font-size:9px;letter-spacing:.5px}
+@keyframes loaderPulse{50%{transform:translateY(-3px) scale(1.025);filter:drop-shadow(0 16px 35px rgba(255,196,0,.12))}}@keyframes waterFlow{from{transform:translateX(0)}to{transform:translateX(44px)}}
+/* Car accelerates, then progressively brakes on amber and stops with a safe gap before the signal. */
+@keyframes loaderCarDrive{0%{left:-390px}28%{left:8%}42%{left:28%}52%{left:36%}60%{left:40%}67%{left:42%}71%,100%{left:43%}}
+@keyframes signalGreen{0%,42%{background:#39e78a;box-shadow:0 0 20px rgba(57,231,138,.72),inset 0 0 8px rgba(255,255,255,.25)}43%,54%{background:#14242b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}55%,100%{background:#14242b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}}
+@keyframes signalAmber{0%,42%{background:#14242b}43%,68%{background:#ffc400;box-shadow:0 0 18px rgba(255,196,0,.7),inset 0 0 8px rgba(255,255,255,.25)}69%,100%{background:#14242b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}}
+@keyframes signalRed{0%,68%{background:#14242b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}69%,100%{background:#ff453a;box-shadow:0 0 20px rgba(255,69,58,.78),inset 0 0 8px rgba(255,255,255,.25)}}
+@media(max-width:600px){.loaderPanel{padding:18px 8px}.loaderLogo{width:84px;height:65px}.loaderBrand{font-size:12px;letter-spacing:1.6px}.loaderTitle{font-size:7px;letter-spacing:2.2px}.loaderScene{height:160px;margin-top:16px;border-radius:17px}.loaderStatus{font-size:6px;letter-spacing:1px;top:10px}.loaderSignal{right:4%;bottom:10px;transform:scale(.72);transform-origin:bottom right}.loaderStopLine{right:12%;bottom:17px;height:31px}.loaderCar{width:260px;bottom:9px;left:-280px;animation-name:loaderCarDriveMobile}.loaderTrack{margin-top:0;height:13px}.loaderMeta{font-size:6px}.loaderMeta strong{font-size:8px}}
+@keyframes loaderCarDriveMobile{0%{left:-280px}28%{left:4%}42%{left:7%}52%{left:10%}60%{left:11%}67%{left:12%}71%,100%{left:12%}}
+
+
+/* V34 — clean loading scene + aligned candidate form + training imagery on home. */
+.homeGallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px;max-width:650px}
+.homeGalleryCard{position:relative;min-width:0;margin:0;border:1px solid rgba(74,100,114,.55);border-radius:16px;overflow:hidden;background:#eef2f3;box-shadow:0 14px 35px rgba(0,0,0,.22);isolation:isolate}
+.homeGalleryCard img{display:block;width:100%;height:126px;object-fit:cover;object-position:center;transition:transform .35s ease}
+.homeGalleryCard figcaption{position:absolute;left:0;right:0;bottom:0;padding:28px 12px 10px;text-align:left;background:linear-gradient(180deg,transparent,rgba(2,8,12,.9));color:#fff}
+.homeGalleryCard figcaption b{display:block;color:var(--yellow);font-size:8px;letter-spacing:1.5px;font-weight:900}
+.homeGalleryCard figcaption span{display:block;margin-top:3px;color:#d0d9de;font-size:9px;line-height:1.25}
+.homeGalleryCard:hover img{transform:scale(1.035)}
+
+.examCard{overflow:visible}
+.examCard .fields{width:100%;display:grid;grid-template-columns:1fr;gap:13px;align-items:start}
+.examCard .fields label{display:block;width:100%;min-width:0;margin:0}
+.examCard .fields input{display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+.access-code-msg{width:100%;margin-top:7px;box-sizing:border-box}
+
+/* The loading labels/stop marker are intentionally removed; the scene now communicates the action visually. */
+.loaderStatus,.loaderStopLine{display:none!important}
+/* Give the car a larger safety margin from the signal post. */
+@keyframes loaderCarDrive{0%{left:-390px}10%{left:-330px}20%{left:-260px}30%{left:-180px}40%{left:-95px}50%{left:-10px}58%{left:8%}64%{left:21%}67%{left:34%}67.01%,100%{left:34%}}
+@keyframes loaderCarDriveMobile{0%{left:-280px}10%{left:-235px}20%{left:-185px}30%{left:-130px}40%{left:-75px}50%{left:-20px}58%{left:-4%}64%{left:5%}67%{left:10%}67.01%,100%{left:10%}}
+
 @media(max-width:900px){
-  .examCard > .fields{width:100% !important;margin-left:0 !important;margin-right:0 !important}
+  .homeGallery{max-width:540px;margin:14px auto 0;gap:8px}
+  .homeGalleryCard img{height:92px}
+  .homeGalleryCard figcaption{padding:22px 8px 7px}
+  .homeGalleryCard figcaption b{font-size:6px;letter-spacing:1px}
+  .homeGalleryCard figcaption span{font-size:7px}
+  .examCard{width:100%;max-width:540px}
+}
+@media(max-width:520px){
+  .homeGallery{margin-top:9px;gap:6px}
+  .homeGalleryCard{border-radius:11px}
+  .homeGalleryCard img{height:70px}
+  .homeGalleryCard figcaption{padding:18px 6px 5px}
+  .homeGalleryCard figcaption b{font-size:5px;letter-spacing:.8px}
+  .homeGalleryCard figcaption span{display:none}
+  .examCard .fields{gap:8px}
+  .examCard .fields input{height:42px;width:100%}
+}
+@media(max-height:760px) and (min-width:901px){
+  .homeGallery{margin-top:11px}
+  .homeGalleryCard img{height:94px}
+  .homeIntroTitle{margin-bottom:16px}
+}
+
+/* V36 — preserve the original dark V34 design; only apply the V35 no-scroll behavior. */
+html,body,#app{width:100%;height:100%;max-width:100%;max-height:100%;overflow:hidden!important;overscroll-behavior:none}
+.app{height:100dvh;min-height:0;overflow:hidden!important}
+.stage{height:calc(100dvh - 72px);min-height:0;overflow:hidden!important}
+.start.panel{height:100%;min-height:0;overflow:hidden!important}
+.homeShell{height:100%;min-height:0;overflow:hidden;align-content:center}
+@media(max-width:900px){.start.panel{overflow:hidden!important}.homeShell{height:100%;min-height:0;overflow:hidden}.stage{overflow:hidden!important}}
+@media(max-width:520px){.homeShell{height:100%;min-height:0;overflow:hidden}.stage{overflow:hidden!important}.start.panel{overflow:hidden!important}}
+
+
+/* V37 refinement — smooth approach, progressive braking, clean road, stronger amber. */
+.loaderScene{border:0;box-shadow:none}
+.loaderRoad{border-top:0;background-image:linear-gradient(180deg,rgba(255,255,255,.015),transparent 28%);background-position:0 0;background-size:auto}
+.loaderRoad:after,.roadLane{display:none!important}
+.loaderCar{animation-timing-function:linear;}
+/* Position changes are closely spaced near the stop point so the car eases into a gentle stop instead of snapping to rest. */
+@keyframes loaderCarDrive{
+  0%{left:-390px;animation-timing-function:cubic-bezier(.22,.72,.32,1)}
+  18%{left:-275px;animation-timing-function:cubic-bezier(.25,.7,.35,1)}
+  36%{left:-145px;animation-timing-function:cubic-bezier(.28,.66,.4,1)}
+  50%{left:-25px;animation-timing-function:cubic-bezier(.3,.62,.46,1)}
+  60%{left:10%;animation-timing-function:cubic-bezier(.32,.55,.5,1)}
+  68%{left:20%;animation-timing-function:cubic-bezier(.35,.5,.55,1)}
+  74%{left:26%;animation-timing-function:cubic-bezier(.4,.45,.6,1)}
+  80%{left:30%;animation-timing-function:cubic-bezier(.45,.4,.65,1)}
+  88%{left:33%;animation-timing-function:cubic-bezier(.5,.32,.72,1)}
+  96%{left:34%;animation-timing-function:cubic-bezier(.55,.25,.78,1)}
+  100%{left:34%}
+}
+@keyframes loaderCarDriveMobile{
+  0%{left:-280px;animation-timing-function:cubic-bezier(.22,.72,.32,1)}
+  18%{left:-195px;animation-timing-function:cubic-bezier(.25,.7,.35,1)}
+  36%{left:-105px;animation-timing-function:cubic-bezier(.28,.66,.4,1)}
+  50%{left:-22px;animation-timing-function:cubic-bezier(.3,.62,.46,1)}
+  60%{left:2%;animation-timing-function:cubic-bezier(.32,.55,.5,1)}
+  68%{left:5%;animation-timing-function:cubic-bezier(.35,.5,.55,1)}
+  74%{left:7%;animation-timing-function:cubic-bezier(.4,.45,.6,1)}
+  80%{left:8.5%;animation-timing-function:cubic-bezier(.45,.4,.65,1)}
+  88%{left:9.5%;animation-timing-function:cubic-bezier(.5,.32,.72,1)}
+  96%{left:10%;animation-timing-function:cubic-bezier(.55,.25,.78,1)}
+  100%{left:10%}
+}
+.loaderSignalHead .signalAmber{background:#ffc400!important;box-shadow:0 0 26px rgba(255,196,0,.95),0 0 52px rgba(255,196,0,.35),inset 0 0 10px rgba(255,255,255,.45)!important}
+@keyframes signalAmber{
+  0%,41%{background:#14242b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+  42%,70%{background:#ffc400;box-shadow:0 0 26px rgba(255,196,0,.95),0 0 52px rgba(255,196,0,.35),inset 0 0 10px rgba(255,255,255,.45)}
+  71%,100%{background:#14242b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
 }
