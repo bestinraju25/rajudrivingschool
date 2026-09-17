@@ -66,7 +66,7 @@ async function finishClip(){if(finishing)return;finishing=true;running=false;cle
 function scoreThis(){return responses.reduce((a,r)=>a+r.points,0)}
 async function finishExam(){
   const total=scores.reduce((a,b)=>a+b,0),completedAt=new Date().toISOString();
-  const reportClips=order.map((c,i)=>({clip_code:c.clip_code,title:c.title,file:c.file||c.video_path,hazards:(c.hazards||[]).map(h=>({hazard_no:h.hazard_no,t:Number(h.t),label:h.label||`Hazard ${h.hazard_no}`})),responses:(c._responses||[]).map(r=>({response_no:r.response_no,t:Number(r.t),hazard_no:r.hazard_no||null,points:Number(r.points||0)})),score:Number(scores[i]||0)}));
+  const reportClips=order.map((c,i)=>({clip_code:c.clip_code,title:c.title,file:c.file||c.video_path,hazards:(c.hazards||[]).map(h=>({hazard_no:h.hazard_no,t:Number(h.t),label:h.label||`Hazard ${h.hazard_no}`})),responses:(c._responses||[]).map(r=>({response_no:r.response_no,t:Number(r.t),hazard_no:r.hazard_no||null,points:Number(r.points||0),frameData:r.frameData||null})),score:Number(scores[i]||0)}));
   const saved=await saveAttempt();
   show('examScreen',false);show('resultScreen',true);$('candidateResult').textContent=`${candidate.name} • ${candidate.phone}`;$('finalScore').textContent=`${total} / 100`;$('passText').textContent=total>=C.passMark?'PASS — EXAMINATION STANDARD MET':'NOT PASSED — BELOW PASS MARK';$('passText').className='status '+(total>=C.passMark?'pass':'fail');$('resultSaveStatus').textContent=saved.ok?'Result recorded successfully.':'Result could not be recorded automatically. Please inform the school admin.';$('resultSaveStatus').className='save-status '+(saved.ok?'ok':'error');$('printCertBtn').hidden=total<C.passMark;const rows=scores.map((s,i)=>`<div class="scoreRow"><span>Clip ${String(i+1).padStart(2,'0')}</span><b>${s} / 10</b></div>`).join('');$('resultDetails').innerHTML=`<div class="scoreGrid">${rows}</div><div class="resultSummary"><div><span>PASS MARK</span><b>${C.passMark}</b></div><div><span>YOUR SCORE</span><b>${total}</b></div><div><span>STATUS</span><b>${total>=C.passMark?'PASS':'NOT PASSED'}</b></div></div>`;
   window._lastExam={total,total_score:total,passed:total>=C.passMark,saved, candidate_name:candidate.name,phone:candidate.phone,completed_at:completedAt,started_at:new Date(Date.now()-C.examClipCount*C.clipLimitSeconds*1000).toISOString(),clips:reportClips};
@@ -132,6 +132,15 @@ function closeAttempts(){show('attemptsModal',false)}
 function setupCandidateCertificate(){$('printCertBtn').onclick=printCertificate}
 $('startBtn').onclick=begin;$('resultClose').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('newBtn').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('printCertBtn').onclick=()=>printCertificate();$('downloadReportBtn').onclick=async()=>{const b=$('downloadReportBtn');if(!window._lastExam||!window.RajuHPTReport){toast('Report generator is not available. Please refresh the page.',true);return}b.disabled=true;b.textContent='GENERATING…';try{await window.RajuHPTReport.generate(window._lastExam);toast('Complete HPT report downloaded.')}catch(e){console.error(e);toast('Could not generate the HPT report.',true)}finally{b.disabled=false;b.textContent='DOWNLOAD REPORT'}};const viewAttemptsBtn=$('viewAttemptsBtn');if(viewAttemptsBtn)viewAttemptsBtn.onclick=openAttempts;$('attemptSearchBtn').onclick=lookupAttempts;$('attemptCloseBtn').onclick=closeAttempts;$('attemptPhone').onkeydown=e=>{if(e.key==='Enter')lookupAttempts()};$('attemptsModal').onclick=e=>{if(e.target===$('attemptsModal'))closeAttempts()};$('skipBtn').onclick=finishClip;$('soundBtn').onclick=()=>{sound=!sound;video.muted=!sound;$('soundBtn').textContent=sound?'🔊':'🔇'};$('fullBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()};$('helpBtn').onclick=()=>toast('Tap when a developing hazard becomes apparent. You can make up to 5 responses per clip.');$('exitBtn').onclick=()=>{if(confirm('Exit the examination? This attempt will be incomplete.')){clearTimeout(timer);video.pause();running=false;show('examScreen',false);show('startScreen',true);}};$('playNow').onclick=()=>video.play().then(()=>{$('playOverlay').hidden=true;running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000)}).catch(()=>toast('Video could not start',true));
 video.addEventListener('timeupdate',()=>{update();timeline()});video.addEventListener('ended',finishClip);
+function captureResponseFrame(){
+  try{
+    if(!video.videoWidth||!video.videoHeight)return null;
+    const c=document.createElement('canvas'),maxW=640,maxH=360,r=Math.min(maxW/video.videoWidth,maxH/video.videoHeight,1);
+    c.width=Math.max(1,Math.round(video.videoWidth*r));c.height=Math.max(1,Math.round(video.videoHeight*r));
+    c.getContext('2d').drawImage(video,0,0,c.width,c.height);
+    return c.toDataURL('image/jpeg',.72);
+  }catch(e){return null}
+}
 function responseBeep(){try{if(!sound)return;audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const now=audioCtx.currentTime;const o1=audioCtx.createOscillator(),o2=audioCtx.createOscillator(),g=audioCtx.createGain();o1.type='triangle';o2.type='sine';o1.frequency.setValueAtTime(720,now);o1.frequency.exponentialRampToValueAtTime(1080,now+0.07);o2.frequency.setValueAtTime(1080,now+0.025);o2.frequency.exponentialRampToValueAtTime(1420,now+0.09);g.gain.setValueAtTime(0.0001,now);g.gain.exponentialRampToValueAtTime(0.34,now+0.012);g.gain.exponentialRampToValueAtTime(0.18,now+0.075);g.gain.exponentialRampToValueAtTime(0.0001,now+0.22);o1.connect(g);o2.connect(g);g.connect(audioCtx.destination);o1.start(now);o2.start(now+0.018);o1.stop(now+0.225);o2.stop(now+0.225)}catch{}}
 video.addEventListener('click',e=>{
   if(!running||finishing)return;
@@ -151,7 +160,7 @@ video.addEventListener('click',e=>{
       if(!best||rounded>best.points)best={hazard_no:hn,points:rounded};
     }
   });
-  const r={t,response_no:responses.length+1,hazard_no:best?.hazard_no||null,points:best?.points||0};
+  const r={t,response_no:responses.length+1,hazard_no:best?.hazard_no||null,points:best?.points||0,frameData:captureResponseFrame()};
   responses.push(r);
   responseBeep();
   if(responses.length>=max)responseLocked=true;
