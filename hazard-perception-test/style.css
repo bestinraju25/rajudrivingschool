@@ -687,3 +687,443 @@ html,body,#app{width:100%;height:100%;max-width:100%;max-height:100%;overflow:hi
   42%,70%{background:#ffc400;box-shadow:0 0 26px rgba(255,196,0,.95),0 0 52px rgba(255,196,0,.35),inset 0 0 10px rgba(255,255,255,.45)}
   71%,100%{background:#14242b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
 }
+
+/* V38 — true mobile responsive home screen.
+   Keeps the desktop composition intact while making the start screen fit narrow phones
+   without horizontal overflow or clipped form controls. */
+*,*::before,*::after{box-sizing:border-box}
+
+.start.panel,.homeShell,.homeCopy,.examCard,.examCard .fields,.examCard .fields label{min-width:0}
+.examCard{box-sizing:border-box}
+.examCard .fields input,.startExamBtn{box-sizing:border-box;max-width:100%}
+
+@media (max-width: 600px){
+  html,body,#app,.app{width:100%;max-width:100%;overflow-x:hidden!important}
+  .stage{width:100%;max-width:100%;overflow-x:hidden!important}
+
+  .topbar{height:54px;padding:5px 8px;gap:7px;min-width:0}
+  .topbar .brand{min-width:0;flex:1;overflow:hidden}
+  .topbar .logo{width:42px;height:38px;flex:0 0 42px}
+  .topbar .school{font-size:11px;letter-spacing:.65px;white-space:nowrap}
+  .topbar .testname{font-size:6px;letter-spacing:1.15px;white-space:nowrap}
+  .homeTools{gap:4px;flex:0 0 auto}
+  .homeTool{width:31px!important;height:31px!important;min-width:31px;padding:0!important;border-radius:9px;font-size:15px!important}
+  .homeTool:first-child span:not(.toolIcon){display:none}
+
+  .start.panel{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    max-width:none;
+    padding:13px 10px calc(10px + var(--safe-bottom));
+    display:block;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .start.panel:after{display:none!important}
+
+  .homeShell{
+    width:100%;
+    max-width:none;
+    height:auto;
+    min-height:100%;
+    margin:0;
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    justify-content:flex-start;
+    gap:10px;
+    overflow:visible;
+  }
+
+  .homeCopy{
+    width:100%;
+    padding:0;
+    text-align:center;
+  }
+  .homeKicker{
+    justify-content:center;
+    gap:6px;
+    margin:0 0 7px;
+    font-size:6.5px;
+    letter-spacing:1.8px;
+    white-space:nowrap;
+  }
+  .homeKicker span{width:5px;height:5px;flex:0 0 5px}
+  .homeIntroTitle{width:100%;max-width:none;margin:0 0 8px}
+  .homeIntroTitle h1{
+    font-size:27px;
+    line-height:.98;
+    letter-spacing:-1.15px;
+    margin:0 0 6px;
+  }
+  .homeLead{
+    width:100%;
+    max-width:290px;
+    margin:0 auto;
+    font-size:9.5px;
+    line-height:1.35;
+  }
+
+  .homeStats{
+    width:100%;
+    max-width:none;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:4px;
+    margin:0 0 7px;
+  }
+  .homeStats div{
+    min-width:0;
+    padding:7px 2px;
+    border-radius:9px;
+  }
+  .homeStats b{font-size:16px}
+  .homeStats span{font-size:4.8px;letter-spacing:.75px;margin-top:4px;white-space:nowrap}
+
+  .homeTip{
+    width:100%;
+    max-width:none;
+    padding:8px 9px;
+    gap:8px;
+    border-radius:10px;
+    text-align:left;
+  }
+  .homeTip>span{width:19px;height:19px;flex-basis:19px;font-size:10px}
+  .homeTip strong{font-size:7.5px}
+  .homeTip small{font-size:6.7px;line-height:1.35}
+
+  .examCard{
+    width:100%!important;
+    max-width:none!important;
+    margin:0;
+    padding:13px 11px 10px;
+    border-radius:15px;
+    overflow:visible;
+    justify-self:stretch;
+  }
+  .cardAccent{left:18px;right:18px}
+  .cardTop{
+    width:100%;
+    min-width:0;
+    margin-bottom:9px;
+    gap:8px;
+  }
+  .cardTop>div:first-child{min-width:0}
+  .cardEyebrow{font-size:6.5px;letter-spacing:1.55px;white-space:nowrap}
+  .examCard h2{font-size:18px;line-height:1.05;margin:4px 0 0;white-space:nowrap}
+  .cardSecure{flex:0 0 auto;font-size:5.5px;letter-spacing:.65px;padding:5px 6px;border-radius:8px;white-space:nowrap}
+
+  .examCard .fields{
+    width:100%!important;
+    max-width:none!important;
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    gap:7px;
+  }
+  .examCard .fields label{
+    width:100%!important;
+    max-width:100%;
+    display:block;
+    font-size:6.8px;
+    line-height:1.15;
+  }
+  .examCard .fields input{
+    display:block;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    height:40px;
+    margin-top:4px;
+    padding:0 11px;
+    border-radius:10px;
+    font-size:11.5px;
+    line-height:40px;
+  }
+  .access-code-msg{width:100%;font-size:8px;margin-top:5px}
+  .startExamBtn{
+    width:100%!important;
+    max-width:100%!important;
+    height:43px;
+    margin-top:9px;
+    border-radius:11px;
+    font-size:9.5px;
+    letter-spacing:1.1px;
+  }
+  .startExamBtn b{font-size:18px}
+  .cardBottom{width:100%;margin-top:6px;justify-content:center!important}
+  .keyboardHint{font-size:5.7px;text-align:center}
+
+  .installAppCard{width:100%!important;max-width:none!important}
+}
+
+@media (max-width: 360px){
+  .topbar{height:52px;padding-left:7px;padding-right:7px}
+  .topbar .logo{width:39px;height:36px;flex-basis:39px}
+  .topbar .school{font-size:10px}
+  .topbar .testname{font-size:5.5px}
+  .homeTool{width:29px!important;min-width:29px;height:29px!important}
+  .start.panel{padding-left:8px;padding-right:8px}
+  .homeShell{gap:8px}
+  .homeIntroTitle h1{font-size:25px}
+  .homeLead{font-size:9px;max-width:280px}
+  .homeStats{gap:3px}
+  .homeStats div{padding:6px 1px}
+  .homeStats b{font-size:15px}
+  .homeStats span{font-size:4.4px}
+  .homeTip{padding:7px 8px}
+  .homeTip small{font-size:6.3px}
+  .examCard{padding:12px 10px 9px;border-radius:14px}
+  .examCard h2{font-size:17px}
+  .examCard .fields{gap:6px}
+  .examCard .fields input{height:38px;line-height:38px;font-size:11px}
+  .startExamBtn{height:41px;margin-top:8px}
+}
+
+/* V40 — mobile home redesign: compact, touch-friendly field tiles.
+   Desktop/tablet layouts are intentionally untouched. */
+@media (max-width:600px){
+  html,body,#app,.app,.stage{width:100%;max-width:100%;overflow-x:hidden!important}
+
+  .topbar{
+    height:58px!important;
+    padding:6px 9px!important;
+    gap:6px!important;
+  }
+  .topbar .brand{flex:1 1 auto;min-width:0;gap:8px}
+  .topbar .logo{width:43px!important;height:40px!important;flex:0 0 43px}
+  .topbar .school{font-size:11px!important;letter-spacing:.55px!important;line-height:1.05}
+  .topbar .testname{font-size:6px!important;letter-spacing:1.1px!important;margin-top:3px}
+  .homeTools{gap:5px!important;flex:0 0 auto}
+  .homeTool{width:32px!important;min-width:32px!important;height:32px!important;padding:0!important;border-radius:9px!important;font-size:15px!important}
+
+  .stage{height:calc(100dvh - 58px)!important;overflow:hidden!important}
+  .start.panel{
+    position:absolute!important;
+    inset:0!important;
+    width:100%!important;
+    height:100%!important;
+    padding:13px 11px 12px!important;
+    display:block!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .start.panel:after{display:none!important}
+
+  .homeShell{
+    width:100%!important;
+    max-width:100%!important;
+    min-height:100%!important;
+    height:auto!important;
+    margin:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    justify-content:flex-start!important;
+    gap:8px!important;
+    overflow:visible!important;
+  }
+
+  .homeCopy{width:100%!important;min-width:0!important;padding:0!important;text-align:center!important}
+  .homeKicker{
+    justify-content:center!important;
+    margin:0 0 7px!important;
+    gap:6px!important;
+    font-size:6px!important;
+    letter-spacing:1.7px!important;
+    line-height:1!important;
+  }
+  .homeKicker span{width:5px!important;height:5px!important;flex:0 0 5px!important}
+
+  /* The large marketing headline is intentionally hidden on phones; the exam UI is the priority. */
+  .homeIntroTitle{display:none!important}
+
+  .homeStats{
+    width:100%!important;
+    max-width:none!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:4px!important;
+    margin:0 0 7px!important;
+  }
+  .homeStats div{
+    min-width:0!important;
+    padding:7px 2px!important;
+    border-radius:9px!important;
+  }
+  .homeStats b{font-size:16px!important;line-height:1!important}
+  .homeStats span{font-size:4.7px!important;letter-spacing:.7px!important;margin-top:4px!important;white-space:nowrap}
+
+  .homeTip{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:8px 9px!important;
+    gap:8px!important;
+    border-radius:10px!important;
+    min-height:39px;
+  }
+  .homeTip>span{width:18px!important;height:18px!important;flex-basis:18px!important;font-size:9px!important}
+  .homeTip strong{font-size:7px!important;line-height:1.1!important}
+  .homeTip small{font-size:6px!important;line-height:1.3!important;margin-top:2px!important}
+
+  /* The candidate card becomes a clean single-column mobile sheet. */
+  .examCard{
+    position:relative!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:12px 10px 9px!important;
+    border-radius:15px!important;
+    overflow:visible!important;
+    background:linear-gradient(155deg,rgba(11,27,39,.98),rgba(4,13,21,.99))!important;
+  }
+  .cardAccent{left:18px!important;right:18px!important}
+  .cardTop{
+    width:100%!important;
+    min-width:0!important;
+    margin-bottom:9px!important;
+    gap:7px!important;
+  }
+  .cardTop>div:first-child{min-width:0!important}
+  .cardEyebrow{font-size:6px!important;letter-spacing:1.5px!important}
+  .examCard h2{
+    font-size:18px!important;
+    line-height:1!important;
+    margin:4px 0 0!important;
+    letter-spacing:-.35px!important;
+  }
+  .cardSecure{font-size:5px!important;padding:5px 6px!important;border-radius:8px!important;white-space:nowrap!important}
+
+  .examCard .fields{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:6px!important;
+    margin:0!important;
+  }
+  .examCard .fields label{
+    position:relative!important;
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    height:47px!important;
+    margin:0!important;
+    padding:0!important;
+    font-size:0!important;
+    color:transparent!important;
+  }
+  /* Small field icon / label is integrated into the control instead of taking a separate row. */
+  .examCard .fields label:before{
+    position:absolute;
+    z-index:3;
+    left:11px;
+    top:50%;
+    transform:translateY(-50%);
+    width:20px;
+    height:20px;
+    display:grid;
+    place-items:center;
+    border-radius:6px;
+    background:rgba(255,196,0,.08);
+    border:1px solid rgba(255,196,0,.16);
+    color:var(--yellow);
+    font-size:9px;
+    font-weight:900;
+    pointer-events:none;
+  }
+  .examCard .fields label:nth-child(1):before{content:'✓'}
+  .examCard .fields label:nth-child(2):before{content:'☎'}
+  .examCard .fields label:nth-child(3):before{content:'#'}
+  .examCard .fields label span{
+    position:absolute!important;
+    z-index:4!important;
+    left:40px!important;
+    top:6px!important;
+    display:block!important;
+    margin:0!important;
+    color:#718894!important;
+    font-size:5px!important;
+    font-weight:900!important;
+    letter-spacing:1px!important;
+    line-height:1!important;
+    text-transform:uppercase!important;
+    pointer-events:none!important;
+  }
+  .examCard .fields input{
+    position:absolute!important;
+    inset:0!important;
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    height:47px!important;
+    margin:0!important;
+    padding:14px 9px 3px 40px!important;
+    box-sizing:border-box!important;
+    border-radius:11px!important;
+    background:rgba(3,12,19,.78)!important;
+    border:1px solid rgba(61,91,108,.9)!important;
+    color:#f5f8fa!important;
+    font-size:11px!important;
+    font-weight:600!important;
+    line-height:1!important;
+    outline:none!important;
+  }
+  .examCard .fields input::placeholder{color:#627783!important;opacity:1}
+  .examCard .fields input:focus{
+    border-color:var(--yellow)!important;
+    box-shadow:0 0 0 2px rgba(255,196,0,.09),inset 0 1px 8px rgba(0,0,0,.2)!important;
+  }
+
+  .access-code-msg{width:100%!important;margin:5px 0 0!important;font-size:7px!important}
+  .startExamBtn{
+    width:100%!important;
+    max-width:100%!important;
+    height:44px!important;
+    margin:8px 0 0!important;
+    border-radius:11px!important;
+    gap:16px!important;
+    font-size:9px!important;
+    letter-spacing:1.1px!important;
+  }
+  .startExamBtn b{font-size:18px!important}
+  .cardBottom{width:100%!important;margin-top:6px!important;text-align:center!important}
+  .keyboardHint{font-size:5px!important}
+
+  .installAppCard{width:100%!important;max-width:none!important;margin:7px 0 0!important}
+}
+
+@media (max-width:360px){
+  .start.panel{padding-left:9px!important;padding-right:9px!important}
+  .homeShell{gap:7px!important}
+  .homeStats{gap:3px!important}
+  .homeStats div{padding:6px 1px!important}
+  .homeStats b{font-size:15px!important}
+  .homeStats span{font-size:4.3px!important}
+  .homeTip{padding:7px 8px!important}
+  .homeTip small{font-size:5.8px!important}
+  .examCard{padding:11px 9px 8px!important}
+  .examCard h2{font-size:17px!important}
+  .examCard .fields{gap:5px!important}
+  .examCard .fields label,.examCard .fields input{height:45px!important}
+  .examCard .fields input{font-size:10.5px!important;padding-left:39px!important}
+  .examCard .fields label span{left:39px!important;top:5px!important}
+  .examCard .fields label:before{left:10px!important;width:19px!important;height:19px!important}
+  .startExamBtn{height:42px!important;margin-top:7px!important}
+}
+
+/* V41: robust screen-state visibility. The base .start.panel/.exam/.result rules have
+   higher specificity than [hidden], so explicitly hide state screens when their
+   hidden attribute is set. This prevents the mobile home card from sitting over
+   the examination video. */
+#startScreen[hidden],#examScreen[hidden],#resultScreen[hidden]{display:none!important}
+body.exam-active .homeTools{display:none!important}
+body.exam-active #startScreen,body.exam-active #resultScreen{display:none!important}
+body.home-active #examScreen,body.home-active #resultScreen{display:none!important}
+body.result-active #startScreen,body.result-active #examScreen{display:none!important}
