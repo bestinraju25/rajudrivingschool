@@ -1,86 +1,72 @@
-/* Raju HPT PDF analysis report generator */
+/* Raju HPT PDF analysis report generator — compact 2-page evidence report */
 (function(){
   'use strict';
   function fmtTime(s){
-    s=Math.max(0,Number(s)||0);
-    var m=Math.floor(s/60), sec=(s%60).toFixed(1);
-    return String(m).padStart(2,'0')+':'+String(sec).padStart(4,'0');
+    if(s==null || isNaN(Number(s))) return '—';
+    s=Number(s); var sign=s<0?'-':''; s=Math.abs(s), m=Math.floor(s/60), sec=(s%60).toFixed(1);
+    return sign+String(m).padStart(2,'0')+':'+sec.padStart(4,'0');
   }
   function safeName(s){return String(s||'Candidate').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'')||'Candidate'}
-  function imgData(url){return new Promise(function(resolve,reject){var img=new Image();img.crossOrigin='anonymous';img.onload=function(){try{var c=document.createElement('canvas');c.width=img.naturalWidth||img.width;c.height=img.naturalHeight||img.height;var x=c.getContext('2d');x.drawImage(img,0,0);resolve(c.toDataURL('image/jpeg',.82))}catch(e){reject(e)}};img.onerror=reject;img.src=url+(url.indexOf('?')>=0?'&':'?')+'report='+Date.now()})}
-  function captureFrame(url,time){return new Promise(function(resolve,reject){var v=document.createElement('video');v.muted=true;v.playsInline=true;v.preload='auto';v.crossOrigin='anonymous';var done=false;var timer=setTimeout(function(){if(!done){done=true;cleanup();reject(new Error('Video frame timeout'))}},10000);function cleanup(){clearTimeout(timer);v.pause();v.removeAttribute('src');try{v.load()}catch(e){}}function fail(e){if(done)return;done=true;cleanup();reject(e||new Error('Frame capture failed'))}v.onerror=function(){fail(new Error('Video unavailable'))};v.onloadedmetadata=function(){try{v.currentTime=Math.max(0,Math.min(Number(time)||0,(v.duration||Number(time)||0)))}catch(e){fail(e)}};v.onseeked=function(){if(done)return;try{var c=document.createElement('canvas');var w=640,h=360;if(v.videoWidth&&v.videoHeight){var ratio=Math.min(w/v.videoWidth,h/v.videoHeight);w=Math.max(1,Math.round(v.videoWidth*ratio));h=Math.max(1,Math.round(v.videoHeight*ratio))}c.width=w;c.height=h;c.getContext('2d').drawImage(v,0,0,w,h);var data=c.toDataURL('image/jpeg',.78);done=true;cleanup();resolve(data)}catch(e){fail(e)}};v.src=url;try{v.load()}catch(e){fail(e)}})}
+  function imgData(url){return new Promise(function(resolve,reject){
+    var img=new Image(); img.crossOrigin='anonymous';
+    img.onload=function(){try{var c=document.createElement('canvas');c.width=img.naturalWidth||img.width;c.height=img.naturalHeight||img.height;var x=c.getContext('2d');x.drawImage(img,0,0);resolve(c.toDataURL('image/jpeg',.80))}catch(e){reject(e)}};
+    img.onerror=reject; img.src=url+(url.indexOf('?')>=0?'&':'?')+'report='+Date.now();
+  })}
+  function captureFrame(url,time){return new Promise(function(resolve,reject){
+    var v=document.createElement('video'); v.muted=true; v.playsInline=true; v.preload='auto'; v.crossOrigin='anonymous';
+    var done=false, timer=setTimeout(function(){if(!done){done=true;cleanup();reject(new Error('Video frame timeout'))}},9000);
+    function cleanup(){clearTimeout(timer);try{v.pause();v.removeAttribute('src');v.load()}catch(e){}}
+    function fail(e){if(done)return;done=true;cleanup();reject(e||new Error('Frame capture failed'))}
+    v.onerror=function(){fail(new Error('Video unavailable'))};
+    v.onloadedmetadata=function(){try{v.currentTime=Math.max(0,Math.min(Number(time)||0,(v.duration||Number(time)||0)))}catch(e){fail(e)}};
+    v.onseeked=function(){if(done)return;try{var c=document.createElement('canvas'),w=640,h=360;if(v.videoWidth&&v.videoHeight){var r=Math.min(w/v.videoWidth,h/v.videoHeight);w=Math.max(1,Math.round(v.videoWidth*r));h=Math.max(1,Math.round(v.videoHeight*r))}c.width=w;c.height=h;c.getContext('2d').drawImage(v,0,0,w,h);var data=c.toDataURL('image/jpeg',.76);done=true;cleanup();resolve(data)}catch(e){fail(e)}};
+    v.src=url;try{v.load()}catch(e){fail(e)}
+  })}
   async function frameFor(clip,time){
-    if(!clip||!clip.file)return null;
+    if(!clip||!clip.file||time==null)return null;
     try{return await captureFrame(clip.file,time)}catch(e){
       var n=String(clip.clip_code||'').replace(/\D/g,'');
       if(n){try{return await imgData('thumbnails/'+Number(n)+'.jpg')}catch(err){}}
       return null;
     }
   }
-  function addHeader(doc,W,H,exam,pageNo,totalPages){
-    doc.setFillColor(5,10,15);doc.rect(0,0,W,20,'F');
-    doc.setTextColor(255,196,0);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('RAJU DRIVING SCHOOL',12,9);
-    doc.setTextColor(190,202,210);doc.setFontSize(7.5);doc.text('HAZARD PERCEPTION TEST • COMPLETE ANALYSIS REPORT',12,14);
-    doc.setTextColor(100,115,126);doc.setFont('helvetica','normal');doc.setFontSize(7);doc.text('Page '+pageNo+' / '+totalPages,W-12,12,{align:'right'});
+  function header(doc,W,page,total){
+    doc.setFillColor(5,10,15);doc.rect(0,0,W,17,'F');
+    doc.setTextColor(255,196,0);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('RAJU DRIVING SCHOOL',12,8);
+    doc.setTextColor(190,202,210);doc.setFont('helvetica','normal');doc.setFontSize(7);doc.text('HAZARD PERCEPTION TEST • COMPLETE ANALYSIS REPORT',12,13);
+    doc.setTextColor(130,145,155);doc.setFontSize(7);doc.text('Page '+page+' / '+total,W-12,10,{align:'right'});
   }
-  function addFooter(doc,W,H){doc.setDrawColor(43,58,69);doc.line(12,H-12,W-12,H-12);doc.setTextColor(100,115,126);doc.setFontSize(7);doc.text('Raju Motor Driving School • Chalakudy • Hazard Perception Test',12,H-7);doc.text('Generated electronically',W-12,H-7,{align:'right'})}
-  function text(doc,text,x,y,maxWidth,size,bold){doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size||9);var lines=doc.splitTextToSize(String(text||''),maxWidth);doc.text(lines,x,y);return y+lines.length*((size||9)*.45)}
+  function footer(doc,W,H){doc.setDrawColor(55,70,80);doc.line(10,H-9,W-10,H-9);doc.setTextColor(110,122,132);doc.setFont('helvetica','normal');doc.setFontSize(6.3);doc.text('Raju Motor Driving School • Chalakudy • Hazard Perception Test',10,H-4.5);doc.text('Generated electronically',W-10,H-4.5,{align:'right'})}
+  function txt(doc,s,x,y,size,bold,color,align){doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.setTextColor.apply(doc,color||[35,50,62]);doc.text(String(s==null?'':s),x,y,{align:align||'left'})}
+  function cell(doc,x,y,w,h,fill,stroke){doc.setFillColor.apply(doc,fill);doc.rect(x,y,w,h,'F');if(stroke){doc.setDrawColor.apply(doc,stroke);doc.rect(x,y,w,h,'S')}}
   async function generate(exam){
     if(!exam||!window.jspdf||!window.jspdf.jsPDF)throw new Error('PDF generator is not available.');
-    var jsPDF=window.jspdf.jsPDF, clips=exam.clips||[];
-    var doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'}),W=210,H=297;
-    var totalPages=1+clips.length;
-    // Cover / summary
-    addHeader(doc,W,H,exam,1,totalPages);
-    var logo=null;try{logo=await imgData('raju-logo.png')}catch(e){}
-    if(logo)doc.addImage(logo,'JPEG',W/2-20,29,40,31);
-    doc.setTextColor(33,53,72);doc.setFont('helvetica','bold');doc.setFontSize(21);doc.text('HPT COMPLETE ANALYSIS',W/2,73,{align:'center'});
-    doc.setTextColor(184,132,12);doc.setFontSize(10);doc.text('RAJU MOTOR DRIVING SCHOOL • CHALAKUDY',W/2,81,{align:'center'});
-    doc.setTextColor(25,38,51);doc.setFontSize(16);doc.text(String(exam.candidate_name||exam.candidate?.name||'Candidate'),W/2,100,{align:'center'});
-    doc.setTextColor(95,108,118);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text('Phone: '+String(exam.phone||exam.candidate?.phone||'—'),W/2,107,{align:'center'});
-    var passed=!!exam.passed||Number(exam.total_score||exam.total||0)>=60;
-    doc.setTextColor(passed?35:210,passed?126:60,passed?78:75);doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(passed?'PASS':'NOT PASSED',W/2,120,{align:'center'});
-    doc.setTextColor(33,53,72);doc.setFontSize(29);doc.text(String(Number(exam.total_score||exam.total||0))+' / 100',W/2,139,{align:'center'});
-    doc.setTextColor(100,115,126);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text('Pass mark: 60 / 100',W/2,147,{align:'center'});
-    var d=new Date(exam.completed_at||Date.now());doc.text('Completed: '+d.toLocaleString('en-IN'),W/2,154,{align:'center'});
-    var totalHazards=clips.reduce(function(a,c){return a+(c.hazards||[]).length},0),identified=0,missed=0,clicks=0;
-    clips.forEach(function(c){clicks+=(c.responses||[]).length;(c.hazards||[]).forEach(function(h){var r=(c.responses||[]).find(function(x){return Number(x.hazard_no)===Number(h.hazard_no)});if(r&&Number(r.points)>0)identified++;else missed++})});
-    doc.setFillColor(10,25,36);doc.roundedRect(20,170,170,45,5,5,'F');
-    var metrics=[['CLIPS',clips.length],['OFFICIAL HAZARDS',totalHazards],['IDENTIFIED',identified],['MISSED',missed],['CLICKS',clicks]];
-    metrics.forEach(function(m,i){var x=30+i*36;doc.setTextColor(184,196,204);doc.setFontSize(7);doc.text(m[0],x,182,{align:'center'});doc.setTextColor(255,196,0);doc.setFont('helvetica','bold');doc.setFontSize(15);doc.text(String(m[1]),x,193,{align:'center'})});
-    doc.setTextColor(80,95,105);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text('This report records the official hazard points configured for each clip,',W/2,231,{align:'center'});doc.text('the candidate response timestamps, reaction times, marks awarded and visual evidence.',W/2,237,{align:'center'});
-    addFooter(doc,W,H);
-    // Clip pages
-    for(var i=0;i<clips.length;i++){
-      doc.addPage();addHeader(doc,W,H,exam,i+2,totalPages);
-      var c=clips[i], hazards=(c.hazards||[]).slice().sort(function(a,b){return Number(a.hazard_no)-Number(b.hazard_no)}),rs=c.responses||[];
-      doc.setTextColor(33,53,72);doc.setFont('helvetica','bold');doc.setFontSize(17);doc.text('CLIP '+String(c.clip_code||String(i+1).padStart(2,'0')),14,32);
-      doc.setTextColor(90,105,115);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(String(c.title||'Hazard Perception Clip'),14,39);
-      var clipScore=Number(c.score||0),max=hazards.length===1?10:5*hazards.length;
-      doc.setTextColor(255,196,0);doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text('Score: '+clipScore+' / 10',W-14,34,{align:'right'});
-      doc.setTextColor(100,115,126);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(hazards.length+' official hazard'+(hazards.length===1?'':'s')+' • '+rs.length+' candidate click'+(rs.length===1?'':'s'),W-14,40,{align:'right'});
-      var y=50;
-      for(var hi=0;hi<hazards.length;hi++){
-        var h=hazards[hi],match=rs.find(function(r){return Number(r.hazard_no)===Number(h.hazard_no)}),ht=Number(h.t)||0,ct=match?Number(match.t):null,reaction=match?ct-ht:null;
-        var actual=await frameFor(c,ht),response=match?await frameFor(c,ct):null;
-        if(y>235){addFooter(doc,W,H);doc.addPage();addHeader(doc,W,H,exam,i+2,totalPages);y=30;}
-        doc.setFillColor(10,25,36);doc.roundedRect(12,y,186,70,4,4,'F');
-        doc.setTextColor(255,196,0);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('HAZARD '+String(h.hazard_no||hi+1),18,y+9);
-        doc.setTextColor(33,53,72);doc.setFontSize(8);doc.setTextColor(210,220,226);doc.text(String(h.label||'Developing hazard'),18,y+16);
-        if(actual)doc.addImage(actual,'JPEG',18,y+21,73,41);else{doc.setFillColor(4,12,18);doc.rect(18,y+21,73,41,'F');doc.setTextColor(110,125,135);doc.setFontSize(7);doc.text('Hazard frame unavailable',54.5,y+43,{align:'center'})}
-        if(response)doc.addImage(response,'JPEG',99,y+21,73,41);else{doc.setFillColor(4,12,18);doc.rect(99,y+21,73,41,'F');doc.setTextColor(110,125,135);doc.setFontSize(7);doc.text(match?'Response frame unavailable':'NO RESPONSE / MISSED',135.5,y+43,{align:'center'})}
-        doc.setTextColor(100,115,126);doc.setFontSize(6.5);doc.text('OFFICIAL HAZARD • '+fmtTime(ht),54.5,y+66,{align:'center'});doc.text(match?'CANDIDATE CLICK • '+fmtTime(ct):'CANDIDATE CLICK • —',135.5,y+66,{align:'center'});
-        var pts=match?Number(match.points||0):0, status=pts>0?'IDENTIFIED':'MISSED';
-        doc.setTextColor(33,53,72);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text('Status: '+status,177,y+12,{align:'right'});
-        doc.setTextColor(255,196,0);doc.setFontSize(9);doc.text('Marks: '+pts+' / '+(hazards.length===1?10:5),177,y+18,{align:'right'});
-        doc.setTextColor(95,108,118);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.text('Reaction: '+(match?(reaction>=0?fmtTime(reaction):'-'+fmtTime(Math.abs(reaction))):'No response'),177,y+25,{align:'right'});
-        y+=77;
-      }
-      var extras=rs.filter(function(r){return !hazards.some(function(h){return Number(h.hazard_no)===Number(r.hazard_no)})});
-      if(extras.length){doc.setTextColor(33,53,72);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('Additional clicks not matched to an official hazard',14,y);y+=6;doc.setFont('helvetica','normal');doc.setFontSize(7.5);extras.forEach(function(r){doc.text('Response '+r.response_no+' • '+fmtTime(r.t)+' • '+Number(r.points||0)+' marks',18,y);y+=5})}
-      addFooter(doc,W,H);
-    }
-    doc.save('Raju-HPT-Analysis-'+safeName(exam.candidate_name||exam.candidate?.name)+'-'+(d.toISOString().slice(0,10))+'.pdf');
+    var jsPDF=window.jspdf.jsPDF,clips=exam.clips||[],name=exam.candidate_name||exam.candidate?.name||'Candidate',phone=exam.phone||exam.candidate?.phone||'—';
+    var total=Number(exam.total_score||exam.total||0),passed=!!exam.passed||total>=60,d=new Date(exam.completed_at||Date.now());
+    var rows=[];
+    clips.forEach(function(c,i){
+      var hazards=(c.hazards||[]).slice().sort(function(a,b){return Number(a.hazard_no)-Number(b.hazard_no)}),rs=c.responses||[];
+      hazards.forEach(function(h,hi){var match=rs.find(function(r){return Number(r.hazard_no)===Number(h.hazard_no)});var ht=Number(h.t)||0,ct=match?Number(match.t):null,pts=match?Number(match.points||0):0;rows.push({clip:c,clipIndex:i+1,hazard:h,hazardIndex:hi+1,match:match,ht:ht,ct:ct,reaction:match?ct-ht:null,points:pts,max:hazards.length===1?10:5,status:pts>0?'IDENTIFIED':'MISSED'})});
+      rs.filter(function(r){return !hazards.some(function(h){return Number(h.hazard_no)===Number(r.hazard_no)})}).forEach(function(r){rows.push({clip:c,clipIndex:i+1,hazard:null,hazardIndex:null,match:r,ht:null,ct:Number(r.t),reaction:null,points:Number(r.points||0),max:0,status:'EXTRA CLICK'})});
+    });
+    var doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'}),W=297,H=210,totalPages=2;
+    header(doc,W,1,totalPages);
+    txt(doc,'HPT COMPLETE ANALYSIS',14,28,17,true,[20,34,48]);
+    txt(doc,'Candidate: '+name,14,36,8.5,true,[50,64,75]);txt(doc,'Phone: '+phone,14,42,7.5,false,[90,105,115]);txt(doc,'Completed: '+d.toLocaleString('en-IN'),14,48,7.5,false,[90,105,115]);
+    txt(doc,passed?'PASS':'NOT PASSED',250,29,12,true,passed?[20,135,70]:[210,60,75],'right');txt(doc,total+' / 100',250,40,20,true,[184,132,12],'right');txt(doc,'Pass mark: 60 / 100',250,47,7.5,false,[90,105,115],'right');
+    var totalHazards=clips.reduce(function(a,c){return a+(c.hazards||[]).length},0),identified=0,missed=0,clicks=0;clips.forEach(function(c){clicks+=(c.responses||[]).length;(c.hazards||[]).forEach(function(h){var r=(c.responses||[]).find(function(x){return Number(x.hazard_no)===Number(h.hazard_no)});if(r&&Number(r.points)>0)identified++;else missed++})});
+    var metrics=[['CLIPS',clips.length],['OFFICIAL HAZARDS',totalHazards],['IDENTIFIED',identified],['MISSED',missed],['CLICKS',clicks]];metrics.forEach(function(m,i){var x=14+i*48;cell(doc,x,53,43,18,[10,25,36],[50,70,82]);txt(doc,m[0],x+21.5,60,5.4,true,[155,168,176],'center');txt(doc,m[1],x+21.5,68.5,11,true,[255,196,0],'center')});
+    txt(doc,'Hazard evidence analysis',14,80,10.5,true,[20,34,48]);txt(doc,'Actual hazard frame + timestamp compared with the candidate response frame + click timestamp.',14,86,6.5,false,[95,108,118]);
+    var tableY=90,headerH=8,rowH=11.2,cols=[14,37,68,91,114,137,157,179,227,282];
+    cell(doc,14,tableY,269,headerH,[12,31,43],[50,70,82]);
+    ['CLIP','HAZARD','OFFICIAL','CLICK','REACTION','MARKS','STATUS','EVIDENCE'].forEach(function(v,i){txt(doc,v,cols[i]+1.5,tableY+5.5,5.2,true,[190,202,210])});
+    async function drawRows(from,to,startY){var y=startY;for(var ri=from;ri<to;ri++){var r=rows[ri];cell(doc,14,y,269,rowH,ri%2===0?[244,247,249]:[232,238,242]);txt(doc,'Clip '+String(r.clip.clip_code||r.clipIndex).padStart(2,'0'),cols[0]+1.5,y+7,5.7,true,[35,50,62]);txt(doc,r.hazard?'Hazard '+r.hazard.hazard_no:'Extra',cols[1]+1.5,y+7,5.5,false,[55,68,78]);txt(doc,r.ht==null?'—':fmtTime(r.ht),cols[2]+1.5,y+7,5.5,false,[55,68,78]);txt(doc,r.ct==null?'—':fmtTime(r.ct),cols[3]+1.5,y+7,5.5,false,[55,68,78]);txt(doc,r.reaction==null?'—':fmtTime(r.reaction),cols[4]+1.5,y+7,5.5,false,[55,68,78]);txt(doc,r.max?((r.points||0)+' / '+r.max):String(r.points||0),cols[5]+1.5,y+7,5.5,true,[184,132,12]);txt(doc,r.status,cols[6]+1.5,y+7,5.2,true,r.status==='IDENTIFIED'?[25,125,65]:r.status==='MISSED'?[190,50,65]:[100,100,100]);
+        if(r.hazard){var actual=await frameFor(r.clip,r.ht),response=r.match?await frameFor(r.clip,r.ct):null;var ix=cols[7]+1.5,iy=y+0.6;if(actual)doc.addImage(actual,'JPEG',ix,iy,17,10);else{cell(doc,ix,iy,17,10,[205,211,215]);txt(doc,'A',ix+8.5,iy+6,5,true,[100,110,118],'center')}if(response)doc.addImage(response,'JPEG',ix+19,iy,17,10);else{cell(doc,ix+19,iy,17,10,[205,211,215]);txt(doc,r.match?'R':'—',ix+27.5,iy+6,5,true,[100,110,118],'center')}txt(doc,'A '+(r.ht==null?'—':fmtTime(r.ht)),ix+39,iy+4.2,4.8,true,[65,80,90]);txt(doc,'R '+(r.ct==null?'—':fmtTime(r.ct)),ix+39,iy+8.8,4.8,true,[65,80,90]);}
+        else txt(doc,'—',cols[7]+35,y+7,5.5,false,[120,130,138],'center');y+=rowH;}return y;}
+    var first=Math.min(10,rows.length);await drawRows(0,first,tableY+headerH);txt(doc,'A = actual hazard frame   R = candidate response frame   Reaction = candidate click time − official hazard time',14,202,5.7,false,[100,112,122]);footer(doc,W,H);
+    doc.addPage();header(doc,W,2,totalPages);txt(doc,'Hazard evidence analysis — continued',14,29,14,true,[20,34,48]);txt(doc,'Remaining clips / hazards and candidate responses',14,36,6.5,false,[95,108,118]);cell(doc,14,42,269,headerH,[12,31,43],[50,70,82]);['CLIP','HAZARD','OFFICIAL','CLICK','REACTION','MARKS','STATUS','EVIDENCE'].forEach(function(v,i){txt(doc,v,cols[i]+1.5,47.5,5.2,true,[190,202,210])});await drawRows(first,rows.length,50);
+    txt(doc,'Scoring rule: one official hazard in a clip = up to 10 marks; two official hazards = up to 5 marks each. Candidate clicks are recorded independently from the official hazard timestamps.',14,199,5.7,false,[100,112,122]);footer(doc,W,H);
+    doc.save('Raju-HPT-Analysis-'+safeName(name)+'-'+d.toISOString().slice(0,10)+'.pdf');
   }
   window.RajuHPTReport={generate:generate};
 })();

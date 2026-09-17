@@ -1131,3 +1131,28 @@ body.result-active #startScreen,body.result-active #examScreen{display:none!impo
 /* v22 complete analysis report action */
 .resultActions #downloadReportBtn{border-color:#3b586d}.resultActions #downloadReportBtn:hover{border-color:var(--yellow)}
 @media(max-width:700px){.resultActions{grid-template-columns:1fr 1fr}.resultActions button{min-width:0}.resultActions #downloadReportBtn{grid-column:span 2}}
+
+/* v45 result action alignment */
+.resultActions{width:min(100%,560px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px auto 0;align-items:stretch}
+.resultActions button{width:100%;min-height:46px;margin:0;display:flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap}
+#downloadReportBtn{grid-column:1 / -1}
+#newBtn,#resultClose{grid-column:auto}
+@media(max-width:800px){.resultActions{width:100%;max-width:360px;grid-template-columns:1fr 1fr;gap:7px;margin-top:6px}.resultActions button{min-height:38px;padding:9px 8px;font-size:9px;border-radius:10px}#downloadReportBtn{grid-column:1 / -1}.resultActions .primary,.resultActions .secondary{box-shadow:none}}
+@media(max-width:430px) and (orientation:portrait){.resultActions{max-width:360px;gap:6px}.resultActions button{min-height:36px;font-size:8.5px;padding:8px 6px}}
+
+/* v46 — unified result actions without changing the result layout */
+.result.panel{overflow:auto;justify-content:flex-start;padding:20px 30px 18px}
+.resultActions{width:min(100%,560px);display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px auto 0;align-items:stretch}
+.resultActions button{width:100%;min-width:0;min-height:44px;margin:0;display:flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap;padding:11px 14px;border-radius:12px;font-size:11px;line-height:1.1}
+.resultActions #downloadReportBtn{grid-column:auto}
+.resultActions #printCertBtn{grid-column:auto}
+.resultActions #newBtn,.resultActions #resultClose{grid-column:auto}
+@media(max-width:800px){
+  .result.panel{padding:16px 12px calc(12px + var(--safe-bottom));overflow:auto}
+  .resultActions{width:100%;max-width:380px;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}
+  .resultActions button{min-height:40px;padding:9px 8px;font-size:9px;border-radius:11px}
+}
+@media(max-width:430px){
+  .resultActions{max-width:360px;gap:6px}
+  .resultActions button{min-height:38px;padding:8px 6px;font-size:8.5px}
+}
