@@ -52,3 +52,6 @@
   .hero h1{font-size:22px}.stat{padding:9px 7px}.stat b{font-size:22px}.tab{font-size:9px;padding:9px 6px}
   .panel{padding:10px}.panel-head h2{font-size:18px}.result-card{padding:10px}.result-card h3{font-size:14px}.rc-actions .small{font-size:8px;padding:8px 3px}
 }
+
+/* V21 candidate access-code settings */
+.access-settings{margin:0 0 14px;padding:18px}.access-settings-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}.access-settings-row label{font-size:12px;font-weight:900;color:#c8d1d8}.access-settings-row input{display:block;width:100%;margin-top:7px;background:#07111a;border:1px solid #385063;color:#fff;border-radius:10px;padding:12px 13px;outline:none}.access-settings-row input:focus{border-color:var(--yellow);box-shadow:0 0 0 2px #ffc40022}.access-settings-row .btn{height:44px;white-space:nowrap}.access-settings .panel-head{margin-bottom:10px}.access-settings .panel-head h2{margin:4px 0}.access-settings .panel-head p{margin:0;color:#8498a5;font-size:11px}.access-settings .message{margin-top:8px}@media(max-width:700px){.access-settings{padding:13px}.access-settings-row{grid-template-columns:1fr}.access-settings-row .btn{width:100%}}
