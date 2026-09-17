@@ -55,3 +55,10 @@
 
 /* V21 candidate access-code settings */
 .access-settings{margin:0 0 14px;padding:18px}.access-settings-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}.access-settings-row label{font-size:12px;font-weight:900;color:#c8d1d8}.access-settings-row input{display:block;width:100%;margin-top:7px;background:#07111a;border:1px solid #385063;color:#fff;border-radius:10px;padding:12px 13px;outline:none}.access-settings-row input:focus{border-color:var(--yellow);box-shadow:0 0 0 2px #ffc40022}.access-settings-row .btn{height:44px;white-space:nowrap}.access-settings .panel-head{margin-bottom:10px}.access-settings .panel-head h2{margin:4px 0}.access-settings .panel-head p{margin:0;color:#8498a5;font-size:11px}.access-settings .message{margin-top:8px}@media(max-width:700px){.access-settings{padding:13px}.access-settings-row{grid-template-columns:1fr}.access-settings-row .btn{width:100%}}
+
+/* HPT admin video-library thumbnails: quick visual identification without opening the editor */
+.vc-preview{position:relative;width:132px;height:74px;margin:0 0 10px;border:1px solid #36566a;border-radius:10px;overflow:hidden;background:#061018;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+.vc-thumb,.vc-thumb-fallback{display:block;width:100%;height:100%;object-fit:cover;background:#061018}
+.vc-play{position:absolute;left:8px;bottom:7px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:rgba(0,0,0,.68);color:#ffd21a;font-size:11px;pointer-events:none}
+.vc-preview:hover{border-color:var(--yellow);transform:translateY(-1px)}
+@media(max-width:700px){.vc-preview{width:116px;height:65px;margin-bottom:8px;border-radius:9px}.vc-play{width:22px;height:22px;left:7px;bottom:6px;font-size:10px}}
