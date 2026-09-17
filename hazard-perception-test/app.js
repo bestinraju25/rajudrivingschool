@@ -7,6 +7,27 @@ let clips=[], order=[], pos=0, responses=[], scores=[], running=false, finishing
 let candidate={name:'',phone:''}, sound=true, accessCode='1234';
 const video=$('video');
 let audioCtx=null;
+function setupHomeMedia(){
+  const full=$('homeFullBtn');
+  if(full)full.onclick=async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen?.();else await document.exitFullscreen?.()}catch{toast('Fullscreen is not available in this browser.',true)}};
+  const att=$('homeAttemptsBtn');if(att)att.onclick=openAttempts;
+}
+function startLoadingScreen(){
+  const screen=$('loadingScreen'),fill=$('loaderFill'),percent=$('loaderPercent');
+  if(!screen)return;
+  const started=performance.now(),duration=1550;
+  const tick=now=>{
+    const t=Math.min(1,(now-started)/duration);
+    const value=Math.min(100,Math.round((1-Math.pow(1-t,2))*100));
+    if(fill)fill.style.width=value+'%';
+    if(percent)percent.textContent=value+'%';
+    if(t<1)requestAnimationFrame(tick);
+    else setTimeout(()=>{screen.classList.add('loaded');setTimeout(()=>screen.remove(),420)},180);
+  };
+  requestAnimationFrame(tick);
+}
+
+
 const fmt=s=>{s=Math.max(0,Math.ceil(Number(s)||0));return `00:${String(s).padStart(2,'0')}`};
 const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 const show=(id,on)=>{$(id).hidden=!on};
@@ -89,7 +110,7 @@ function escHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<'
 function openAttempts(){show('attemptsModal',true);$('attemptPhone').value='';$('attemptMsg').textContent='';$('attemptList').innerHTML='<div class="attemptEmpty">Enter your mobile number to view your HPT attempts.</div>';setTimeout(()=>$('attemptPhone')?.focus(),80)}
 function closeAttempts(){show('attemptsModal',false)}
 function setupCandidateCertificate(){$('printCertBtn').onclick=printCertificate}
-$('startBtn').onclick=begin;$('resultClose').onclick=()=>{show('resultScreen',false);show('startScreen',true)};$('newBtn').onclick=()=>{show('resultScreen',false);show('startScreen',true)};$('printCertBtn').onclick=()=>printCertificate();$('viewAttemptsBtn').onclick=openAttempts;$('attemptSearchBtn').onclick=lookupAttempts;$('attemptCloseBtn').onclick=closeAttempts;$('attemptPhone').onkeydown=e=>{if(e.key==='Enter')lookupAttempts()};$('attemptsModal').onclick=e=>{if(e.target===$('attemptsModal'))closeAttempts()};$('skipBtn').onclick=finishClip;$('soundBtn').onclick=()=>{sound=!sound;video.muted=!sound;$('soundBtn').textContent=sound?'🔊':'🔇'};$('fullBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()};$('helpBtn').onclick=()=>toast('Tap when a developing hazard becomes apparent. You can make up to 5 responses per clip.');$('exitBtn').onclick=()=>{if(confirm('Exit the examination? This attempt will be incomplete.')){clearTimeout(timer);video.pause();running=false;show('examScreen',false);show('startScreen',true)}};$('playNow').onclick=()=>video.play().then(()=>{$('playOverlay').hidden=true;running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000)}).catch(()=>toast('Video could not start',true));
+$('startBtn').onclick=begin;$('resultClose').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('newBtn').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('printCertBtn').onclick=()=>printCertificate();const viewAttemptsBtn=$('viewAttemptsBtn');if(viewAttemptsBtn)viewAttemptsBtn.onclick=openAttempts;$('attemptSearchBtn').onclick=lookupAttempts;$('attemptCloseBtn').onclick=closeAttempts;$('attemptPhone').onkeydown=e=>{if(e.key==='Enter')lookupAttempts()};$('attemptsModal').onclick=e=>{if(e.target===$('attemptsModal'))closeAttempts()};$('skipBtn').onclick=finishClip;$('soundBtn').onclick=()=>{sound=!sound;video.muted=!sound;$('soundBtn').textContent=sound?'🔊':'🔇'};$('fullBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()};$('helpBtn').onclick=()=>toast('Tap when a developing hazard becomes apparent. You can make up to 5 responses per clip.');$('exitBtn').onclick=()=>{if(confirm('Exit the examination? This attempt will be incomplete.')){clearTimeout(timer);video.pause();running=false;show('examScreen',false);show('startScreen',true);}};$('playNow').onclick=()=>video.play().then(()=>{$('playOverlay').hidden=true;running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000)}).catch(()=>toast('Video could not start',true));
 video.addEventListener('timeupdate',()=>{update();timeline()});video.addEventListener('ended',finishClip);
 function responseBeep(){try{if(!sound)return;audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const now=audioCtx.currentTime;const o1=audioCtx.createOscillator(),o2=audioCtx.createOscillator(),g=audioCtx.createGain();o1.type='triangle';o2.type='sine';o1.frequency.setValueAtTime(720,now);o1.frequency.exponentialRampToValueAtTime(1080,now+0.07);o2.frequency.setValueAtTime(1080,now+0.025);o2.frequency.exponentialRampToValueAtTime(1420,now+0.09);g.gain.setValueAtTime(0.0001,now);g.gain.exponentialRampToValueAtTime(0.34,now+0.012);g.gain.exponentialRampToValueAtTime(0.18,now+0.075);g.gain.exponentialRampToValueAtTime(0.0001,now+0.22);o1.connect(g);o2.connect(g);g.connect(audioCtx.destination);o1.start(now);o2.start(now+0.018);o1.stop(now+0.225);o2.stop(now+0.225)}catch{}}
 video.addEventListener('click',e=>{
@@ -122,5 +143,5 @@ window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;show('ins
 $('installAppBtn').onclick=async()=>{if(deferredInstallPrompt){deferredInstallPrompt.prompt();try{await deferredInstallPrompt.userChoice}catch{}deferredInstallPrompt=null;return}showInstallHelp()};
 $('installHelpClose').onclick=()=>show('installHelpModal',false);$('installHelpOk').onclick=()=>show('installHelpModal',false);
 if(!isStandalone())show('installAppCard',true);
-$('startScreen').querySelector('input')?.focus();show('startScreen',true);show('examScreen',false);show('resultScreen',false);
+setupHomeMedia();$('startScreen').querySelector('input')?.focus();show('startScreen',true);show('examScreen',false);show('resultScreen',false);startLoadingScreen();
 })();
