@@ -1150,3 +1150,11 @@ body.result-active #startScreen,body.result-active #examScreen{display:none!impo
  .resultActions{max-width:360px;gap:6px}
  .resultActions button{min-height:38px;padding:8px 6px;font-size:8.5px}
 }
+
+/* Console-style interaction polish */
+.fields input:focus{transform:translateY(-1px);transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease}
+.fields input:active{transform:translateY(0)}
+.primary:active,.secondary:active,.rightTools button:active,.skip:active{transform:scale(.97)}
+@media (prefers-reduced-motion:reduce){
+  .fields input,.primary,.secondary,.rightTools button,.skip{transition:none!important}
+}
