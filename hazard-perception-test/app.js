@@ -155,7 +155,11 @@ video.addEventListener('click',e=>{
     const delta=t-Number(h.t);
     if(delta>=0&&delta<=5){
       const maxPts=hazardCount===1?10:5;
-      const pts=maxPts*(delta<=0.75?1:delta<=1.5?.8:delta<=2.5?.6:delta<=3.5?.4:.2);
+      // Gentler HPT reaction-time curve: early identification still earns full marks,
+      // while a valid response later in the 5-second window retains meaningful marks.
+      // This avoids making the test disproportionately difficult for first-time candidates.
+      const multiplier=delta<=1?1:delta<=2?.9:delta<=3?.8:delta<=4?.7:.6;
+      const pts=maxPts*multiplier;
       const rounded=Math.max(1,Math.round(pts));
       if(!best||rounded>best.points)best={hazard_no:hn,points:rounded};
     }

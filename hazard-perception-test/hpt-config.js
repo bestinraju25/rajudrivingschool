@@ -8,6 +8,8 @@ window.RAJU_HPT_CONFIG = {
   maxResponsesPerClip: 5,
   passMark: 60,
   marksPerClip: 10,
+  // Reaction-time scoring is intentionally moderate so a valid identification remains meaningful.
+  // <=1s: 100%, <=2s: 90%, <=3s: 80%, <=4s: 70%, <=5s: 60% of the hazard value.
   // The current workspace contains 1.webm–10.webm. Add 11–36 as they are published.
   staticClips: Array.from({length:10}, (_,i)=>({
     clip_code: String(i+1).padStart(2,'0'),
