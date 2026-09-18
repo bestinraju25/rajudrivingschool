@@ -55,32 +55,40 @@
     var doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'}),W=297,H=210;
 
     // Compact card report: no clip numbers, no extra-click rows, and no table rows spilling into the footer.
+    // Compact two-column hazard cards. 8 cards per page fit inside the printable
+    // area without crossing the footer; text and evidence stay in fixed columns.
     var cardsPerPage=8,totalPages=Math.max(1,Math.ceil(rows.length/cardsPerPage));
-    var margin=12, gap=5, cardW=(W-margin*2-gap)/2, cardH=31;
+    var margin=12, gap=4, cardW=(W-margin*2-gap)/2, cardH=26.5, rowGap=3.5;
 
     function card(doc,r,x,y,w,h,idx){
       var bg=idx%2===0?[245,247,249]:[235,241,245];
       box(doc,x,y,w,h,bg,[205,215,222]);
-      // Card title / status
-      txt(doc,'HAZARD '+r.hazard.hazard_no,x+4,y+6.2,6.5,true,[25,42,54]);
-      txt(doc,r.status,x+w-4,y+6.2,5.1,true,r.status==='IDENTIFIED'?[25,125,65]:[190,50,65],'right');
 
-      // Timing and score block
-      txt(doc,'OFFICIAL',x+4,y+12.5,4.2,true,[105,120,130]);
-      txt(doc,fmtTime(r.ht),x+4,y+18.2,6.2,true,[35,55,68]);
-      txt(doc,'CLICK',x+30,y+12.5,4.2,true,[105,120,130]);
-      txt(doc,r.ct==null?'—':fmtTime(r.ct),x+30,y+18.2,6.2,true,[35,55,68]);
-      txt(doc,'REACTION',x+56,y+12.5,4.2,true,[105,120,130]);
-      txt(doc,r.reaction==null?'—':fmtTime(r.reaction),x+56,y+18.2,6.2,true,[35,55,68]);
-      txt(doc,'MARKS',x+83,y+12.5,4.2,true,[105,120,130]);
-      txt(doc,(r.points||0)+' / '+r.max,x+83,y+18.2,6.2,true,[184,132,12]);
+      // Header
+      txt(doc,'HAZARD '+r.hazard.hazard_no,x+4,y+5.3,6.0,true,[25,42,54]);
+      txt(doc,r.status,x+w-4,y+5.3,4.7,true,
+        r.status==='IDENTIFIED'?[25,125,65]:[190,50,65],'right');
 
-      // Evidence images. Actual frame is always shown; response is shown when available.
-      var ex=x+w-73,ey=y+8.5;
-      if(r._actual)doc.addImage(r._actual,'JPEG',ex,ey,31,17.4);else box(doc,ex,ey,31,17.4,[215,220,224]);
-      if(r._response)doc.addImage(r._response,'JPEG',ex+34,ey,31,17.4);else box(doc,ex+34,ey,31,17.4,[215,220,224]);
-      txt(doc,'A '+fmtTime(r.ht),ex, y+h-2.7,4.0,true,[65,80,90]);
-      txt(doc,'R '+(r.ct==null?'—':fmtTime(r.ct)),ex+34,y+h-2.7,4.0,true,[65,80,90]);
+      // Fixed timing columns
+      var col1=x+4, col2=x+18, col3=x+32, col4=x+46;
+      txt(doc,'OFFICIAL',col1,y+10.7,3.7,true,[105,120,130]);
+      txt(doc,'CLICK',col2,y+10.7,3.7,true,[105,120,130]);
+      txt(doc,'REACTION',col3,y+10.7,3.7,true,[105,120,130]);
+      txt(doc,'MARKS',col4,y+10.7,3.7,true,[105,120,130]);
+      txt(doc,fmtTime(r.ht),col1,y+16.0,5.4,true,[35,55,68]);
+      txt(doc,r.ct==null?'—':fmtTime(r.ct),col2,y+16.0,5.4,true,[35,55,68]);
+      txt(doc,r.reaction==null?'—':fmtTime(r.reaction),col3,y+16.0,5.4,true,[35,55,68]);
+      txt(doc,(r.points||0)+' / '+r.max,col4,y+16.0,5.4,true,[184,132,12]);
+
+      // Evidence area on the right; fixed dimensions prevent overlap.
+      var ex=x+w-62, ey=y+4.2, ew=27, eh=15.2;
+      if(r._actual)doc.addImage(r._actual,'JPEG',ex,ey,ew,eh);
+      else box(doc,ex,ey,ew,eh,[215,220,224]);
+      if(r._response)doc.addImage(r._response,'JPEG',ex+30,ey,ew,eh);
+      else box(doc,ex+30,ey,ew,eh,[215,220,224]);
+
+      txt(doc,'A '+fmtTime(r.ht),ex,y+h-2.2,3.6,true,[65,80,90]);
+      txt(doc,'R '+(r.ct==null?'—':fmtTime(r.ct)),ex+30,y+h-2.2,3.6,true,[65,80,90]);
     }
 
     for(var page=0;page<totalPages;page++){
@@ -88,23 +96,33 @@
       header(doc,W,page+1,totalPages);
       var from=page*cardsPerPage,to=Math.min(rows.length,from+cardsPerPage);
       var startY;
+
       if(page===0){
-        txt(doc,'HPT COMPLETE ANALYSIS',12,27,15,true,[20,34,48]);
-        txt(doc,'Candidate: '+name,12,34.5,7.8,true,[50,64,75]);
-        txt(doc,'Phone: '+phone,12,40,6.8,false,[90,105,115]);
-        txt(doc,'Completed: '+d.toLocaleString('en-IN'),12,45,6.8,false,[90,105,115]);
-        txt(doc,passed?'PASS':'NOT PASSED',250,28,10.5,true,passed?[20,135,70]:[210,60,75],'right');
-        txt(doc,total+' / 100',250,38,17,true,[184,132,12],'right');
-        txt(doc,'Pass mark: 60 / 100',250,44.5,6.8,false,[90,105,115],'right');
+        txt(doc,'HPT COMPLETE ANALYSIS',12,26,14.2,true,[20,34,48]);
+        txt(doc,'Candidate: '+name,12,32.5,7.0,true,[50,64,75]);
+        txt(doc,'Phone: '+phone,12,37.0,6.0,false,[90,105,115]);
+        txt(doc,'Completed: '+d.toLocaleString('en-IN'),12,41.5,6.0,false,[90,105,115]);
+
+        txt(doc,passed?'PASS':'NOT PASSED',250,27,9.5,true,
+          passed?[20,135,70]:[210,60,75],'right');
+        txt(doc,total+' / 100',250,36,15.5,true,[184,132,12],'right');
+        txt(doc,'Pass mark: 60 / 100',250,41.5,6.0,false,[90,105,115],'right');
+
         var metrics=[['HAZARDS',totalHazards],['IDENTIFIED',identified],['MISSED',missed]];
-        metrics.forEach(function(m,i){var x=12+i*84.5;box(doc,x,50,80,15,[10,25,36],[50,70,82]);txt(doc,m[0],x+40,56,4.6,true,[155,168,176],'center');txt(doc,m[1],x+40,63,9.5,true,[255,196,0],'center')});
-        txt(doc,'Hazard evidence analysis',12,72,9,true,[20,34,48]);
-        txt(doc,'A = actual hazard frame/time   R = candidate response frame/time   Extra clicks are excluded.',12,77.5,5.5,false,[95,108,118]);
-        startY=83;
+        metrics.forEach(function(m,i){
+          var x=12+i*84.5;
+          box(doc,x,47,80,13,[10,25,36],[50,70,82]);
+          txt(doc,m[0],x+40,52.2,4.1,true,[155,168,176],'center');
+          txt(doc,m[1],x+40,58.7,8.4,true,[255,196,0],'center');
+        });
+
+        txt(doc,'Hazard evidence analysis',12,66.5,8.2,true,[20,34,48]);
+        txt(doc,'A = actual hazard frame/time   R = candidate response frame/time',12,71.0,4.8,false,[95,108,118]);
+        startY=75;
       } else {
-        txt(doc,'Hazard evidence analysis — continued',12,27,13.5,true,[20,34,48]);
-        txt(doc,'Official hazards and candidate responses',12,34,6.3,false,[95,108,118]);
-        startY=41;
+        txt(doc,'Hazard evidence analysis — continued',12,26,12.5,true,[20,34,48]);
+        txt(doc,'Official hazards and candidate responses',12,32.5,5.8,false,[95,108,118]);
+        startY=37.5;
       }
 
       for(var ri=from;ri<to;ri++){
@@ -112,9 +130,11 @@
         r._actual=await frameFor(r.clip,r.ht,null);
         r._response=r.match&&r.ct!=null?await frameFor(r.clip,r.ct,r.match.frameData||null):null;
         var local=ri-from,col=local%2,row=Math.floor(local/2);
-        card(doc,r,margin+col*(cardW+gap),startY+row*(cardH+gap),cardW,cardH,ri);
+        card(doc,r,margin+col*(cardW+gap),startY+row*(cardH+rowGap),cardW,cardH,ri);
       }
-      txt(doc,'Each clip is scored out of 10. One official hazard = up to 10 marks; two official hazards = up to 5 marks each.',12,H-14,5.4,false,[100,112,122]);
+
+      txt(doc,'Each clip is scored out of 10. One official hazard = up to 10 marks; two official hazards = up to 5 marks each.',
+          12,H-14,4.9,false,[100,112,122]);
       footer(doc,W,H);
     }
     doc.save('Raju-HPT-Analysis-'+safeName(name)+'-'+d.toISOString().slice(0,10)+'.pdf');
