@@ -116,7 +116,7 @@ async function lookupAttempts(){
     list.innerHTML=rows.map((r,i)=>{
       const passed=Number(r.total_score||0)>=C.passMark;
       const d=new Date(r.completed_at||r.started_at);
-      return `<article class="attemptCard"><div class="attemptTop"><div><span class="attemptDate">${d.toLocaleDateString('en-IN')} • ${d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span><strong>Attempt ${rows.length-i}</strong></div><span class="attemptStatus ${passed?'pass':'fail'}">${passed?'PASS':'NOT PASSED'}</span></div><div class="attemptScore"><b>${Number(r.total_score||0)}</b><span>/ 100</span></div><div class="attemptMeta">Pass mark ${C.passMark} • ${passed?'Certificate available':'Certificate not available'}</div>${passed?`<button class="attemptCertBtn" type="button" data-attempt-cert="${escHtml(r.id)}">↓ DOWNLOAD CERTIFICATE</button>`:''}</article>`
+      return `<article class="attemptCard"><div class="attemptTop"><div><span class="attemptDate">${d.toLocaleDateString('en-IN')} • ${d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span><strong>Attempt ${rows.length-i}</strong></div><span class="attemptStatus ${passed?'pass':'fail'}">${passed?'PASS':'NOT PASSED'}</span></div><div class="attemptScore"><b>${Number(r.total_score||0)}</b><span>/ 100</span></div><div class="attemptMeta">Pass mark ${C.passMark} • ${passed?'Certificate available':'Certificate not available'}</div><div class="attemptActions"><button class="attemptReportBtn" type="button" data-attempt-report="${escHtml(r.id)}">↓ DOWNLOAD REPORT</button>${passed?`<button class="attemptCertBtn" type="button" data-attempt-cert="${escHtml(r.id)}">↓ DOWNLOAD CERTIFICATE</button>`:''}</div></article>`
     }).join('');
     list.querySelectorAll('[data-attempt-cert]').forEach(btn=>btn.onclick=async()=>{
       const r=rows.find(x=>String(x.id)===String(btn.dataset.attemptCert));if(!r)return;
@@ -124,9 +124,38 @@ async function lookupAttempts(){
       try{await printCertificate({id:r.id,total:r.total_score,completed_at:r.completed_at,candidate_name:r.candidate_name},{name:r.candidate_name,phone:r.phone})}catch(e){console.error(e);toast('Could not generate the certificate.',true)}
       finally{btn.disabled=false;btn.textContent='↓ DOWNLOAD CERTIFICATE'}
     });
+    list.querySelectorAll('[data-attempt-report]').forEach(btn=>btn.onclick=async()=>{
+      const r=rows.find(x=>String(x.id)===String(btn.dataset.attemptReport));if(!r)return;
+      btn.disabled=true;btn.textContent='GENERATING…';
+      try{
+        const report=await buildHistoricalExam(r);
+        if(!window.RajuHPTReport?.generate)throw new Error('Report generator unavailable');
+        await window.RajuHPTReport.generate(report);
+        toast('Complete HPT report downloaded.');
+      }catch(e){console.error(e);toast('Could not generate the HPT report.',true)}
+      finally{btn.disabled=false;btn.textContent='↓ DOWNLOAD REPORT'}
+    });
   }catch(e){console.error(e);list.innerHTML='';if(msg){msg.textContent='Could not load attempts. Please try again.';msg.className='attemptMsg bad'}}
 }
 function escHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function buildHistoricalExam(r){
+  const raw=r.report_data||{};
+  let available=clips?.length?clips:[];
+  if(!available.length){try{available=await loadClips()}catch{available=[]}}
+  const fallback=Array.isArray(C.staticClips)?C.staticClips.map(x=>({...x,hazards:staticHazards(x.clip_code)})):[];
+  const source=available.length?available:fallback;
+  const byCode=new Map(source.map(c=>[String(c.clip_code).padStart(2,'0'),c]));
+  const clipOrder=Array.isArray(raw.clip_order)?raw.clip_order.map(x=>String(x).padStart(2,'0')):source.slice(0,C.examClipCount).map(c=>String(c.clip_code).padStart(2,'0'));
+  const responseRows=Array.isArray(raw.responses)?raw.responses:[];
+  const clipsOut=clipOrder.map(code=>{
+    const base=byCode.get(code)||fallback.find(c=>String(c.clip_code).padStart(2,'0')===code)||{clip_code:code,title:`Hazard Perception Clip ${code}`,file:`videos/${Number(code)}.webm`,hazards:staticHazards(code)};
+    const rs=responseRows.filter(x=>String(x.clip_code||'').padStart(2,'0')===code).map(x=>({response_no:Number(x.response_no||1),t:Number(x.click_time_seconds||0),hazard_no:x.hazard_no==null?null:Number(x.hazard_no),points:Number(x.awarded_marks||0),frameData:null}));
+    const hs=(base.hazards||staticHazards(code)||[]).map((h,i)=>({hazard_no:Number(h.hazard_no||i+1),t:Number(h.t),label:h.label||`Hazard ${i+1}`}));
+    return {clip_code:code,title:base.title||`Hazard Perception Clip ${code}`,file:base.file||base.video_path||`videos/${Number(code)}.webm`,hazards:hs,responses:rs,score:0};
+  });
+  clipsOut.forEach(c=>{c.score=c.responses.reduce((sum,x)=>sum+Number(x.points||0),0)});
+  return {id:r.id,total:Number(r.total_score||0),total_score:Number(r.total_score||0),passed:!!r.passed,candidate_name:r.candidate_name,phone:r.phone,started_at:r.started_at,completed_at:r.completed_at,clips:clipsOut};
+}
 function openAttempts(){show('attemptsModal',true);$('attemptPhone').value='';$('attemptMsg').textContent='';$('attemptList').innerHTML='<div class="attemptEmpty">Enter your mobile number to view your HPT attempts.</div>';setTimeout(()=>$('attemptPhone')?.focus(),80)}
 function closeAttempts(){show('attemptsModal',false)}
 function setupCandidateCertificate(){$('printCertBtn').onclick=printCertificate}
