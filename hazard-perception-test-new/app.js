@@ -308,7 +308,7 @@ async function captureDetailedFrame(url,time){
       try{v.pause();v.removeAttribute('src');v.load()}catch{}
       resolve(data);
     }
-    v.muted=true;v.playsInline=true;v.preload='auto';
+    v.muted=true;v.playsInline=true;v.preload='auto';try{const u=new URL(url,location.href);if(u.origin!==location.origin&&u.protocol!=='file:')v.crossOrigin='anonymous'}catch{}
     v.onloadedmetadata=()=>{
       try{
         const d=Number(v.duration)||50;
@@ -346,7 +346,6 @@ async function buildDetailedResult(exam){
       const m=rs.find(r=>Number(r.hazard_no)===Number(h.hazard_no));
       let actual=null,response=null;
       try{actual=await captureDetailedFrame(c.file||c.video_path,Number(h.t))}catch{}
-      if(!actual)actual=detailedThumb(c.clip_code);
       if(m&&m.t!=null){
         response=m.frameData||null;
         if(!response)try{response=await captureDetailedFrame(c.file||c.video_path,Number(m.t))}catch{}
@@ -414,7 +413,7 @@ video.addEventListener('click',e=>{
       // Gentler HPT reaction-time curve: early identification still earns full marks,
       // while a valid response later in the 5-second window retains meaningful marks.
       // This avoids making the test disproportionately difficult for first-time candidates.
-      const multiplier=delta<=1?1:delta<=2?.9:delta<=3?.8:delta<=4?.7:.6;
+      const multiplier=delta<=1?1:delta<=2?.85:delta<=3?.7:delta<=4?.5:.3;
       const pts=maxPts*multiplier;
       const rounded=Math.max(1,Math.round(pts));
       if(!best||rounded>best.points)best={hazard_no:hn,points:rounded};

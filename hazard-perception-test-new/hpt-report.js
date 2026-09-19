@@ -17,7 +17,7 @@
   function captureFrame(url,time){return new Promise(function(resolve,reject){
     var v=document.createElement('video'),done=false;
     var timer=setTimeout(function(){if(!done){done=true;cleanup();reject(new Error('frame timeout'))}},4500);
-    v.muted=true; v.playsInline=true; v.preload='auto';
+    v.muted=true; v.playsInline=true; v.preload='auto'; try{var u=new URL(url,location.href);if(u.origin!==location.origin&&u.protocol!=='file:')v.crossOrigin='anonymous'}catch(e){}
     function cleanup(){clearTimeout(timer);try{v.pause();v.removeAttribute('src');v.load()}catch(e){}}
     function fail(e){if(done)return;done=true;cleanup();reject(e||new Error('frame failed'))}
     v.onerror=function(){fail(new Error('video unavailable'))};
@@ -31,10 +31,10 @@
   async function frameFor(clip,time,fallbackData){
     if(fallbackData)return fallbackData;
     if(clip&&clip.file&&time!==null&&time!==undefined){
-      for(var attempt=0;attempt<2;attempt++){try{var f=await captureFrame(clip.file,time);if(f)return f}catch(e){}}
+      for(var attempt=0;attempt<2;attempt++){
+        try{var f=await captureFrame(clip.file,time);if(f)return f}catch(e){}
+      }
     }
-    var n=String(clip&&clip.clip_code||'').replace(/\D/g,'');
-    if(n){try{return await imageData('thumbnails/'+Number(n)+'.jpg')}catch(e){}}
     return null;
   }
   function txt(doc,s,x,y,size,bold,color,align){doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.setTextColor.apply(doc,color||[45,58,68]);doc.text(String(s==null?'':s),x,y,{align:align||'left'});}
@@ -85,9 +85,9 @@
       // Evidence area on the right; fixed dimensions prevent overlap.
       var ex=x+w-76, ey=y+4.2, ew=34, eh=19.0;
       if(r._actual)doc.addImage(r._actual,'JPEG',ex,ey,ew,eh);
-      else {box(doc,ex,ey,ew,eh,[232,236,239],[205,213,219]);txt(doc,'NO FRAME',ex+ew/2,ey+eh/2+1.5,4.0,true,[110,120,128],'center');}
+      else {box(doc,ex,ey,ew,eh,[232,236,239],[205,213,219]);txt(doc,'FRAME UNAVAILABLE',ex+ew/2,ey+eh/2+1.5,4.0,true,[110,120,128],'center');}
       if(r._response)doc.addImage(r._response,'JPEG',ex+38,ey,ew,eh);
-      else {box(doc,ex+38,ey,ew,eh,[232,236,239],[205,213,219]);txt(doc,'NO FRAME',ex+38+ew/2,ey+eh/2+1.5,4.0,true,[110,120,128],'center');}
+      else {box(doc,ex+38,ey,ew,eh,[232,236,239],[205,213,219]);txt(doc,'FRAME UNAVAILABLE',ex+38+ew/2,ey+eh/2+1.5,4.0,true,[110,120,128],'center');}
 
       txt(doc,'A '+fmtTime(r.ht),ex,y+h-2.2,3.6,true,[65,80,90]);
       txt(doc,'R '+(r.ct==null?'—':fmtTime(r.ct)),ex+38,y+h-2.2,3.6,true,[65,80,90]);
