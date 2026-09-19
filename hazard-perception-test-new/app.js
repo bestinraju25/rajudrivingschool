@@ -7,134 +7,6 @@ let clips=[], order=[], pos=0, responses=[], scores=[], running=false, finishing
 let candidate={name:'',phone:''}, sound=true, accessCode='1234';
 const video=$('video');
 let audioCtx=null;
-let roadAudio=null;
-let engineBuffer=null;
-let enginePreloadPromise=null;
-let lastTypedValues={};
-
-function ensureAudio(){
-  try{
-    audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
-    if(audioCtx.state==='suspended')audioCtx.resume();
-    return audioCtx;
-  }catch{return null}
-}
-function haptic(pattern=8){
-  try{if(navigator.vibrate)navigator.vibrate(pattern)}catch{}
-}
-function tone(freq=720,duration=.06,type='sine',volume=.08,when=0){
-  const ctx=ensureAudio(); if(!ctx||!sound)return;
-  try{
-    const now=ctx.currentTime+when;
-    const o=ctx.createOscillator(),g=ctx.createGain();
-    o.type=type;o.frequency.setValueAtTime(freq,now);
-    g.gain.setValueAtTime(.0001,now);
-    g.gain.exponentialRampToValueAtTime(Math.max(.0002,volume),now+.008);
-    g.gain.exponentialRampToValueAtTime(.0001,now+duration);
-    o.connect(g);g.connect(ctx.destination);o.start(now);o.stop(now+duration+.02);
-  }catch{}
-}
-function typingFeedback(){
-  if(!sound)return;
-  haptic(7);
-  const f=680+(Math.random()*90);
-  tone(f,.045,'square',.045);
-}
-function buttonFeedback(){
-  if(!sound)return;
-  haptic([10,18,10]);
-  tone(560,.055,'triangle',.075);
-}
-function engineStartSequence(){
-  playEngineImmediately();
-}
-async function enterExamFullscreen(){
-  try{
-    if(!document.fullscreenElement){
-      await (document.documentElement.requestFullscreen?.({navigationUI:'hide'})||Promise.resolve());
-    }
-  }catch(e){console.warn('HPT fullscreen request was not granted',e)}
-}
-async function exitExamFullscreen(){
-  try{
-    if(document.fullscreenElement)await document.exitFullscreen?.();
-  }catch(e){console.warn('HPT fullscreen exit failed',e)}
-}
-function setSoundState(on){
-  sound=!!on;
-  video.muted=!sound;
-  if(roadAudio){
-    roadAudio.volume=sound?1.0:0;
-    if(sound && running)roadAudio.play().catch(()=>{});
-    else if(!sound)roadAudio.pause();
-  }
-  const btn=$('soundBtn'); if(btn)btn.textContent=sound?'🔊':'🔇';
-}
-function startRoadAudio(){
-  if(!roadAudio){
-    roadAudio=new Audio('audio/road-sound.mp3');
-    roadAudio.loop=true;
-    roadAudio.preload='auto';
-    roadAudio.volume=1.0;
-  }
-  if(sound)roadAudio.play().catch(()=>{});
-}
-function stopRoadAudio(){
-  if(!roadAudio)return;
-  roadAudio.pause();
-  try{roadAudio.currentTime=0}catch{}
-}
-async function preloadEngineSound(){
-  if(engineBuffer||enginePreloadPromise)return enginePreloadPromise;
-  enginePreloadPromise=fetch('audio/start-test-engine-sound.mp3',{cache:'force-cache'})
-    .then(r=>{if(!r.ok)throw new Error('Engine audio unavailable');return r.arrayBuffer()})
-    .then(b=>ensureAudio()?.decodeAudioData(b))
-    .then(buf=>{engineBuffer=buf;return buf})
-    .catch(()=>null);
-  return enginePreloadPromise;
-}
-function playEngineImmediately(){
-  const ctx=ensureAudio(); if(!ctx||!sound)return;
-  haptic([18,25,18]);
-  if(engineBuffer){
-    try{
-      const src=ctx.createBufferSource(),g=ctx.createGain();
-      src.buffer=engineBuffer;g.gain.value=1.0;src.connect(g);g.connect(ctx.destination);src.start(0);return;
-    }catch{}
-  }
-  try{
-    const a=new Audio('audio/start-test-engine-sound.mp3');
-    a.preload='auto';a.volume=1.0;a.play().catch(()=>{});
-  }catch{}
-}
-function playOneShot(src, volume=1){
-  if(!sound)return;
-  try{
-    const a=new Audio(src);
-    a.preload='auto';
-    a.volume=Math.max(0,Math.min(1,volume));
-    a.play().catch(()=>{});
-    a.addEventListener('ended',()=>a.remove(),{once:true});
-    return a;
-  }catch{}
-}
-function setupConsoleFeedback(){
-  document.querySelectorAll('.fields input').forEach(input=>{
-    lastTypedValues[input.id]=input.value||'';
-    input.addEventListener('focus',()=>{haptic(5);tone(430,.035,'triangle',.035)});
-    input.addEventListener('input',()=>{
-      const old=lastTypedValues[input.id]||'', next=input.value||'';
-      lastTypedValues[input.id]=next;
-      if(next!==old)typingFeedback();
-    });
-    input.addEventListener('keydown',e=>{
-      if(e.key==='Enter'||e.key==='Tab')buttonFeedback();
-    });
-  });
-  document.querySelectorAll('button').forEach(btn=>{
-    btn.addEventListener('pointerdown',()=>buttonFeedback(),{passive:true});
-  });
-}
 function setupHomeMedia(){
   const full=$('homeFullBtn');
   if(full)full.onclick=async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen?.();else await document.exitFullscreen?.()}catch{toast('Fullscreen is not available in this browser.',true)}};
@@ -189,19 +61,71 @@ for(let attempt=1;attempt<=2;attempt++){
   await new Promise(r=>setTimeout(r,600));
 }
 return {ok:false,error:'Could not save the examination result.'}}
-function loadClip(){resetClip();running=false;clearTimeout(timer);video.pause();video.removeAttribute('src');video.removeAttribute('crossorigin');video.src=order[pos].file;video.muted=!sound;video.load();$('playOverlay').hidden=true;video.onloadedmetadata=()=>{video.currentTime=0;update();timeline();startRoadAudio();const p=video.play();if(p?.catch)p.catch(async()=>{try{video.muted=true;await video.play();video.muted=!sound;running=true;$('playOverlay').hidden=true}catch{$('playOverlay').hidden=false;toast('Tap PLAY CLIP to start the video.',true)}});running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000)};video.onerror=()=>{running=false;$('playOverlay').hidden=false;$('playNow').textContent='PLAY CLIP';toast('Video could not be loaded',true)}}
+let failedClipKeys=new Set();
+let fallbackBusy=false;
+function clipKey(c){return String(c?.clip_code??c?.id??c?.file??c?.video_path??'').trim()}
+function likelyPlayable(file){
+  const ext=String(file||'').split('?')[0].split('.').pop().toLowerCase();
+  try{if(ext==='mp4')return !!video.canPlayType('video/mp4');if(ext==='webm')return !!video.canPlayType('video/webm')}catch{}
+  return true;
+}
+function resetExamFallbackState(){failedClipKeys=new Set();fallbackBusy=false}
+function candidateClipsForFallback(){
+  const used=new Set();order.forEach((c,i)=>{if(i!==pos&&c)used.add(clipKey(c))});
+  return shuffle(clips.filter(c=>c&&!failedClipKeys.has(clipKey(c))&&!used.has(clipKey(c))&&c.file&&c.hazards?.length>=1&&likelyPlayable(c.file)));
+}
+function probeClipPlayable(c,timeout=3500){
+  return new Promise(resolve=>{
+    let done=false;const v=document.createElement('video');v.preload='metadata';v.muted=true;
+    const finish=ok=>{if(done)return;done=true;clearTimeout(to);v.removeAttribute('src');try{v.load()}catch{}resolve(ok)};
+    const to=setTimeout(()=>finish(false),timeout);
+    v.onloadedmetadata=()=>finish(true);v.oncanplay=()=>finish(true);v.onerror=()=>finish(false);
+    try{v.src=c.file;v.load()}catch{finish(false)}
+  });
+}
+async function recoverFromVideoFailure(){
+  if(fallbackBusy||finishing||pos>=order.length)return;
+  fallbackBusy=true;clearTimeout(timer);running=false;
+  const failed=order[pos];if(failed)failedClipKeys.add(clipKey(failed));video.pause();
+  let replacement=null;
+  for(const c of candidateClipsForFallback()){if(await probeClipPlayable(c)){replacement=c;break}}
+  if(!replacement){
+    for(const c of shuffle(clips.filter(c=>c&&!failedClipKeys.has(clipKey(c))&&c.file&&c.hazards?.length>=1&&likelyPlayable(c.file)))){
+      if(await probeClipPlayable(c)){replacement=c;break}
+    }
+  }
+  if(replacement){
+    order[pos]=replacement;delete order[pos]._responses;responses=[];responseLocked=false;fallbackBusy=false;loadClip();return;
+  }
+  fallbackBusy=false;toast('No playable video is available. Please contact the administrator.',true);
+}
+function loadClip(){
+  resetClip();running=false;clearTimeout(timer);video.pause();video.removeAttribute('src');
+  const current=order[pos];if(!current||!current.file){recoverFromVideoFailure();return}
+  video.src=current.file;video.muted=!sound;video.load();$('playOverlay').hidden=true;
+  let started=false;
+  const startClip=()=>{
+    if(started||finishing||pos>=order.length)return;started=true;video.currentTime=0;update();timeline();
+    const p=video.play();
+    if(p?.catch)p.catch(async()=>{try{video.muted=true;await video.play();video.muted=!sound;running=true}catch{await recoverFromVideoFailure()}});
+    running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000);
+  };
+  video.onloadedmetadata=startClip;video.oncanplay=()=>{if(!started)startClip()};
+  video.onerror=()=>recoverFromVideoFailure();
+  video.onabort=()=>{if(!started)recoverFromVideoFailure()};
+  video.onstalled=()=>{if(!started){clearTimeout(video._fallbackTimer);video._fallbackTimer=setTimeout(()=>{if(!started)recoverFromVideoFailure()},2500)}};
+}
 async function finishClip(){if(finishing)return;finishing=true;running=false;clearTimeout(timer);video.pause();scores.push(Math.max(0,Math.min(10,scoreThis())));pos++;if(pos>=order.length){await finishExam();return}setTimeout(()=>{finishing=false;loadClip()},220)}
 function scoreThis(){return responses.reduce((a,r)=>a+r.points,0)}
 async function finishExam(){
-  stopRoadAudio();
   const total=scores.reduce((a,b)=>a+b,0),completedAt=new Date().toISOString();
   const reportClips=order.map((c,i)=>({clip_code:c.clip_code,title:c.title,file:c.file||c.video_path,hazards:(c.hazards||[]).map(h=>({hazard_no:h.hazard_no,t:Number(h.t),label:h.label||`Hazard ${h.hazard_no}`})),responses:(c._responses||[]).map(r=>({response_no:r.response_no,t:Number(r.t),hazard_no:r.hazard_no||null,points:Number(r.points||0),frameData:r.frameData||null})),score:Number(scores[i]||0)}));
   const saved=await saveAttempt();
-  await exitExamFullscreen();show('examScreen',false);show('resultScreen',true);if(total>=C.passMark){setTimeout(()=>playOneShot('audio/test-pass-sound.mp3',1.0),120)}$('candidateResult').textContent=`${candidate.name} • ${candidate.phone}`;$('finalScore').textContent=`${total} / 100`;$('passText').textContent=total>=C.passMark?'PASS — EXAMINATION STANDARD MET':'NOT PASSED — BELOW PASS MARK';$('passText').className='status '+(total>=C.passMark?'pass':'fail');$('resultSaveStatus').textContent=saved.ok?'Result recorded successfully.':'Result could not be recorded automatically. Please inform the school admin.';$('resultSaveStatus').className='save-status '+(saved.ok?'ok':'error');$('printCertBtn').hidden=total<C.passMark;$('resultDetails').innerHTML=`<div class="resultSummary"><div><span>PASS MARK</span><b>${C.passMark}</b></div><div><span>YOUR SCORE</span><b>${total}</b></div><div><span>STATUS</span><b>${total>=C.passMark?'PASS':'NOT PASSED'}</b></div></div>`;
+  show('examScreen',false);show('resultScreen',true);$('candidateResult').textContent=`${candidate.name} • ${candidate.phone}`;$('finalScore').textContent=`${total} / 100`;$('passText').textContent=total>=C.passMark?'PASS — EXAMINATION STANDARD MET':'NOT PASSED — BELOW PASS MARK';$('passText').className='status '+(total>=C.passMark?'pass':'fail');$('resultSaveStatus').textContent=saved.ok?'Result recorded successfully.':'Result could not be recorded automatically. Please inform the school admin.';$('resultSaveStatus').className='save-status '+(saved.ok?'ok':'error');$('printCertBtn').hidden=total<C.passMark;const rows=scores.map((s,i)=>`<div class="scoreRow"><span>Clip ${String(i+1).padStart(2,'0')}</span><b>${s} / 10</b></div>`).join('');$('resultDetails').innerHTML=`<div class="scoreGrid">${rows}</div><div class="resultSummary"><div><span>PASS MARK</span><b>${C.passMark}</b></div><div><span>YOUR SCORE</span><b>${total}</b></div><div><span>STATUS</span><b>${total>=C.passMark?'PASS':'NOT PASSED'}</b></div></div>`;
   window._lastExam={total,total_score:total,passed:total>=C.passMark,saved, candidate_name:candidate.name,phone:candidate.phone,completed_at:completedAt,started_at:new Date(Date.now()-C.examClipCount*C.clipLimitSeconds*1000).toISOString(),clips:reportClips};
   if(total>=C.passMark)setupCandidateCertificate();
 }
-async function begin(){buttonFeedback();ensureAudio();engineStartSequence();startRoadAudio();enterExamFullscreen();const n=$('name').value.trim(),p=$('phone').value.trim(),code=$('accessCode').value.trim(),msg=$('accessCodeMsg');if(msg){msg.hidden=true;msg.textContent=''}if(!n||!p||!code){toast('Enter candidate name, phone number and access code',true);return}const sb=await supabase();if(!sb){toast('Access code verification is unavailable. Please try again.',true);return}let verified=false;try{const {data,error}=await sb.rpc('verify_hpt_access_code',{p_code:code});if(error)throw error;verified=data===true}catch(e){console.error('HPT access-code verification failed',e);if(msg){msg.textContent='ACCESS CODE VERIFICATION UNAVAILABLE';msg.hidden=false}toast('Access code verification is unavailable.',true);return}if(!verified){if(msg){msg.textContent='ACCESS CODE DENIED';msg.hidden=false}toast('ACCESS CODE DENIED',true);$('accessCode').focus();return}accessCode=code;clips=await loadClips();if(clips.length<C.examClipCount){toast(`Need ${C.examClipCount} active clips with at least one hazard each`,true);return}candidate={name:n,phone:p};$('candName').textContent=n;$('candPhone').textContent=p;order=shuffle(clips).slice(0,C.examClipCount);pos=0;scores=[];show('startScreen',false);show('resultScreen',false);show('examScreen',true);loadClip()}
+async function begin(){const n=$('name').value.trim(),p=$('phone').value.trim(),code=$('accessCode').value.trim(),msg=$('accessCodeMsg');if(msg){msg.hidden=true;msg.textContent=''}if(!n||!p||!code){toast('Enter candidate name, phone number and access code',true);return}const sb=await supabase();if(!sb){toast('Access code verification is unavailable. Please try again.',true);return}let verified=false;try{const {data,error}=await sb.rpc('verify_hpt_access_code',{p_code:code});if(error)throw error;verified=data===true}catch(e){console.error('HPT access-code verification failed',e);if(msg){msg.textContent='ACCESS CODE VERIFICATION UNAVAILABLE';msg.hidden=false}toast('Access code verification is unavailable.',true);return}if(!verified){if(msg){msg.textContent='ACCESS CODE DENIED';msg.hidden=false}toast('ACCESS CODE DENIED',true);$('accessCode').focus();return}accessCode=code;clips=await loadClips();if(clips.length<C.examClipCount){toast(`Need ${C.examClipCount} active clips with at least one hazard each`,true);return}candidate={name:n,phone:p};$('candName').textContent=n;$('candPhone').textContent=p;resetExamFallbackState();order=shuffle(clips).slice(0,C.examClipCount);pos=0;scores=[];show('startScreen',false);show('resultScreen',false);show('examScreen',true);loadClip()}
 async function printCertificate(examOverride=null,candidateOverride=null){
   const exam=examOverride||window._lastExam;
   const person=candidateOverride||candidate;
@@ -288,105 +212,8 @@ async function buildHistoricalExam(r){
 function openAttempts(){show('attemptsModal',true);$('attemptPhone').value='';$('attemptMsg').textContent='';$('attemptList').innerHTML='<div class="attemptEmpty">Enter your mobile number to view your HPT attempts.</div>';setTimeout(()=>$('attemptPhone')?.focus(),80)}
 function closeAttempts(){show('attemptsModal',false)}
 function setupCandidateCertificate(){$('printCertBtn').onclick=printCertificate}
-$('detailedResultBtn').onclick=async()=>{
-  const m=$('detailedResultModal'); if(!m||!window._lastExam)return;
-  show('detailedResultModal',true);
-  try{await buildDetailedResult(window._lastExam)}catch(e){console.error(e);$('detailedClipList').innerHTML='<div class="detailLoading">Could not prepare the detailed evidence. Please try again.</div>'}
-};
-$('detailedResultClose').onclick=()=>show('detailedResultModal',false);
-$('detailedResultModal').onclick=e=>{if(e.target===$('detailedResultModal'))show('detailedResultModal',false)};
-$('startBtn').onclick=begin;$('resultClose').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('newBtn').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('printCertBtn').onclick=()=>printCertificate();$('downloadReportBtn').onclick=async()=>{const b=$('downloadReportBtn');if(!window._lastExam||!window.RajuHPTReport){toast('Report generator is not available. Please refresh the page.',true);return}b.disabled=true;b.textContent='GENERATING…';try{await window.RajuHPTReport.generate(window._lastExam);toast('Complete HPT report downloaded.')}catch(e){console.error(e);toast('Could not generate the HPT report.',true)}finally{b.disabled=false;b.textContent='DOWNLOAD REPORT'}};const viewAttemptsBtn=$('viewAttemptsBtn');if(viewAttemptsBtn)viewAttemptsBtn.onclick=openAttempts;$('attemptSearchBtn').onclick=lookupAttempts;$('attemptCloseBtn').onclick=closeAttempts;$('attemptPhone').onkeydown=e=>{if(e.key==='Enter')lookupAttempts()};$('attemptsModal').onclick=e=>{if(e.target===$('attemptsModal'))closeAttempts()};$('skipBtn').onclick=finishClip;$('soundBtn').onclick=()=>{setSoundState(!sound);};$('fullBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()};$('helpBtn').onclick=()=>toast('Tap when a developing hazard becomes apparent. You can make up to 5 responses per clip.');$('exitBtn').onclick=()=>{if(confirm('Exit the examination? This attempt will be incomplete.')){clearTimeout(timer);video.pause();running=false;stopRoadAudio();exitExamFullscreen();show('examScreen',false);show('startScreen',true);}};$('playNow').onclick=()=>video.play().then(()=>{$('playOverlay').hidden=true;running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000)}).catch(()=>toast('Video could not start',true));
+$('startBtn').onclick=begin;$('resultClose').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('newBtn').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('printCertBtn').onclick=()=>printCertificate();$('downloadReportBtn').onclick=async()=>{const b=$('downloadReportBtn');if(!window._lastExam||!window.RajuHPTReport){toast('Report generator is not available. Please refresh the page.',true);return}b.disabled=true;b.textContent='GENERATING…';try{await window.RajuHPTReport.generate(window._lastExam);toast('Complete HPT report downloaded.')}catch(e){console.error(e);toast('Could not generate the HPT report.',true)}finally{b.disabled=false;b.textContent='DOWNLOAD REPORT'}};const viewAttemptsBtn=$('viewAttemptsBtn');if(viewAttemptsBtn)viewAttemptsBtn.onclick=openAttempts;$('attemptSearchBtn').onclick=lookupAttempts;$('attemptCloseBtn').onclick=closeAttempts;$('attemptPhone').onkeydown=e=>{if(e.key==='Enter')lookupAttempts()};$('attemptsModal').onclick=e=>{if(e.target===$('attemptsModal'))closeAttempts()};$('skipBtn').onclick=finishClip;$('soundBtn').onclick=()=>{sound=!sound;video.muted=!sound;$('soundBtn').textContent=sound?'🔊':'🔇'};$('fullBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()};$('helpBtn').onclick=()=>toast('Tap when a developing hazard becomes apparent. You can make up to 5 responses per clip.');$('exitBtn').onclick=()=>{if(confirm('Exit the examination? This attempt will be incomplete.')){clearTimeout(timer);video.pause();running=false;show('examScreen',false);show('startScreen',true);}};$('playNow').onclick=()=>video.play().then(()=>{$('playOverlay').hidden=true;running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000)}).catch(()=>toast('Video could not start',true));
 video.addEventListener('timeupdate',()=>{update();timeline()});video.addEventListener('ended',finishClip);
-async function captureDetailedFrame(url,time){
-  return await new Promise((resolve)=>{
-    if(!url){resolve(null);return}
-    const v=document.createElement('video');
-    let done=false;
-    const timeout=setTimeout(()=>finish(null),6500);
-    function finish(data){
-      if(done)return;done=true;clearTimeout(timeout);
-      try{v.pause();v.removeAttribute('src');v.load()}catch{}
-      resolve(data);
-    }
-    v.muted=true;v.playsInline=true;v.preload='auto';try{const u=new URL(url,location.href);if(u.origin!==location.origin&&u.protocol!=='file:')v.crossOrigin='anonymous'}catch{}
-    v.onloadedmetadata=()=>{
-      try{
-        const d=Number(v.duration)||50;
-        v.currentTime=Math.max(0,Math.min(Number(time)||0,Math.max(0,d-.08)));
-      }catch{finish(null)}
-    };
-    v.onseeked=()=>{
-      try{
-        const w=v.videoWidth||640,h=v.videoHeight||360,r=Math.min(800/w,450/h,1);
-        const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w*r));c.height=Math.max(1,Math.round(h*r));
-        const x=c.getContext('2d');x.drawImage(v,0,0,c.width,c.height);
-        finish(c.toDataURL('image/jpeg',.86));
-      }catch{finish(null)}
-    };
-    v.onerror=()=>finish(null);
-    v.src=url;
-    try{v.load()}catch{finish(null)}
-  });
-}
-function detailedThumb(code){
-  return `thumbnails/${Number(String(code).replace(/\D/g,''))}.jpg`;
-}
-async function buildDetailedResult(exam){
-  const list=$('detailedClipList'),summary=$('detailedSummary'),meta=$('detailedResultMeta');
-  if(!list||!exam)return;
-  const clips=exam.clips||[];
-  meta.textContent=`${exam.candidate_name||'Candidate'} • ${exam.phone||''}`;
-  summary.innerHTML=`<div><span>FINAL SCORE</span><b>${exam.total_score||exam.total||0} / 100</b></div><div><span>PASS MARK</span><b>${C.passMark} / 100</b></div><div><span>STATUS</span><b class="${exam.passed?'pass':'fail'}">${exam.passed?'PASS':'NOT PASSED'}</b></div>`;
-  list.innerHTML='<div class="detailLoading">Preparing detailed result…</div>';
-  const out=[];
-  for(let i=0;i<clips.length;i++){
-    const c=clips[i],hs=(c.hazards||[]).slice().sort((a,b)=>Number(a.hazard_no)-Number(b.hazard_no)),rs=c.responses||[];
-    const rows=[];
-    for(const h of hs){
-      const m=rs.find(r=>Number(r.hazard_no)===Number(h.hazard_no));
-      let actual=null,response=null;
-      try{actual=await captureDetailedFrame(c.file||c.video_path,Number(h.t))}catch{}
-      if(m&&m.t!=null){
-        response=m.frameData||null;
-        if(!response)try{response=await captureDetailedFrame(c.file||c.video_path,Number(m.t))}catch{}
-      }
-      rows.push({h,m,actual,response});
-    }
-    out.push({c,rows,score:Number(c.score||0)});
-  }
-  list.innerHTML=out.map((x,i)=>`<article class="detailClip">
-    <div class="detailClipHead">
-      <div><span>CLIP ${String(i+1).padStart(2,'0')}</span><strong>${escHtml(x.c.title||('Hazard Perception Clip '+x.c.clip_code))}</strong></div>
-      <b>${x.score} / 10</b>
-    </div>
-    <div class="detailHazards">${x.rows.map(r=>{
-      const h=r.h,m=r.m,pts=m?Number(m.points||0):0,max=x.rows.length===1?10:5;
-      const reaction=m&&m.t!=null?Number(m.t)-Number(h.t):null;
-      return `<div class="detailHazard">
-        <div class="detailHazardTop">
-          <div><b>HAZARD ${h.hazard_no}</b><span>${escHtml(h.label||('Developing hazard '+h.hazard_no))}</span></div>
-          <em class="${pts>0?'identified':'missed'}">${pts>0?'IDENTIFIED':'MISSED'} · ${pts}/${max}</em>
-        </div>
-        <div class="detailEvidence ${m?'hasResponse':'noResponse'}">
-          <figure><img src="${escHtml(r.actual)}" alt="Hazard ${h.hazard_no} official frame" loading="lazy"><figcaption>HAZARD · ${fmtDetailedTime(h.t)}</figcaption></figure>
-          ${m?`<figure><img src="${escHtml(r.response)}" alt="Candidate response for hazard ${h.hazard_no}" loading="lazy"><figcaption>RESPONSE · ${fmtDetailedTime(m.t)}</figcaption></figure>`:''}
-        </div>
-        <div class="detailTiming">
-          <span>Hazard <b>${fmtDetailedTime(h.t)}</b></span>
-          ${m?`<span>Response <b>${fmtDetailedTime(m.t)}</b></span><span>Reaction <b>${fmtDetailedTime(reaction)}</b></span>`:`<span class="notResponded">No response recorded</span>`}
-          <span>Marks <b>${pts} / ${max}</b></span>
-        </div>
-      </div>`;
-    }).join('')}</div>
-  </article>`).join('');
-}
-
-function fmtDetailedTime(v){
-  if(v===null||v===undefined||isNaN(Number(v)))return '—';
-  const s=Math.max(0,Number(v)),m=Math.floor(s/60),sec=(s%60).toFixed(1);
-  return `${String(m).padStart(2,'0')}:${sec.padStart(4,'0')}`;
-}
-
 function captureResponseFrame(){
   try{
     if(!video.videoWidth||!video.videoHeight)return null;
@@ -413,7 +240,7 @@ video.addEventListener('click',e=>{
       // Gentler HPT reaction-time curve: early identification still earns full marks,
       // while a valid response later in the 5-second window retains meaningful marks.
       // This avoids making the test disproportionately difficult for first-time candidates.
-      const multiplier=delta<=1?1:delta<=2?.85:delta<=3?.7:delta<=4?.5:.3;
+      const multiplier=delta<=1?1:delta<=2?.9:delta<=3?.8:delta<=4?.7:.6;
       const pts=maxPts*multiplier;
       const rounded=Math.max(1,Math.round(pts));
       if(!best||rounded>best.points)best={hazard_no:hn,points:rounded};
@@ -434,5 +261,5 @@ window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;show('ins
 $('installAppBtn').onclick=async()=>{if(deferredInstallPrompt){deferredInstallPrompt.prompt();try{await deferredInstallPrompt.userChoice}catch{}deferredInstallPrompt=null;return}showInstallHelp()};
 $('installHelpClose').onclick=()=>show('installHelpModal',false);$('installHelpOk').onclick=()=>show('installHelpModal',false);
 if(!isStandalone())show('installAppCard',true);
-setupConsoleFeedback();setupHomeMedia();preloadEngineSound();$('startScreen').querySelector('input')?.focus();show('startScreen',true);show('examScreen',false);show('resultScreen',false);startLoadingScreen();
+setupHomeMedia();$('startScreen').querySelector('input')?.focus();show('startScreen',true);show('examScreen',false);show('resultScreen',false);startLoadingScreen();
 })();
