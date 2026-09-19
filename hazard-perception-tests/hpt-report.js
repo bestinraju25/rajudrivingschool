@@ -16,49 +16,23 @@
   })}
   function captureFrame(url,time){return new Promise(function(resolve,reject){
     var v=document.createElement('video'),done=false;
-    var timer=setTimeout(function(){fail(new Error('frame timeout'))},5000);
-    v.muted=true;v.playsInline=true;v.preload='auto';
-    try{var u=new URL(url,location.href);if(u.origin!==location.origin&&u.protocol!=='file:')v.crossOrigin='anonymous'}catch(e){}
-    function cleanup(){clearTimeout(timer);v.onloadedmetadata=v.onloadeddata=v.onseeked=v.onerror=null;try{v.pause();v.removeAttribute('src');v.load()}catch(e){}}
+    var timer=setTimeout(function(){if(!done){done=true;cleanup();reject(new Error('frame timeout'))}},4500);
+    v.muted=true; v.playsInline=true; v.preload='auto'; v.crossOrigin='anonymous';
+    function cleanup(){clearTimeout(timer);try{v.pause();v.removeAttribute('src');v.load()}catch(e){}}
     function fail(e){if(done)return;done=true;cleanup();reject(e||new Error('frame failed'))}
-    function drawExactFrame(){
-      if(done)return;
-      try{
-        var w=v.videoWidth,h=v.videoHeight;
-        if(!w||!h)throw new Error('frame has no dimensions');
-        var c=document.createElement('canvas'),maxW=900,maxH=506,r=Math.min(maxW/w,maxH/h,1);
-        c.width=Math.max(1,Math.round(w*r));c.height=Math.max(1,Math.round(h*r));
-        var x=c.getContext('2d');x.drawImage(v,0,0,c.width,c.height);
-        var px=x.getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data;
-        if(px[0]<3&&px[1]<3&&px[2]<3&&v.readyState<3){setTimeout(drawExactFrame,50);return}
-        var data=c.toDataURL('image/jpeg',.92);done=true;cleanup();resolve(data);
-      }catch(e){fail(e)}
-    }
-    function afterSeek(){
-      if(done)return;
-      if(typeof v.requestVideoFrameCallback==='function'){
-        try{v.requestVideoFrameCallback(function(){drawExactFrame()});return}catch(e){}
-      }
-      requestAnimationFrame(function(){requestAnimationFrame(drawExactFrame)});
-    }
     v.onerror=function(){fail(new Error('video unavailable'))};
-    v.onloadedmetadata=function(){
-      try{
-        var d=Number(v.duration)||0,t=Math.max(0,Math.min(Number(time)||0,Math.max(0,d-.02)));
-        v.currentTime=t;
-      }catch(e){fail(e)}
-    };
-    v.onseeked=afterSeek;
-    v.onloadeddata=function(){if(!v.seeking&&v.currentTime>0)afterSeek()};
-    try{v.src=url;v.load()}catch(e){fail(e)}
+    v.onloadedmetadata=function(){try{var t=Math.max(0,Math.min(Number(time)||0,(v.duration||Number(time)||0)-.05));v.currentTime=t}catch(e){fail(e)}};
+    v.onseeked=function(){if(done)return;try{
+      var c=document.createElement('canvas'),maxW=640,maxH=360,w=v.videoWidth||640,h=v.videoHeight||360,r=Math.min(maxW/w,maxH/h,1);
+      c.width=Math.max(1,Math.round(w*r));c.height=Math.max(1,Math.round(h*r));c.getContext('2d').drawImage(v,0,0,c.width,c.height);var data=c.toDataURL('image/jpeg',.76);done=true;cleanup();resolve(data);
+    }catch(e){fail(e)}};
+    v.src=url;try{v.load()}catch(e){fail(e)}
   })}
   async function frameFor(clip,time,fallbackData){
     if(fallbackData)return fallbackData;
-    if(clip&&clip.file&&time!==null&&time!==undefined){
-      for(var attempt=0;attempt<2;attempt++){
-        try{var f=await captureFrame(clip.file,time);if(f)return f}catch(e){}
-      }
-    }
+    if(clip&&clip.file&&time!==null&&time!==undefined){try{return await captureFrame(clip.file,time)}catch(e){}}
+    var n=String(clip&&clip.clip_code||'').replace(/\D/g,'');
+    if(n){try{return await imageData('thumbnails/'+Number(n)+'.jpg')}catch(e){}}
     return null;
   }
   function txt(doc,s,x,y,size,bold,color,align){doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.setTextColor.apply(doc,color||[45,58,68]);doc.text(String(s==null?'':s),x,y,{align:align||'left'});}
@@ -83,8 +57,8 @@
     // Compact card report: no clip numbers, no extra-click rows, and no table rows spilling into the footer.
     // Compact two-column hazard cards. 8 cards per page fit inside the printable
     // area without crossing the footer; text and evidence stay in fixed columns.
-    var cardsPerPage=6,totalPages=Math.max(1,Math.ceil(rows.length/cardsPerPage));
-    var margin=12, gap=4, cardW=(W-margin*2-gap)/2, cardH=34.5, rowGap=4.5;
+    var cardsPerPage=8,totalPages=Math.max(1,Math.ceil(rows.length/cardsPerPage));
+    var margin=12, gap=4, cardW=(W-margin*2-gap)/2, cardH=26.5, rowGap=3.5;
 
     function card(doc,r,x,y,w,h,idx){
       var bg=idx%2===0?[245,247,249]:[235,241,245];
@@ -96,7 +70,7 @@
         r.status==='IDENTIFIED'?[25,125,65]:[190,50,65],'right');
 
       // Fixed timing columns
-      var col1=x+4, col2=x+20, col3=x+36, col4=x+52;
+      var col1=x+4, col2=x+18, col3=x+32, col4=x+46;
       txt(doc,'OFFICIAL',col1,y+10.7,3.7,true,[105,120,130]);
       txt(doc,'CLICK',col2,y+10.7,3.7,true,[105,120,130]);
       txt(doc,'REACTION',col3,y+10.7,3.7,true,[105,120,130]);
@@ -107,14 +81,14 @@
       txt(doc,(r.points||0)+' / '+r.max,col4,y+16.0,5.4,true,[184,132,12]);
 
       // Evidence area on the right; fixed dimensions prevent overlap.
-      var ex=x+w-76, ey=y+4.2, ew=34, eh=19.0;
+      var ex=x+w-62, ey=y+4.2, ew=27, eh=15.2;
       if(r._actual)doc.addImage(r._actual,'JPEG',ex,ey,ew,eh);
-      else {box(doc,ex,ey,ew,eh,[232,236,239],[205,213,219]);txt(doc,'FRAME UNAVAILABLE',ex+ew/2,ey+eh/2+1.5,4.0,true,[110,120,128],'center');}
-      if(r._response)doc.addImage(r._response,'JPEG',ex+38,ey,ew,eh);
-      else {box(doc,ex+38,ey,ew,eh,[232,236,239],[205,213,219]);txt(doc,'FRAME UNAVAILABLE',ex+38+ew/2,ey+eh/2+1.5,4.0,true,[110,120,128],'center');}
+      else box(doc,ex,ey,ew,eh,[215,220,224]);
+      if(r._response)doc.addImage(r._response,'JPEG',ex+30,ey,ew,eh);
+      else box(doc,ex+30,ey,ew,eh,[215,220,224]);
 
       txt(doc,'A '+fmtTime(r.ht),ex,y+h-2.2,3.6,true,[65,80,90]);
-      txt(doc,'R '+(r.ct==null?'—':fmtTime(r.ct)),ex+38,y+h-2.2,3.6,true,[65,80,90]);
+      txt(doc,'R '+(r.ct==null?'—':fmtTime(r.ct)),ex+30,y+h-2.2,3.6,true,[65,80,90]);
     }
 
     for(var page=0;page<totalPages;page++){
@@ -143,7 +117,7 @@
         });
 
         txt(doc,'Hazard evidence analysis',12,66.5,8.2,true,[20,34,48]);
-        txt(doc,'A = official hazard frame/time   R = candidate response frame/time',12,71.0,4.8,false,[95,108,118]);
+        txt(doc,'A = actual hazard frame/time   R = candidate response frame/time',12,71.0,4.8,false,[95,108,118]);
         startY=75;
       } else {
         txt(doc,'Hazard evidence analysis — continued',12,26,12.5,true,[20,34,48]);
@@ -153,17 +127,13 @@
 
       for(var ri=from;ri<to;ri++){
         var r=rows[ri];
-        await Promise.all([
-          frameFor(r.clip,r.ht,null).then(function(v){r._actual=v}).catch(function(){r._actual=null}),
-          (r.match&&r.ct!=null
-            ? frameFor(r.clip,r.ct,r.match.frameData||null).then(function(v){r._response=v}).catch(function(){r._response=null})
-            : Promise.resolve().then(function(){r._response=null}))
-        ]);
+        r._actual=await frameFor(r.clip,r.ht,null);
+        r._response=r.match&&r.ct!=null?await frameFor(r.clip,r.ct,r.match.frameData||null):null;
         var local=ri-from,col=local%2,row=Math.floor(local/2);
         card(doc,r,margin+col*(cardW+gap),startY+row*(cardH+rowGap),cardW,cardH,ri);
       }
 
-      txt(doc,'Each clip is scored out of 10. Evidence images show the official hazard moment and the candidate response moment where available.',
+      txt(doc,'Each clip is scored out of 10. One official hazard = up to 10 marks; two official hazards = up to 5 marks each.',
           12,H-14,4.9,false,[100,112,122]);
       footer(doc,W,H);
     }
