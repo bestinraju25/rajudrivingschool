@@ -1257,3 +1257,30 @@ body.result-active #startScreen,body.result-active #examScreen{display:none!impo
 }
 
 .attemptDetailBtn{border:1px solid var(--yellow);background:rgba(212,162,32,.12);color:var(--yellow);border-radius:10px;padding:10px 12px;font-weight:900;cursor:pointer}.attemptDetailBtn:disabled{opacity:.6;cursor:wait}
+
+/* V62 — cinematic home background + translucent navigation */
+.topbar{
+  background:rgba(3,8,13,.28)!important;
+  border-bottom:1px solid rgba(255,255,255,.12)!important;
+  box-shadow:0 8px 30px rgba(0,0,0,.10)!important;
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+}
+.stage{
+  background-image:linear-gradient(90deg,rgba(3,10,15,.78) 0%,rgba(3,10,15,.48) 43%,rgba(3,10,15,.58) 100%),url('home-background.jpg')!important;
+  background-size:cover!important;background-position:center center!important;
+  background-repeat:no-repeat!important;
+}
+.stage:after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.12) 48%,rgba(0,0,0,.34));
+}
+.stage:before{z-index:1!important;opacity:.06!important}
+.homeShell{z-index:2!important}
+.homeCopy,.examCard{filter:drop-shadow(0 14px 30px rgba(0,0,0,.20))}
+.examCard{background:linear-gradient(145deg,rgba(9,22,31,.86),rgba(5,14,21,.78))!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.homeStats div{background:linear-gradient(180deg,rgba(12,31,44,.70),rgba(5,16,24,.62))!important}
+.homeTip{background:rgba(4,14,21,.32)!important;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+@media(max-width:700px){
+  .stage{background-position:62% center!important;background-image:linear-gradient(180deg,rgba(3,10,15,.58),rgba(3,10,15,.72)),url('home-background.jpg')!important}
+  .topbar{background:rgba(3,8,13,.30)!important}
+}

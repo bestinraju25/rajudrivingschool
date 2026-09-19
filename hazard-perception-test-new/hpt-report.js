@@ -16,17 +16,36 @@
   })}
   function captureFrame(url,time){return new Promise(function(resolve,reject){
     var v=document.createElement('video'),done=false;
-    var timer=setTimeout(function(){if(!done){done=true;cleanup();reject(new Error('frame timeout'))}},4500);
-    v.muted=true; v.playsInline=true; v.preload='auto'; try{var u=new URL(url,location.href);if(u.origin!==location.origin&&u.protocol!=='file:')v.crossOrigin='anonymous'}catch(e){}
+    var timer=setTimeout(function(){if(!done){done=true;cleanup();reject(new Error('frame timeout'))}},9000);
+    v.muted=true; v.playsInline=true; v.preload='auto';
+    try{var u=new URL(url,location.href);if(u.origin!==location.origin&&u.protocol!=='file:')v.crossOrigin='anonymous'}catch(e){}
     function cleanup(){clearTimeout(timer);try{v.pause();v.removeAttribute('src');v.load()}catch(e){}}
     function fail(e){if(done)return;done=true;cleanup();reject(e||new Error('frame failed'))}
+    function drawExactFrame(){
+      if(done)return;
+      try{
+        var w=v.videoWidth||640,h=v.videoHeight||360;
+        if(!w||!h)throw new Error('frame has no dimensions');
+        var c=document.createElement('canvas'),maxW=900,maxH=506,r=Math.min(maxW/w,maxH/h,1);
+        c.width=Math.max(1,Math.round(w*r));c.height=Math.max(1,Math.round(h*r));
+        var x=c.getContext('2d');x.drawImage(v,0,0,c.width,c.height);
+        var px=x.getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data;
+        if(px[0]<3&&px[1]<3&&px[2]<3&&v.readyState<3){setTimeout(drawExactFrame,80);return}
+        var data=c.toDataURL('image/jpeg',.9);done=true;cleanup();resolve(data);
+      }catch(e){fail(e)}
+    }
+    function afterSeek(){
+      if(done)return;
+      var draw=function(){
+        if(typeof v.requestVideoFrameCallback==='function'){try{v.requestVideoFrameCallback(function(){drawExactFrame()});return}catch(e){}}
+        requestAnimationFrame(function(){requestAnimationFrame(drawExactFrame)});
+      };
+      try{var p=v.play();if(p&&p.then)p.then(function(){v.pause();draw()}).catch(draw);else draw()}catch(e){draw()}
+    }
     v.onerror=function(){fail(new Error('video unavailable'))};
-    v.onloadedmetadata=function(){try{var t=Math.max(0,Math.min(Number(time)||0,(v.duration||Number(time)||0)-.05));v.currentTime=t}catch(e){fail(e)}};
-    v.onseeked=function(){if(done)return;try{
-      var c=document.createElement('canvas'),maxW=640,maxH=360,w=v.videoWidth||640,h=v.videoHeight||360,r=Math.min(maxW/w,maxH/h,1);
-      c.width=Math.max(1,Math.round(w*r));c.height=Math.max(1,Math.round(h*r));c.getContext('2d').drawImage(v,0,0,c.width,c.height);var data=c.toDataURL('image/jpeg',.76);done=true;cleanup();resolve(data);
-    }catch(e){fail(e)}};
-    v.src=url;try{v.load()}catch(e){fail(e)}
+    v.onloadedmetadata=function(){try{var d=Number(v.duration)||0,t=Math.max(0,Math.min(Number(time)||0,Math.max(0,d-.02)));v.currentTime=t}catch(e){fail(e)}};
+    v.onseeked=afterSeek;
+    try{v.src=url;v.load()}catch(e){fail(e)}
   })}
   async function frameFor(clip,time,fallbackData){
     if(fallbackData)return fallbackData;

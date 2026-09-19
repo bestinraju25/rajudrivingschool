@@ -325,31 +325,59 @@ async function captureDetailedFrame(url,time){
   return await new Promise((resolve)=>{
     if(!url){resolve(null);return}
     const v=document.createElement('video');
-    let done=false;
-    const timeout=setTimeout(()=>finish(null),6500);
-    function finish(data){
-      if(done)return;done=true;clearTimeout(timeout);
+    let done=false,settled=false;
+    const timeout=setTimeout(()=>finish(null),9000);
+    function cleanup(){
+      clearTimeout(timeout);
       try{v.pause();v.removeAttribute('src');v.load()}catch{}
-      resolve(data);
+    }
+    function finish(data){
+      if(done)return;done=true;cleanup();resolve(data)}
+    function drawExactFrame(){
+      if(done)return;
+      try{
+        const w=v.videoWidth||640,h=v.videoHeight||360;
+        if(!w||!h){finish(null);return}
+        const r=Math.min(900/w,506/h,1);
+        const c=document.createElement('canvas');
+        c.width=Math.max(1,Math.round(w*r));c.height=Math.max(1,Math.round(h*r));
+        const x=c.getContext('2d',{willReadFrequently:false});
+        x.drawImage(v,0,0,c.width,c.height);
+        const px=x.getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data;
+        // If the decoder has not delivered a real frame yet, wait once more instead of saving a black canvas.
+        const nearBlack=px[0]<3&&px[1]<3&&px[2]<3;
+        if(nearBlack&&v.readyState<3){setTimeout(drawExactFrame,80);return}
+        finish(c.toDataURL('image/jpeg',.9));
+      }catch{finish(null)}
+    }
+    function afterSeek(){
+      if(done)return;
+      const draw=()=>{
+        if(typeof v.requestVideoFrameCallback==='function'){
+          try{v.requestVideoFrameCallback(()=>drawExactFrame());return}catch{}
+        }
+        requestAnimationFrame(()=>requestAnimationFrame(drawExactFrame));
+      };
+      // Force the browser to decode the sought frame before drawing it.
+      try{
+        const p=v.play();
+        if(p&&p.then)p.then(()=>{v.pause();draw()}).catch(()=>draw());
+        else draw();
+      }catch{draw()}
     }
     v.muted=true;v.playsInline=true;v.preload='auto';
+    try{const u=new URL(url,location.href);if(u.origin!==location.origin&&u.protocol!=='file:')v.crossOrigin='anonymous'}catch{}
     v.onloadedmetadata=()=>{
       try{
-        const d=Number(v.duration)||50;
-        v.currentTime=Math.max(0,Math.min(Number(time)||0,Math.max(0,d-.08)));
+        const d=Number(v.duration)||0;
+        const target=Math.max(0,Math.min(Number(time)||0,Math.max(0,d-.02)));
+        v.currentTime=target;
       }catch{finish(null)}
     };
-    v.onseeked=()=>{
-      try{
-        const w=v.videoWidth||640,h=v.videoHeight||360,r=Math.min(800/w,450/h,1);
-        const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w*r));c.height=Math.max(1,Math.round(h*r));
-        const x=c.getContext('2d');x.drawImage(v,0,0,c.width,c.height);
-        finish(c.toDataURL('image/jpeg',.86));
-      }catch{finish(null)}
-    };
+    v.onloadeddata=()=>{ if(v.seeking===false&&v.currentTime>0) afterSeek(); };
+    v.onseeked=afterSeek;
     v.onerror=()=>finish(null);
-    v.src=url;
-    try{v.load()}catch{finish(null)}
+    try{v.src=url;v.load()}catch{finish(null)}
   });
 }
 function detailedThumb(code){
