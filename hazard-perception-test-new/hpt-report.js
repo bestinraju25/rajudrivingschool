@@ -16,35 +16,40 @@
   })}
   function captureFrame(url,time){return new Promise(function(resolve,reject){
     var v=document.createElement('video'),done=false;
-    var timer=setTimeout(function(){if(!done){done=true;cleanup();reject(new Error('frame timeout'))}},9000);
-    v.muted=true; v.playsInline=true; v.preload='auto';
+    var timer=setTimeout(function(){fail(new Error('frame timeout'))},5000);
+    v.muted=true;v.playsInline=true;v.preload='auto';
     try{var u=new URL(url,location.href);if(u.origin!==location.origin&&u.protocol!=='file:')v.crossOrigin='anonymous'}catch(e){}
-    function cleanup(){clearTimeout(timer);try{v.pause();v.removeAttribute('src');v.load()}catch(e){}}
+    function cleanup(){clearTimeout(timer);v.onloadedmetadata=v.onloadeddata=v.onseeked=v.onerror=null;try{v.pause();v.removeAttribute('src');v.load()}catch(e){}}
     function fail(e){if(done)return;done=true;cleanup();reject(e||new Error('frame failed'))}
     function drawExactFrame(){
       if(done)return;
       try{
-        var w=v.videoWidth||640,h=v.videoHeight||360;
+        var w=v.videoWidth,h=v.videoHeight;
         if(!w||!h)throw new Error('frame has no dimensions');
         var c=document.createElement('canvas'),maxW=900,maxH=506,r=Math.min(maxW/w,maxH/h,1);
         c.width=Math.max(1,Math.round(w*r));c.height=Math.max(1,Math.round(h*r));
         var x=c.getContext('2d');x.drawImage(v,0,0,c.width,c.height);
         var px=x.getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data;
-        if(px[0]<3&&px[1]<3&&px[2]<3&&v.readyState<3){setTimeout(drawExactFrame,80);return}
-        var data=c.toDataURL('image/jpeg',.9);done=true;cleanup();resolve(data);
+        if(px[0]<3&&px[1]<3&&px[2]<3&&v.readyState<3){setTimeout(drawExactFrame,50);return}
+        var data=c.toDataURL('image/jpeg',.92);done=true;cleanup();resolve(data);
       }catch(e){fail(e)}
     }
     function afterSeek(){
       if(done)return;
-      var draw=function(){
-        if(typeof v.requestVideoFrameCallback==='function'){try{v.requestVideoFrameCallback(function(){drawExactFrame()});return}catch(e){}}
-        requestAnimationFrame(function(){requestAnimationFrame(drawExactFrame)});
-      };
-      try{var p=v.play();if(p&&p.then)p.then(function(){v.pause();draw()}).catch(draw);else draw()}catch(e){draw()}
+      if(typeof v.requestVideoFrameCallback==='function'){
+        try{v.requestVideoFrameCallback(function(){drawExactFrame()});return}catch(e){}
+      }
+      requestAnimationFrame(function(){requestAnimationFrame(drawExactFrame)});
     }
     v.onerror=function(){fail(new Error('video unavailable'))};
-    v.onloadedmetadata=function(){try{var d=Number(v.duration)||0,t=Math.max(0,Math.min(Number(time)||0,Math.max(0,d-.02)));v.currentTime=t}catch(e){fail(e)}};
+    v.onloadedmetadata=function(){
+      try{
+        var d=Number(v.duration)||0,t=Math.max(0,Math.min(Number(time)||0,Math.max(0,d-.02)));
+        v.currentTime=t;
+      }catch(e){fail(e)}
+    };
     v.onseeked=afterSeek;
+    v.onloadeddata=function(){if(!v.seeking&&v.currentTime>0)afterSeek()};
     try{v.src=url;v.load()}catch(e){fail(e)}
   })}
   async function frameFor(clip,time,fallbackData){
@@ -148,8 +153,12 @@
 
       for(var ri=from;ri<to;ri++){
         var r=rows[ri];
-        r._actual=await frameFor(r.clip,r.ht,null);
-        r._response=r.match&&r.ct!=null?await frameFor(r.clip,r.ct,r.match.frameData||null):null;
+        await Promise.all([
+          frameFor(r.clip,r.ht,null).then(function(v){r._actual=v}).catch(function(){r._actual=null}),
+          (r.match&&r.ct!=null
+            ? frameFor(r.clip,r.ct,r.match.frameData||null).then(function(v){r._response=v}).catch(function(){r._response=null})
+            : Promise.resolve().then(function(){r._response=null}))
+        ]);
         var local=ri-from,col=local%2,row=Math.floor(local/2);
         card(doc,r,margin+col*(cardW+gap),startY+row*(cardH+rowGap),cardW,cardH,ri);
       }

@@ -216,7 +216,6 @@ async function finishExam(){
   stopRoadAudio();
   const total=scores.reduce((a,b)=>a+b,0),completedAt=new Date().toISOString();
   const reportClips=order.map((c,i)=>({clip_code:c.clip_code,title:c.title,file:c.file||c.video_path,hazards:(c.hazards||[]).map(h=>({hazard_no:h.hazard_no,t:Number(h.t),label:h.label||`Hazard ${h.hazard_no}`})),responses:(c._responses||[]).map(r=>({response_no:r.response_no,t:Number(r.t),hazard_no:r.hazard_no||null,points:Number(r.points||0),frameData:r.frameData||null})),score:Number(scores[i]||0)}));
-  await exitExamFullscreen();
   const saved=await saveAttempt();
   show('examScreen',false);show('resultScreen',true);if(total>=C.passMark)setTimeout(()=>playOneShot('audio/test-pass-sound.mp3',1),120);$('candidateResult').textContent=`${candidate.name} • ${candidate.phone}`;$('finalScore').textContent=`${total} / 100`;$('passText').textContent=total>=C.passMark?'PASS — EXAMINATION STANDARD MET':'NOT PASSED — BELOW PASS MARK';$('passText').className='status '+(total>=C.passMark?'pass':'fail');$('resultSaveStatus').textContent=saved.ok?'Result recorded successfully.':'Result could not be recorded automatically. Please inform the school admin.';$('resultSaveStatus').className='save-status '+(saved.ok?'ok':'error');$('printCertBtn').hidden=total<C.passMark;$('resultDetails').innerHTML=`<div class="resultSummary"><div><span>PASS MARK</span><b>${C.passMark}</b></div><div><span>YOUR SCORE</span><b>${total}</b></div><div><span>STATUS</span><b>${total>=C.passMark?'PASS':'NOT PASSED'}</b></div></div>`;
   window._lastExam={total,total_score:total,passed:total>=C.passMark,saved, candidate_name:candidate.name,phone:candidate.phone,completed_at:completedAt,started_at:new Date(Date.now()-C.examClipCount*C.clipLimitSeconds*1000).toISOString(),clips:reportClips};
@@ -319,54 +318,70 @@ function setupCandidateCertificate(){$('printCertBtn').onclick=printCertificate}
 $('detailedResultBtn').onclick=async()=>{const m=$('detailedResultModal');if(!m||!window._lastExam)return;show('detailedResultModal',true);try{await buildDetailedResult(window._lastExam)}catch(e){console.error(e);$('detailedClipList').innerHTML='<div class="detailLoading">Could not prepare the detailed evidence. Please try again.</div>'}};
 $('detailedResultClose').onclick=()=>show('detailedResultModal',false);
 $('detailedResultModal').onclick=e=>{if(e.target===$('detailedResultModal'))show('detailedResultModal',false)};
-$('startBtn').onclick=begin;$('resultClose').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('newBtn').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('printCertBtn').onclick=()=>printCertificate();$('downloadReportBtn').onclick=async()=>{const b=$('downloadReportBtn');if(!window._lastExam||!window.RajuHPTReport){toast('Report generator is not available. Please refresh the page.',true);return}b.disabled=true;b.textContent='GENERATING…';try{await window.RajuHPTReport.generate(window._lastExam);toast('Complete HPT report downloaded.')}catch(e){console.error(e);toast('Could not generate the HPT report.',true)}finally{b.disabled=false;b.textContent='DOWNLOAD REPORT'}};const viewAttemptsBtn=$('viewAttemptsBtn');if(viewAttemptsBtn)viewAttemptsBtn.onclick=openAttempts;$('attemptSearchBtn').onclick=lookupAttempts;$('attemptCloseBtn').onclick=closeAttempts;$('attemptPhone').onkeydown=e=>{if(e.key==='Enter')lookupAttempts()};$('attemptsModal').onclick=e=>{if(e.target===$('attemptsModal'))closeAttempts()};$('skipBtn').onclick=finishClip;$('soundBtn').onclick=()=>setSoundState(!sound);$('fullBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()};$('helpBtn').onclick=()=>toast('Tap when a developing hazard becomes apparent. You can make up to 5 responses per clip.');$('exitBtn').onclick=()=>{if(confirm('Exit the examination? This attempt will be incomplete.')){clearTimeout(timer);video.pause();running=false;stopRoadAudio();exitExamFullscreen();show('examScreen',false);show('startScreen',true);}};$('playNow').onclick=()=>video.play().then(()=>{$('playOverlay').hidden=true;running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000)}).catch(()=>toast('Video could not start',true));
+$('startBtn').onclick=begin;$('resultClose').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('newBtn').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('printCertBtn').onclick=()=>printCertificate();$('downloadReportBtn').onclick=async()=>{const b=$('downloadReportBtn');if(!window._lastExam||!window.RajuHPTReport){toast('Report generator is not available. Please refresh the page.',true);return}b.disabled=true;b.textContent='GENERATING…';try{await window.RajuHPTReport.generate(window._lastExam);toast('Complete HPT report downloaded.')}catch(e){console.error(e);toast('Could not generate the HPT report.',true)}finally{b.disabled=false;b.textContent='DOWNLOAD REPORT'}};const viewAttemptsBtn=$('viewAttemptsBtn');if(viewAttemptsBtn)viewAttemptsBtn.onclick=openAttempts;$('attemptSearchBtn').onclick=lookupAttempts;$('attemptCloseBtn').onclick=closeAttempts;$('attemptPhone').onkeydown=e=>{if(e.key==='Enter')lookupAttempts()};$('attemptsModal').onclick=e=>{if(e.target===$('attemptsModal'))closeAttempts()};$('skipBtn').onclick=finishClip;$('soundBtn').onclick=()=>setSoundState(!sound);function updateFullscreenButton(){
+  const b=$('fullBtn');
+  if(!b)return;
+  const active=!!document.fullscreenElement;
+  b.textContent=active?'⤡':'⤢';
+  b.title=active?'Exit fullscreen':'Enter fullscreen';
+  b.setAttribute('aria-label',b.title);
+}
+$('fullBtn').onclick=async()=>{
+  try{
+    if(document.fullscreenElement)await document.exitFullscreen?.();
+    else await document.documentElement.requestFullscreen?.({navigationUI:'hide'});
+  }catch(e){toast('Fullscreen is not available in this browser.',true)}
+  updateFullscreenButton();
+};
+document.addEventListener('fullscreenchange',updateFullscreenButton);
+updateFullscreenButton();$('helpBtn').onclick=()=>toast('Tap when a developing hazard becomes apparent. You can make up to 5 responses per clip.');$('exitBtn').onclick=()=>{if(confirm('Exit the examination? This attempt will be incomplete.')){clearTimeout(timer);video.pause();running=false;stopRoadAudio();show('examScreen',false);show('startScreen',true);}};$('playNow').onclick=()=>video.play().then(()=>{$('playOverlay').hidden=true;running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000)}).catch(()=>toast('Video could not start',true));
 video.addEventListener('timeupdate',()=>{update();timeline()});video.addEventListener('ended',finishClip);
 async function captureDetailedFrame(url,time){
   return await new Promise((resolve)=>{
     if(!url){resolve(null);return}
     const v=document.createElement('video');
-    let done=false,settled=false;
-    const timeout=setTimeout(()=>finish(null),9000);
+    let done=false;
+    const timeout=setTimeout(()=>finish(null),4500);
     function cleanup(){
       clearTimeout(timeout);
+      v.onloadedmetadata=v.onloadeddata=v.onseeked=v.onerror=null;
       try{v.pause();v.removeAttribute('src');v.load()}catch{}
     }
     function finish(data){
-      if(done)return;done=true;cleanup();resolve(data)}
+      if(done)return;
+      done=true;cleanup();resolve(data);
+    }
     function drawExactFrame(){
       if(done)return;
       try{
-        const w=v.videoWidth||640,h=v.videoHeight||360;
+        const w=v.videoWidth,h=v.videoHeight;
         if(!w||!h){finish(null);return}
         const r=Math.min(900/w,506/h,1);
         const c=document.createElement('canvas');
         c.width=Math.max(1,Math.round(w*r));c.height=Math.max(1,Math.round(h*r));
-        const x=c.getContext('2d',{willReadFrequently:false});
+        const x=c.getContext('2d');
         x.drawImage(v,0,0,c.width,c.height);
+        // Do not accept the black placeholder frame.
         const px=x.getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data;
-        // If the decoder has not delivered a real frame yet, wait once more instead of saving a black canvas.
-        const nearBlack=px[0]<3&&px[1]<3&&px[2]<3;
-        if(nearBlack&&v.readyState<3){setTimeout(drawExactFrame,80);return}
-        finish(c.toDataURL('image/jpeg',.9));
+        if(px[0]<3&&px[1]<3&&px[2]<3&&v.readyState<3){
+          setTimeout(drawExactFrame,50);return;
+        }
+        finish(c.toDataURL('image/jpeg',.92));
       }catch{finish(null)}
     }
     function afterSeek(){
       if(done)return;
-      const draw=()=>{
-        if(typeof v.requestVideoFrameCallback==='function'){
-          try{v.requestVideoFrameCallback(()=>drawExactFrame());return}catch{}
-        }
-        requestAnimationFrame(()=>requestAnimationFrame(drawExactFrame));
-      };
-      // Force the browser to decode the sought frame before drawing it.
-      try{
-        const p=v.play();
-        if(p&&p.then)p.then(()=>{v.pause();draw()}).catch(()=>draw());
-        else draw();
-      }catch{draw()}
+      if(typeof v.requestVideoFrameCallback==='function'){
+        try{v.requestVideoFrameCallback(()=>drawExactFrame());return}catch{}
+      }
+      requestAnimationFrame(()=>requestAnimationFrame(drawExactFrame));
     }
     v.muted=true;v.playsInline=true;v.preload='auto';
-    try{const u=new URL(url,location.href);if(u.origin!==location.origin&&u.protocol!=='file:')v.crossOrigin='anonymous'}catch{}
+    // Keep same-origin videos without CORS mode. This is important for local/GitHub Pages playback.
+    try{
+      const u=new URL(url,location.href);
+      if(u.origin!==location.origin&&u.protocol!=='file:')v.crossOrigin='anonymous';
+    }catch{}
     v.onloadedmetadata=()=>{
       try{
         const d=Number(v.duration)||0;
@@ -374,8 +389,11 @@ async function captureDetailedFrame(url,time){
         v.currentTime=target;
       }catch{finish(null)}
     };
-    v.onloadeddata=()=>{ if(v.seeking===false&&v.currentTime>0) afterSeek(); };
+    // Seeking to the requested timestamp is enough; do not call play(), which can hang
+    // on some mobile browsers and was the reason the detailed-result screen could remain
+    // on "Preparing detailed result…".
     v.onseeked=afterSeek;
+    v.onloadeddata=()=>{if(!v.seeking&&v.currentTime>0)afterSeek()};
     v.onerror=()=>finish(null);
     try{v.src=url;v.load()}catch{finish(null)}
   });
@@ -383,29 +401,9 @@ async function captureDetailedFrame(url,time){
 function detailedThumb(code){
   return `thumbnails/${Number(String(code).replace(/\D/g,''))}.jpg`;
 }
-async function buildDetailedResult(exam){
-  const list=$('detailedClipList'),summary=$('detailedSummary'),meta=$('detailedResultMeta');
-  if(!list||!exam)return;
-  const clips=exam.clips||[];
-  meta.textContent=`${exam.candidate_name||'Candidate'} • ${exam.phone||''}`;
-  summary.innerHTML=`<div><span>FINAL SCORE</span><b>${exam.total_score||exam.total||0} / 100</b></div><div><span>PASS MARK</span><b>${C.passMark} / 100</b></div><div><span>STATUS</span><b class="${exam.passed?'pass':'fail'}">${exam.passed?'PASS':'NOT PASSED'}</b></div>`;
-  list.innerHTML='<div class="detailLoading">Preparing detailed result…</div>';
-  const out=[];
-  for(let i=0;i<clips.length;i++){
-    const c=clips[i],hs=(c.hazards||[]).slice().sort((a,b)=>Number(a.hazard_no)-Number(b.hazard_no)),rs=c.responses||[];
-    const rows=[];
-    for(const h of hs){
-      const m=rs.find(r=>Number(r.hazard_no)===Number(h.hazard_no));
-      let actual=null,response=null;
-      try{actual=await captureDetailedFrame(c.file||c.video_path,Number(h.t))}catch{}
-      if(m&&m.t!=null){
-        response=m.frameData||null;
-        if(!response)try{response=await captureDetailedFrame(c.file||c.video_path,Number(m.t))}catch{}
-      }
-      rows.push({h,m,actual,response});
-    }
-    out.push({c,rows,score:Number(c.score||0)});
-  }
+function renderDetailedCards(out){
+  const list=$('detailedClipList');
+  if(!list)return;
   list.innerHTML=out.map((x,i)=>`<article class="detailClip">
     <div class="detailClipHead">
       <div><span>CLIP ${String(i+1).padStart(2,'0')}</span><strong>${escHtml(x.c.title||('Hazard Perception Clip '+x.c.clip_code))}</strong></div>
@@ -414,14 +412,16 @@ async function buildDetailedResult(exam){
     <div class="detailHazards">${x.rows.map(r=>{
       const h=r.h,m=r.m,pts=m?Number(m.points||0):0,max=x.rows.length===1?10:5;
       const reaction=m&&m.t!=null?Number(m.t)-Number(h.t):null;
+      const actual=r.actual||'';
+      const response=r.response||'';
       return `<div class="detailHazard">
         <div class="detailHazardTop">
           <div><b>HAZARD ${h.hazard_no}</b><span>${escHtml(h.label||('Developing hazard '+h.hazard_no))}</span></div>
           <em class="${pts>0?'identified':'missed'}">${pts>0?'IDENTIFIED':'MISSED'} · ${pts}/${max}</em>
         </div>
         <div class="detailEvidence ${m?'hasResponse':'noResponse'}">
-          <figure><img src="${escHtml(r.actual)}" alt="Hazard ${h.hazard_no} official frame" loading="lazy"><figcaption>HAZARD · ${fmtDetailedTime(h.t)}</figcaption></figure>
-          ${m?`<figure><img src="${escHtml(r.response)}" alt="Candidate response for hazard ${h.hazard_no}" loading="lazy"><figcaption>RESPONSE · ${fmtDetailedTime(m.t)}</figcaption></figure>`:''}
+          <figure>${actual?`<img src="${escHtml(actual)}" alt="Hazard ${h.hazard_no} official frame">`:`<div class="evidencePending">CAPTURING FRAME…</div>`}<figcaption>HAZARD · ${fmtDetailedTime(h.t)}</figcaption></figure>
+          ${m?`<figure>${response?`<img src="${escHtml(response)}" alt="Candidate response for hazard ${h.hazard_no}">`:`<div class="evidencePending">CAPTURING FRAME…</div>`}<figcaption>RESPONSE · ${fmtDetailedTime(m.t)}</figcaption></figure>`:''}
         </div>
         <div class="detailTiming">
           <span>Hazard <b>${fmtDetailedTime(h.t)}</b></span>
@@ -433,6 +433,39 @@ async function buildDetailedResult(exam){
   </article>`).join('');
 }
 
+async function buildDetailedResult(exam){
+  const list=$('detailedClipList'),summary=$('detailedSummary'),meta=$('detailedResultMeta');
+  if(!list||!exam)return;
+  const clips=exam.clips||[];
+  meta.textContent=`${exam.candidate_name||'Candidate'} • ${exam.phone||''}`;
+  summary.innerHTML=`<div><span>FINAL SCORE</span><b>${exam.total_score||exam.total||0} / 100</b></div><div><span>PASS MARK</span><b>${C.passMark} / 100</b></div><div><span>STATUS</span><b class="${exam.passed?'pass':'fail'}">${exam.passed?'PASS':'NOT PASSED'}</b></div>`;
+  list.innerHTML='<div class="detailLoading">Preparing detailed result…<small>Capturing exact hazard and response frames. Results will appear as each frame is ready.</small></div>';
+  const out=[];
+  for(let i=0;i<clips.length;i++){
+    const c=clips[i],hs=(c.hazards||[]).slice().sort((a,b)=>Number(a.hazard_no)-Number(b.hazard_no)),rs=c.responses||[];
+    const rows=[];
+    // Show the clip immediately, then fill evidence frames progressively.
+    const clipOut={c,rows,score:Number(c.score||0)};
+    out.push(clipOut);
+    renderDetailedCards(out);
+    for(const h of hs){
+      const m=rs.find(r=>Number(r.hazard_no)===Number(h.hazard_no));
+      const row={h,m,actual:null,response:m?.frameData||null};
+      rows.push(row);
+      renderDetailedCards(out);
+      // Capture the official hazard moment first. It is always tied to h.t.
+      row.actual=await captureDetailedFrame(c.file||c.video_path,Number(h.t));
+      renderDetailedCards(out);
+      // If the click frame was not already captured during the exam, capture the
+      // exact click timestamp now. No thumbnail is used as a substitute.
+      if(m&&m.t!=null&&!row.response){
+        row.response=await captureDetailedFrame(c.file||c.video_path,Number(m.t));
+        renderDetailedCards(out);
+      }
+    }
+  }
+  if(!out.length)list.innerHTML='<div class="detailLoading">No detailed evidence is available for this attempt.</div>';
+}
 function fmtDetailedTime(v){
   if(v===null||v===undefined||isNaN(Number(v)))return '—';
   const s=Math.max(0,Number(v)),m=Math.floor(s/60),sec=(s%60).toFixed(1);
