@@ -1,0 +1,4 @@
+import { requireSupabase, isLessonAdmin, toast } from './supabase.js';
+const sb=requireSupabase();
+try{const {data}=await sb.auth.getSession();if(data.session && await isLessonAdmin()) location.replace('./index.html')}catch(e){}
+document.getElementById('login-form').onsubmit=async e=>{e.preventDefault();const status=document.getElementById('login-status');const emailValue=document.getElementById('email').value.trim();const passwordValue=document.getElementById('password').value;status.textContent='Signing in…';try{const {error}=await sb.auth.signInWithPassword({email:emailValue,password:passwordValue});if(error)throw error;if(!(await isLessonAdmin())){await sb.auth.signOut();throw new Error('This account is authenticated but is not in lesson_admins.')}location.replace('./index.html')}catch(err){status.textContent=err.message;toast(err.message,'error')}};
