@@ -1,81 +1,75 @@
-# Raju Driving School — Basic Lesson Class
+# Raju Driving School — basic_lesson_class
 
-A multi-page classroom extension designed to sit under the existing Raju Driving School website and reuse the same Supabase project.
+A multi-page classroom extension designed to sit under the existing `raj...` website and reuse the same Supabase project.
 
-## Pages
+## Structure
 
-- `/index.html` — landing page / navigation
-- `/student/index.html` — student sign & lesson library
-- `/classroom/index.html` — TV/projector classroom lesson player
-- `/admin/login.html` — Supabase Auth admin login
-- `/admin/index.html` — lesson content manager
+- `index.html` — extension landing/chooser.
+- `student/index.html` — classroom dictionary/library.
+- `classroom/index.html` — full-screen one-by-one lesson player.
+- `admin/login.html` — Supabase Auth admin login.
+- `admin/index.html` — content manager: add/edit signs, upload photo, upload instructor video by `sign_id`.
+- `assets/css/app.css` — shared UI.
+- `assets/js/config.js` — Supabase URL + anon key placeholders.
+- `assets/js/supabase.js` — shared client and auth helpers.
+- `assets/js/student.js` — student dictionary logic.
+- `assets/js/classroom.js` — TV/classroom player logic.
+- `assets/js/admin.js` — admin dashboard and upload logic.
+- `supabase/schema.sql` — tables, RLS policies, Storage bucket, and starter sign data.
+- `data/` — source JSON used for the starter lesson library.
 
-## Supabase
+## Supabase setup
 
-This build is already configured for the existing Raju Driving School Supabase project in:
+1. Open your existing Raju Driving School Supabase project.
+2. Run `supabase/schema.sql` in the SQL Editor.
+3. Create an admin user in **Authentication → Users** using the email/password login method.
+4. Copy that user's UUID into `public.lesson_admins` using the commented SQL at the bottom of `schema.sql`.
+5. `assets/js/config.js` is already configured for the same Supabase project used by the Raju Driving School website.
 
-`assets/js/config.js`
-
-Only the Supabase project URL and publishable key belong in browser code. Never add a Supabase secret/service-role key to this project, ZIP, GitHub, or frontend JavaScript.
-
-### First-time admin setup
-
-1. In Supabase Dashboard, go to **Authentication → Users**.
-2. Create an admin user with email + password.
-3. Copy that user's UUID.
-4. Open `supabase/create_admin.sql`.
-5. Replace `YOUR_AUTH_USER_UUID` with the UUID.
-6. Run the SQL in Supabase SQL Editor.
-7. Open `/admin/login.html` and sign in with the Auth email/password you created.
-
-There is **no hard-coded admin password** in this build.
+Only the **publishable key** belongs in frontend code. Never put a Supabase secret/service-role key in this project.
 
 ## Media model
 
-Every lesson/sign has a permanent text `sign_id`.
+Every learning item has a permanent text ID, for example `man_01`.
 
-The media relationship is:
+The relationship is:
 
-`sign_id → photograph → instructor video`
+`sign_id → lesson_signs row → lesson_media row → Storage photo/video paths`
 
-Media is stored in the `lesson-media` Supabase Storage bucket, and the matching paths are kept in `public.lesson_media`.
+Recommended Storage paths:
 
-Example:
+- `signs/<sign_id>/photo.<ext>`
+- `signs/<sign_id>/video.<ext>`
 
-`man_01 → Stop photograph → Stop instructor video`
+The admin page writes the matching `lesson_media` row automatically after upload.
 
-The Admin Manager lets you add/edit lesson records and upload or remove the photograph and instructor video for each ID.
+## Classroom flow
 
-## Classroom TV mode
+Student opens `student/index.html` → selects a sign → clicks **Play Classroom** → `classroom/index.html` opens → the user clicks **Start Lesson** → browser enters full-screen → the sign appears on the left and the matching instructor video plays on the right → when the video ends, the next sign loads and its matching video starts.
 
-Open `/classroom/index.html`.
+For missing videos, the player clearly shows `Instructor video not uploaded` and can automatically advance after a short delay.
 
-- Start the lesson.
-- The browser requests full-screen mode.
-- The current sign/photo is shown on the left.
-- The matching instructor video is shown on the right.
-- The video starts automatically when the browser allows autoplay.
-- When the video ends, the next sign loads and its matching video starts.
-- Previous/Next and full-screen controls are available.
+## Deploy as website extension
 
-If a lesson has no instructor video, the player shows a clear missing-video message and advances automatically after a short delay.
+Recommended path:
 
-## Deployment
+`raj.../basic_lesson_class/`
 
-This is a static web project. It can be deployed under the existing Raju Driving School site as:
+The project is intentionally static. It does not require Node for production hosting. It can be placed in the same website repository, served from GitHub Pages/Cloudflare Pages, or hosted under the existing site as a subfolder.
 
-`/basic_lesson_class/`
+## Important
 
-No Node.js server is required for the static frontend.
+The starter library comes from the current classroom content and is editable from Admin. Before commercial/official classroom use, verify the exact sign set, wording, images and MVD/RTO training content you want to publish.
 
-## Recommended media organization
+## Admin login troubleshooting
 
-Use the permanent `sign_id` as the logical key. The frontend currently uploads media using paths similar to:
+The admin login uses Supabase Authentication with email + password.
+There is no hard-coded admin password.
 
-`signs/{sign_id}/photo.jpg`
+1. Create the user in Supabase Dashboard -> Authentication -> Users.
+2. Copy the user's Auth UID.
+3. Run `supabase/create_admin.sql` after replacing `YOUR-AUTH-USER-UUID-HERE`.
+4. Open `/basic_lesson_class/admin/login.html` and sign in with that Auth email/password.
 
-`signs/{sign_id}/video.mp4`
-
-## Notes
-
-The starter sign library is editable from Admin. Before official classroom/commercial use, verify the exact sign set, wording, images, and regulatory training content you want to publish.
+If login says the account is authenticated but not authorized, the user's UID has not been added to `public.lesson_admins`.
+If the page reports a JavaScript/module error, verify that `assets/js/supabase.js` is present and is the client helper file, not the README.

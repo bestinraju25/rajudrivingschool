@@ -1,66 +1,151 @@
-# Raju Driving School — basic_lesson_class
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { SUPABASE_CONFIG } from './config.js';
 
-A multi-page classroom extension designed to sit under the existing `raj...` website and reuse the same Supabase project.
+let client = null;
 
-## Structure
+export function requireSupabase() {
+  if (client) return client;
 
-- `index.html` — extension landing/chooser.
-- `student/index.html` — classroom dictionary/library.
-- `classroom/index.html` — full-screen one-by-one lesson player.
-- `admin/login.html` — Supabase Auth admin login.
-- `admin/index.html` — content manager: add/edit signs, upload photo, upload instructor video by `sign_id`.
-- `assets/css/app.css` — shared UI.
-- `assets/js/config.js` — shared Supabase project URL, REST API URL reference, and browser-safe publishable key.
-- `assets/js/supabase.js` — shared client and auth helpers.
-- `assets/js/student.js` — student dictionary logic.
-- `assets/js/classroom.js` — TV/classroom player logic.
-- `assets/js/admin.js` — admin dashboard and upload logic.
-- `supabase/schema.sql` — tables, RLS policies, Storage bucket, and starter sign data.
-- `data/` — source JSON used for the starter lesson library.
+  const url = SUPABASE_CONFIG?.projectUrl;
+  const key = SUPABASE_CONFIG?.publishableKey;
 
-## Supabase setup
+  if (!url || !key) {
+    throw new Error('Supabase configuration is missing. Check assets/js/config.js.');
+  }
 
-1. Open your existing Raju Driving School Supabase project.
-2. Run `supabase/schema.sql` in the SQL Editor.
-3. Create an admin user in **Authentication → Users** using the email/password login method.
-4. Copy that user's UUID into `public.lesson_admins` using the commented SQL at the bottom of `schema.sql`.
-5. Edit `assets/js/config.js` with the same Supabase project URL and publishable key already used by your website.
+  client = createClient(url, key, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  });
 
-Only the **publishable key** belongs in frontend code. Never put a Supabase service-role/secret key in this project.
+  return client;
+}
 
-## Media model
+export async function isLessonAdmin() {
+  const sb = requireSupabase();
+  const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+  if (sessionError) throw sessionError;
+  if (!sessionData?.session?.user?.id) return false;
 
-Every learning item has a permanent text ID, for example `man_01`.
+  const { data, error } = await sb.rpc('is_lesson_admin');
+  if (error) throw error;
+  return data === true;
+}
 
-The relationship is:
+export function publicMediaUrl(path) {
+  if (!path) return '';
+  const sb = requireSupabase();
+  const { data } = sb.storage.from('lesson-media').getPublicUrl(path);
+  return data?.publicUrl || '';
+}
 
-`sign_id → lesson_signs row → lesson_media row → Storage photo/video paths`
+export async function fetchLessonData() {
+  const sb = requireSupabase();
 
-Recommended Storage paths:
+  const [categoriesRes, signsRes, mediaRes] = await Promise.all([
+    sb.from('lesson_categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true }),
+    sb.from('lesson_signs')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true }),
+    sb.from('lesson_media')
+      .select('*')
+  ]);
 
-- `signs/<sign_id>/photo.<ext>`
-- `signs/<sign_id>/video.<ext>`
+  if (categoriesRes.error) throw categoriesRes.error;
+  if (signsRes.error) throw signsRes.error;
+  if (mediaRes.error) throw mediaRes.error;
 
-The admin page writes the matching `lesson_media` row automatically after upload.
+  const mediaMap = Object.fromEntries(
+    (mediaRes.data || []).map(row => [row.sign_id, row])
+  );
 
-## Classroom flow
+  return {
+    categories: categoriesRes.data || [],
+    signs: signsRes.data || [],
+    media: mediaRes.data || [],
+    mediaMap
+  };
+}
 
-Student opens `student/index.html` → selects a sign → clicks **Play Classroom** → `classroom/index.html` opens → the user clicks **Start Lesson** → browser enters full-screen → the sign appears on the left and the matching instructor video plays on the right → when the video ends, the next sign loads and its matching video starts.
+export function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
 
-For missing videos, the player clearly shows `Instructor video not uploaded` and can automatically advance after a short delay.
+function arrowSvg(direction, label) {
+  const rotations = {
+    left: '-90',
+    right: '90',
+    ahead: '0',
+    leftturn: '-90',
+    rightturn: '90'
+  };
+  const rotation = rotations[direction] ?? 0;
+  return `<div class="visual-sign visual-arrow"><svg viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(${rotation} 50 50)"><path d="M50 12 L84 48 H66 V88 H34 V48 H16 Z"/></g></svg><span>${escapeHtml(label || '')}</span></div>`;
+}
 
-## Deploy as website extension
+export function visualMarkup(sign) {
+  const type = sign?.visual_type || '';
+  const key = sign?.visual_key || '';
 
-Recommended path:
+  if (type === 'speed') {
+    return `<div class="visual-sign visual-speed"><div>${escapeHtml(key || '—')}</div><span>km/h</span></div>`;
+  }
 
-`raj.../basic_lesson_class/`
+  if (type === 'signal') {
+    const state = key || 'red';
+    return `<div class="visual-signal"><span class="lamp red ${state === 'red' ? 'on' : ''}"></span><span class="lamp amber ${state === 'yellow' ? 'on' : ''}"></span><span class="lamp green ${state === 'green' ? 'on' : ''}"></span></div>`;
+  }
 
-The project is intentionally static. It does not require Node for production hosting. It can be placed in the same website repository, served from GitHub Pages/Cloudflare Pages, or hosted under the existing site as a subfolder.
+  if (type === 'stop') {
+    return `<div class="visual-sign visual-stop">STOP<span class="ml">നിർത്തുക</span></div>`;
+  }
 
-## Important
+  if (type === 'triangle') {
+    return `<div class="visual-sign visual-triangle"><div>${escapeHtml(key === 'ped' ? '🚶' : key === 'hump' ? '〽' : key === 'school' ? '🏫' : key === 'rail' ? '🚆' : '⚠')}</div></div>`;
+  }
 
-The starter library comes from the current classroom content and is editable from Admin. Before commercial/official classroom use, verify the exact sign set, wording, images and MVD/RTO training content you want to publish.
+  if (type === 'noright' || type === 'noleft' || type === 'no_u' || type === 'left' || type === 'right' || type === 'ahead' || type === 'leftturn' || type === 'rightturn') {
+    const label = type === 'noright' ? '↱' : type === 'noleft' ? '↰' : type === 'no_u' ? '↶' : type === 'ahead' ? '↑' : type === 'left' || type === 'leftturn' ? '←' : '→';
+    const blocked = ['noright', 'noleft', 'no_u'].includes(type);
+    return `<div class="visual-sign visual-direction ${blocked ? 'blocked' : ''}"><span>${label}</span></div>`;
+  }
 
-## Shared Supabase project
+  if (type === 'noentry') return `<div class="visual-sign visual-noentry">⛔</div>`;
+  if (type === 'nopark') return `<div class="visual-sign visual-textsign">P̸</div>`;
+  if (type === 'nostop') return `<div class="visual-sign visual-textsign">S̸</div>`;
+  if (type === 'overtake') return `<div class="visual-sign visual-textsign">⇄̸</div>`;
+  if (type === 'horn') return `<div class="visual-sign visual-textsign">🔇</div>`;
+  if (type === 'cycle') return `<div class="visual-sign visual-textsign">🚲</div>`;
+  if (type === 'info') return `<div class="visual-sign visual-info">${escapeHtml(key || 'i')}</div>`;
+  if (type === 'roadmark') return `<div class="visual-roadmark"><span class="line ${key}"></span></div>`;
 
-This package is configured for the existing Raju Driving School Supabase project. The browser uses the publishable key only. The Supabase secret/service-role key must remain outside the frontend and must never be committed to GitHub, the website, or this ZIP.
+  return `<div class="visual-sign visual-default">${escapeHtml(sign?.title_en || 'SIGN')}</div>`;
+}
+
+export function toast(message, kind = 'ok') {
+  let host = document.getElementById('toast-host');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'toast-host';
+    host.style.cssText = 'position:fixed;right:20px;bottom:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
+    document.body.appendChild(host);
+  }
+
+  const item = document.createElement('div');
+  item.textContent = message;
+  item.style.cssText = `max-width:420px;padding:12px 15px;border-radius:12px;border:1px solid ${kind === 'error' ? '#7f1d1d' : '#334155'};background:${kind === 'error' ? '#450a0a' : '#0f172a'};color:#f8fafc;box-shadow:0 10px 30px rgba(0,0,0,.35);font:600 12px/1.4 system-ui,sans-serif;pointer-events:auto;`;
+  host.appendChild(item);
+  setTimeout(() => item.remove(), 4500);
+}
