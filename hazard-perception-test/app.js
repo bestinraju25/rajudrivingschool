@@ -2,9 +2,15 @@
 'use strict';
 if(!document.getElementById('hptHiddenFix')){const s=document.createElement('style');s.id='hptHiddenFix';s.textContent='[hidden]{display:none!important}';document.head.appendChild(s);}
 const $=id=>document.getElementById(id);
+const bind=(id,event,handler)=>{const el=$(id);if(el)el.addEventListener(event,handler);else console.warn(`Optional HPT element #${id} was not found; skipped ${event} handler.`);return el};
+const safeText=(id,value)=>{const e=$(id);if(e)e.textContent=String(value??'');return e};
+const safeValue=(id,value)=>{const e=$(id);if(e)e.value=value;return e};
+const safeImage=(id,src,alt)=>{const e=$(id);if(e){if(src)e.src=src;if(alt!==undefined)e.alt=alt;}return e};
+function gateMessageElement(){let e=$('schoolGateMsg');if(e)return e;const input=$('schoolAccessCode'),card=input?.closest('.gateCard');if(!card)return null;e=document.createElement('div');e.id='schoolGateMsg';e.className='gateMessage';e.setAttribute('role','status');e.setAttribute('aria-live','polite');const button=$('enterSchoolBtn');if(button)card.insertBefore(e,button);else card.appendChild(e);if(input)input.setAttribute('aria-describedby','schoolGateMsg');return e}
+function setGateMessage(text,bad=false){const e=gateMessageElement();if(e){e.textContent=String(text??'');e.className='gateMessage'+(bad?' bad':'')}return e}
 const C=window.RAJU_HPT_CONFIG;
 let clips=[], order=[], pos=0, responses=[], scores=[], running=false, finishing=false, timer=null, responseLocked=false;
-let candidate={name:'',phone:''}, sound=true, accessCode='1234';
+let candidate={name:'',phone:''}, sound=true, activeSchool=null, schoolAccessCode='', examStartedAt=null;
 const video=$('video');
 let audioCtx=null;
 let roadAudio=null;
@@ -99,10 +105,26 @@ function setupConsoleFeedback(){
     btn.addEventListener('pointerdown',()=>buttonFeedback(),{passive:true});
   });
 }
+function updateFullscreenButtons(){
+  const active=!!document.fullscreenElement;
+  const home=$('homeFullBtn'), exam=$('fullBtn');
+  if(home){home.innerHTML='<span>⤢</span>';home.title=active?'Exit fullscreen':'Enter fullscreen';}
+  if(exam){exam.textContent=active?'⤡':'⤢';exam.title=active?'Exit fullscreen':'Enter fullscreen';exam.setAttribute('aria-label',exam.title);}
+}
+async function toggleFullscreen(){
+  try{
+    if(!document.fullscreenElement) await document.documentElement.requestFullscreen?.();
+    else await document.exitFullscreen?.();
+    updateFullscreenButtons();
+  }catch{}
+  updateFullscreenButtons();
+}
 function setupHomeMedia(){
   const full=$('homeFullBtn');
-  if(full)full.onclick=async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen?.();else await document.exitFullscreen?.()}catch{toast('Fullscreen is not available in this browser.',true)}};
+  if(full)full.onclick=toggleFullscreen;
   const att=$('homeAttemptsBtn');if(att)att.onclick=openAttempts;
+  document.addEventListener('fullscreenchange',updateFullscreenButtons);
+  updateFullscreenButtons();
 }
 function startLoadingScreen(){
   const screen=$('loadingScreen'),fill=$('loaderFill'),percent=$('loaderPercent'),status=$('loaderStatusText'),scene=$('loaderScene');
@@ -143,9 +165,32 @@ function timeline(){const t=$('track');if(!t)return;const d=Math.max(1,Math.min(
 function resetClip(){responses=[];responseLocked=false;finishing=false;timeline();update()}
 function staticHazards(code){return (C.staticHazards?.[String(code).padStart(2,'0')]||[]).map((h,i)=>({...h,hazard_no:i+1}))}
 async function supabase(){if(window._sb)return window._sb;try{if(!window.supabase?.createClient)return null;window._sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);return window._sb}catch{return null}}
-async function loadClips(){clips=C.staticClips.map(x=>({...x,hazards:staticHazards(x.clip_code)}));const sb=await supabase();if(sb){const {data:vs}=await sb.from('hpt_videos').select('id,clip_code,title,video_path,duration_seconds,active').eq('active',true);if(vs?.length){const {data:hs}=await sb.from('hpt_hazards').select('video_id,hazard_no,timestamp_seconds,label');const by={};(hs||[]).forEach(h=>(by[h.video_id]??=[]).push({t:Number(h.timestamp_seconds),label:h.label||`Hazard ${h.hazard_no}`,hazard_no:h.hazard_no}));const remote=vs.map(v=>({...v,file:v.video_path.startsWith('http')?v.video_path:(v.video_path.startsWith('./')?v.video_path:C.videoBase+v.video_path.replace(/^videos\//,'')),hazards:(by[v.id]||[])})).filter(v=>v.hazards.length>=1);const merged=[...clips];remote.forEach(v=>{const i=merged.findIndex(x=>String(x.clip_code).padStart(2,'0')===String(v.clip_code).padStart(2,'0'));if(i>=0)merged[i]=v;else merged.push(v)});clips=merged;}}
-return clips.filter(c=>c.active&&c.video_path&&c.hazards?.length>=1)}
-async function saveAttempt(){const sb=await supabase();if(!sb)return {ok:false,error:'Supabase is not available.'};const total=scores.reduce((a,b)=>a+b,0);const payload={candidate_name:candidate.name,phone:candidate.phone,started_at:new Date(Date.now()-C.examClipCount*C.clipLimitSeconds*1000).toISOString(),completed_at:new Date().toISOString(),total_score:total,passed:total>=C.passMark,clip_order:order.map(c=>c.clip_code),responses:scores.flatMap((_,i)=>(order[i]._responses||[]).map(r=>({video_id:order[i].id||null,clip_code:order[i].clip_code||null,response_no:r.response_no,click_time_seconds:r.t,hazard_no:r.hazard_no||null,awarded_marks:r.points})))};
+async function loadClips(){
+  // Bundled clips must have a playable `file` path even if Supabase has no video rows.
+  clips=(C.staticClips||[]).map(x=>({...x,
+    file:(/^https?:\/\//i.test(x.video_path||''))?x.video_path:
+      ((x.video_path||'').startsWith('./')?x.video_path:C.videoBase+String(x.video_path||'').replace(/^\.?\/?videos\//,'')),
+    hazards:staticHazards(x.clip_code)
+  }));
+  const sb=await supabase();
+  if(sb){
+    try{
+      const {data:vs,error:videoError}=await sb.from('hpt_videos').select('id,clip_code,title,video_path,duration_seconds,active').eq('active',true);
+      if(!videoError&&vs?.length){
+        const {data:hs,error:hazardError}=await sb.from('hpt_hazards').select('video_id,hazard_no,timestamp_seconds,label');
+        if(!hazardError){
+          const by={};(hs||[]).forEach(h=>(by[h.video_id]??=[]).push({t:Number(h.timestamp_seconds),label:h.label||`Hazard ${h.hazard_no}`,hazard_no:h.hazard_no}));
+          const remote=vs.map(v=>({...v,file:/^https?:\/\//i.test(v.video_path||'')?v.video_path:((v.video_path||'').startsWith('./')?v.video_path:C.videoBase+String(v.video_path||'').replace(/^\.?\/?videos\//,'')),hazards:(by[v.id]||[])})).filter(v=>v.active&&v.video_path&&v.hazards.length>=1);
+          const merged=[...clips];
+          remote.forEach(v=>{const i=merged.findIndex(x=>String(x.clip_code).padStart(2,'0')===String(v.clip_code).padStart(2,'0'));if(i>=0)merged[i]=v;else merged.push(v)});
+          clips=merged;
+        }
+      }
+    }catch(e){console.warn('Could not load Supabase video metadata; using bundled clips and hazard timings.',e)}
+  }
+  return clips.filter(c=>c.active&&c.video_path&&c.file&&c.hazards?.length>=1);
+}
+async function saveAttempt(completedAt){const sb=await supabase();if(!sb)return {ok:false,error:'Supabase is not available.'};const total=scores.reduce((a,b)=>a+b,0);const payload={candidate_name:candidate.name,phone:candidate.phone,started_at:examStartedAt||new Date().toISOString(),completed_at:completedAt||new Date().toISOString(),total_score:total,passed:total>=C.passMark,clip_order:order.map(c=>c.clip_code),responses:scores.flatMap((_,i)=>(order[i]._responses||[]).map(r=>({video_id:order[i].id||null,clip_code:order[i].clip_code||null,response_no:r.response_no,click_time_seconds:Number(r.t),hazard_no:r.hazard_no||null,awarded_marks:r.points}))),p_school_id:activeSchool?.id||null,p_school_access_code:schoolAccessCode||null};
 for(let attempt=1;attempt<=2;attempt++){
   const {data,error}=await sb.rpc('hpt_record_attempt',payload);
   if(!error&&data)return {ok:true,id:data};
@@ -159,76 +204,315 @@ function scoreThis(){return responses.reduce((a,r)=>a+r.points,0)}
 async function finishExam(){
   stopRoadAudio();
   const total=scores.reduce((a,b)=>a+b,0),completedAt=new Date().toISOString();
-  const reportClips=order.map((c,i)=>({clip_code:c.clip_code,title:c.title,file:c.file||c.video_path,hazards:(c.hazards||[]).map(h=>({hazard_no:h.hazard_no,t:Number(h.t),label:h.label||`Hazard ${h.hazard_no}`})),responses:(c._responses||[]).map(r=>({response_no:r.response_no,t:Number(r.t),hazard_no:r.hazard_no||null,points:Number(r.points||0),frameData:r.frameData||null})),score:Number(scores[i]||0)}));
-  const saved=await saveAttempt();
-  show('examScreen',false);show('resultScreen',true);if(total>=C.passMark){setTimeout(()=>playOneShot('audio/test-pass-sound.mp3',1.0),120)}$('candidateResult').textContent=`${candidate.name} • ${candidate.phone}`;$('finalScore').textContent=`${total} / 100`;$('passText').textContent=total>=C.passMark?'PASS — EXAMINATION STANDARD MET':'NOT PASSED — BELOW PASS MARK';$('passText').className='status '+(total>=C.passMark?'pass':'fail');$('resultSaveStatus').textContent=saved.ok?'Result recorded successfully.':'Result could not be recorded automatically. Please inform the school admin.';$('resultSaveStatus').className='save-status '+(saved.ok?'ok':'error');$('printCertBtn').hidden=total<C.passMark;const rows=scores.map((s,i)=>`<div class="scoreRow"><span>Clip ${String(i+1).padStart(2,'0')}</span><b>${s} / 10</b></div>`).join('');$('resultDetails').innerHTML=`<div class="scoreGrid">${rows}</div><div class="resultSummary"><div><span>PASS MARK</span><b>${C.passMark}</b></div><div><span>YOUR SCORE</span><b>${total}</b></div><div><span>STATUS</span><b>${total>=C.passMark?'PASS':'NOT PASSED'}</b></div></div>`;
-  window._lastExam={total,total_score:total,passed:total>=C.passMark,saved, candidate_name:candidate.name,phone:candidate.phone,completed_at:completedAt,started_at:new Date(Date.now()-C.examClipCount*C.clipLimitSeconds*1000).toISOString(),clips:reportClips};
+  const reportClips=order.map((c,i)=>({clip_code:c.clip_code,title:c.title,file:c.file||c.video_path,hazards:(c.hazards||[]).map(h=>({hazard_no:h.hazard_no,t:Number(h.t),label:h.label||`Hazard ${h.hazard_no}`})),responses:(c._responses||[]).map(r=>({response_no:r.response_no,t:Number(r.t),video_time_seconds:Number(r.t),hazard_no:r.hazard_no||null,points:Number(r.points||0),clicked_at:r.clicked_at||null,frameData:r.frameData||null})),score:Number(scores[i]||0)}));
+  const saved=await saveAttempt(completedAt);
+  if(activeSchool?.id)setTimeout(loadTopScorers,350);
+  show('examScreen',false);show('resultScreen',true);if(total>=C.passMark){setTimeout(()=>playOneShot('audio/test-pass-sound.mp3',1.0),120)}$('candidateResult').textContent=`${candidate.name} • ${candidate.phone}`;$('finalScore').textContent=`${total} / 100`;$('passText').textContent=total>=C.passMark?'PASS — EXAMINATION STANDARD MET':'NOT PASSED — BELOW PASS MARK';$('passText').className='status '+(total>=C.passMark?'pass':'fail');$('resultSaveStatus').textContent=saved.ok?'Result recorded successfully.':'Result could not be recorded automatically. Please inform the school admin.';$('resultSaveStatus').className='save-status '+(saved.ok?'ok':'error');$('printCertBtn').hidden=total<C.passMark;const hazardRows=reportClips.flatMap(c=>(c.hazards||[]).map(h=>({clip_code:c.clip_code,hazard_no:Number(h.hazard_no),hazard:h,response:(c.responses||[]).find(r=>Number(r.hazard_no)===Number(h.hazard_no))})));const identified=hazardRows.filter(h=>h.response&&Number(h.response.points)>0).length,missed=Math.max(0,hazardRows.length-identified);const reactionTimes=hazardRows.filter(h=>h.response&&Number(h.response.points)>0&&Number.isFinite(Number(h.response.t))).map(h=>Math.max(0,Number(h.response.t)-Number((reportClips.find(c=>String(c.clip_code)===String(h.clip_code))?.hazards||[]).find(x=>Number(x.hazard_no)===h.hazard_no)?.t||0)));const avgReaction=reactionTimes.length?reactionTimes.reduce((a,b)=>a+b,0)/reactionTimes.length:null;let performanceText;if(total>=85)performanceText=`Excellent hazard awareness. You identified ${identified} of ${hazardRows.length} official hazards, with ${missed} missed. Keep scanning well ahead and maintain this consistency.`;else if(total>=C.passMark)performanceText=`Good work — you reached the pass mark. You identified ${identified} of ${hazardRows.length} official hazards and missed ${missed}. Keep practising early recognition of developing hazards.`;else performanceText=`More practice is recommended. You identified ${identified} of ${hazardRows.length} official hazards and missed ${missed}. Focus on scanning ahead, spotting changing traffic situations and responding promptly.`;if(avgReaction!==null)performanceText+=` Average response time for identified hazards: ${avgReaction.toFixed(2)} seconds after the official hazard timestamp.`;$('resultDetails').innerHTML=`<div class="performanceSummary"><div class="performanceTitle">PERFORMANCE SUMMARY</div><p>${performanceText}</p><div class="performanceStats"><span><b>${identified}</b> / ${hazardRows.length} hazards identified</span><span><b>${missed}</b> missed</span><span><b>${reactionTimes.length?avgReaction.toFixed(2)+' s':'—'}</b> average delay</span></div></div><div class="resultSummary"><div><span>PASS MARK</span><b>${C.passMark} / 100</b></div><div><span>HAZARD RECOGNITION</span><b>${hazardRows.length?Math.round(identified/hazardRows.length*100):0}%</b></div><div><span>EXAM STATUS</span><b>${total>=C.passMark?'PASS':'NOT PASSED'}</b></div></div>`;
+  window._lastExam={total,total_score:total,passed:total>=C.passMark,saved,candidate_name:candidate.name,phone:candidate.phone,completed_at:completedAt,started_at:examStartedAt||completedAt,school:schoolBrand(),clips:reportClips};
   if(total>=C.passMark)setupCandidateCertificate();
 }
-async function begin(){buttonFeedback();ensureAudio();const n=$('name').value.trim(),p=$('phone').value.trim(),code=$('accessCode').value.trim(),msg=$('accessCodeMsg');if(msg){msg.hidden=true;msg.textContent=''}if(!n||!p||!code){toast('Enter candidate name, phone number and access code',true);return}const sb=await supabase();if(!sb){toast('Access code verification is unavailable. Please try again.',true);return}let verified=false;try{const {data,error}=await sb.rpc('verify_hpt_access_code',{p_code:code});if(error)throw error;verified=data===true}catch(e){console.error('HPT access-code verification failed',e);if(msg){msg.textContent='ACCESS CODE VERIFICATION UNAVAILABLE';msg.hidden=false}toast('Access code verification is unavailable.',true);return}if(!verified){if(msg){msg.textContent='ACCESS CODE DENIED';msg.hidden=false}toast('ACCESS CODE DENIED',true);$('accessCode').focus();return}accessCode=code;clips=await loadClips();if(clips.length<C.examClipCount){toast(`Need ${C.examClipCount} active clips with at least one hazard each`,true);return}candidate={name:n,phone:p};$('candName').textContent=n;$('candPhone').textContent=p;engineStartSequence();order=shuffle(clips).slice(0,C.examClipCount);pos=0;scores=[];show('startScreen',false);show('resultScreen',false);show('examScreen',true);loadClip()}
+function schoolBrand(s=activeSchool){
+  if(!s)return null;
+  return {id:s.id,school_name:s.school_name||'Driving School',contact_number:s.contact_number||'',location:s.location||'',logo_url:s.logo_url||'',brand_color:s.brand_color||'#ffc400',dark_color:s.dark_color||'#0b1b29'};
+}
+
+async function loadGlobalMonthlyTopThree(){
+  const host=$('globalPodium'),monthLabel=$('globalLeaderboardMonth'),updated=$('globalLeaderboardUpdated');
+  if(!host)return;
+  if(monthLabel)monthLabel.textContent=`(${new Intl.DateTimeFormat('en-IN',{month:'long',year:'numeric',timeZone:'Asia/Kolkata'}).format(new Date())})`;
+  host.innerHTML='<div class="globalPodiumLoading">Loading this month’s global champions…</div>';
+  try{
+    const sb=await supabase();
+    if(!sb)throw new Error('Leaderboard service is not configured.');
+    const {data,error}=await sb.rpc('hpt_global_monthly_top_three');
+    if(error)throw error;
+    const ranked=Array.isArray(data)?data:[];
+    if(!ranked.length){
+      host.innerHTML='<div class="globalPodiumEmpty"><strong>Be among this month’s first champions!</strong><span>Complete an examination at a participating driving school to appear here.</span></div>';
+      if(updated)updated.textContent='Updated just now';
+      return;
+    }
+    const byRank=[ranked[0],ranked[1],ranked[2]];
+    const displayOrder=[{rank:2,row:byRank[1]},{rank:1,row:byRank[0]},{rank:3,row:byRank[2]}].filter(x=>x.row);
+    const medal={1:'🥇',2:'🥈',3:'🥉'};
+    host.innerHTML=displayOrder.map(({rank,row})=>{
+      const score=Math.max(0,Number(row.total_score)||0);
+      const reaction=row.average_reaction_seconds==null?null:Number(row.average_reaction_seconds);
+      return `<article class="globalPodiumPlace place-${rank}" aria-label="Rank ${rank}: ${escHtml(row.display_name||'Student')}, ${score} marks, ${escHtml(row.school_name||'Driving school')}">
+        <div class="globalPodiumMedal">${medal[rank]}</div>
+        <div class="globalPodiumRank">${rank===1?'1ST PLACE':rank===2?'2ND PLACE':'3RD PLACE'}</div>
+        <strong class="globalPodiumStudent">${escHtml(row.display_name||'Student')}</strong>
+        <span class="globalPodiumSchool">${escHtml(row.school_name||'Participating school')}</span>
+        <strong class="globalPodiumScore">${score}<small>/100</small></strong>
+        <span class="globalPodiumReaction">${reaction!==null&&Number.isFinite(reaction)?`Avg. reaction ${reaction.toFixed(2)}s`:'Reaction time unavailable'}</span>
+      </article>`;
+    }).join('');
+    if(updated)updated.textContent='Updated just now';
+  }catch(error){
+    console.warn('Global monthly leaderboard could not be loaded:',error);
+    host.innerHTML='<div class="globalPodiumEmpty"><strong>Global champions are being updated.</strong><span>Please check again shortly.</span></div>';
+    if(updated)updated.textContent='Leaderboard temporarily unavailable';
+  }
+}
+
+async function loadTopScorers(){
+  const host=$('leaderboardContent'),updated=$('leaderboardUpdated');
+  const monthLabel=$('leaderboardMonth');
+  if(monthLabel)monthLabel.textContent=`(${new Intl.DateTimeFormat('en-IN',{month:'long',timeZone:'Asia/Kolkata'}).format(new Date())})`;
+  if(!host)return;
+  if(!activeSchool?.id||!schoolAccessCode){host.innerHTML='<div class="leaderboardEmpty">Log in with your school access code to view your school leaderboard.</div>';return}
+  host.innerHTML='<div class="leaderboardLoading">Loading school top scorers…</div>';
+  try{
+    const sb=await supabase();if(!sb)throw new Error('Leaderboard service unavailable');
+    const {data,error}=await sb.rpc('hpt_school_top_scorers',{p_school_access_code:schoolAccessCode});
+    if(error)throw error;
+    const ranked=data||[];
+    if(!ranked.length){host.innerHTML='<div class="leaderboardEmpty">Be the first to complete an examination and appear on your school leaderboard!</div>';if(updated)updated.textContent='Updated just now';return}
+    const medals=['🥇','🥈','🥉'];
+    host.innerHTML=ranked.slice(0,10).map((r,i)=>`<div class="leaderboardRow ${i<3?'leaderboardTop':''}"><span class="leaderboardRank">${medals[i]||String(i+1).padStart(2,'0')}</span><span class="leaderboardStudent"><strong>${escHtml(r.candidate_name||'Student')}</strong><small>${r.average_reaction_seconds==null?'Reaction time unavailable':`Avg. reaction ${Number(r.average_reaction_seconds).toFixed(2)}s`}</small></span><strong class="leaderboardScore">${Number(r.total_score)||0}<small>/100</small></strong></div>`).join('');
+    if(updated)updated.textContent='Updated just now';
+  }catch(e){
+    console.warn('School leaderboard could not be loaded:',e);
+    host.innerHTML='<div class="leaderboardEmpty">Leaderboard is temporarily unavailable. Please contact your school administrator if this continues.</div>';
+  }
+}
+function applySchoolBranding(s,persist=true){
+  activeSchool=s||null;schoolAccessCode=s?.access_code||'';
+  const b=schoolBrand(s);
+  window.HPTCurrentSchool=b;document.body.classList.toggle('school-selected',!!b);
+  const name=b?.school_name||'HAZARD PERCEPTION PORTAL';
+  const logo=b?.logo_url||(b?.school_name?.toLowerCase().includes('raju')?'raju-logo.png':'school-placeholder.svg');
+  // Some older local copies do not include every branding node. Missing optional nodes
+  // must never interrupt successful access verification or prevent the test home screen.
+  safeText('headerSchoolName',name.toUpperCase());
+  safeImage('headerSchoolLogo',logo,name+' logo');
+  safeText('mobileSchoolName',name.toUpperCase());
+  safeImage('mobileSchoolLogo',logo,name+' logo');
+  safeImage('resultSchoolLogo',logo,name+' logo');
+  safeText('loaderSchoolName',name.toUpperCase());
+  safeImage('loaderSchoolLogo',logo,name+' logo');
+  document.title=b?`${name} | Hazard Perception Test`:'Driving School Hazard Perception Test | Access Portal';
+  const brandColor=b?.brand_color||'#ffc400',darkColor=b?.dark_color||'#0b1b29';
+  document.documentElement.style.setProperty('--yellow',brandColor);
+  document.documentElement.style.setProperty('--panel',darkColor);document.documentElement.style.setProperty('--school-dark',darkColor);
+  if(persist&&s){try{sessionStorage.setItem('hpt_school_session',JSON.stringify({...s,access_code:schoolAccessCode}))}catch{}}
+  if(s?.id){setTimeout(loadTopScorers,0)}
+  const change=$('changeSchoolBtn');if(change)change.hidden=true;
+  const tools=$('homeTools');if(tools)tools.hidden=!b;
+}
+function resetSchoolBranding(){
+  activeSchool=null;schoolAccessCode='';window.HPTCurrentSchool=null;
+  try{sessionStorage.removeItem('hpt_school_session')}catch{}
+  applySchoolBranding(null,false);
+  safeText('headerSchoolName','HAZARD PERCEPTION PORTAL');
+  safeImage('headerSchoolLogo','school-placeholder.svg','Hazard Perception Test Portal');
+  safeText('mobileSchoolName','DRIVING SCHOOL');
+  safeImage('mobileSchoolLogo','school-placeholder.svg','Driving school logo');
+  safeImage('resultSchoolLogo','school-placeholder.svg','Hazard Perception Test Portal');
+  safeText('loaderSchoolName','HAZARD PERCEPTION PORTAL');
+  safeImage('loaderSchoolLogo','school-placeholder.svg','Hazard Perception Test Portal');
+  const tools=$('homeTools');if(tools)tools.hidden=true;
+}
+async function enterSchool(){
+  const codeInput=$('schoolAccessCode'),button=$('enterSchoolBtn');
+  const msg=gateMessageElement();
+  if(!codeInput||!button){console.error('School access form is incomplete: missing code input or continue button.');setGateMessage('ACCESS FORM NOT READY. Refresh the page and try again.',true);return}
+  const code=String(codeInput.value||'').trim();
+  setGateMessage('');
+  if(!code){setGateMessage('ENTER YOUR SCHOOL ACCESS CODE',true);return}
+  // Close the access-code keyboard when the user submits the login form.
+  try{codeInput.blur()}catch{}
+  // Start fullscreen synchronously from the login gesture, before network awaits.
+  // Browsers may show their own native fullscreen notice; the app adds no extra message.
+  let loginFullscreenPromise=null;
+  if(!document.fullscreenElement&&document.documentElement.requestFullscreen){
+    try{
+      loginFullscreenPromise=document.documentElement.requestFullscreen({navigationUI:'hide'});
+      loginFullscreenPromise?.then(updateFullscreenButtons).catch(()=>{});
+    }catch{}
+  }
+  button.disabled=true;
+  const buttonLabel=button.querySelector('span');
+  if(buttonLabel)buttonLabel.textContent='VERIFYING ACCESS…';
+  try{
+    const sb=await supabase();
+    if(!sb)throw new Error('The portal cannot connect to the access service. Check the Supabase URL, publishable key, and internet connection.');
+    const {data,error}=await sb.rpc('verify_hpt_school_access_code',{p_code:code});
+    if(error)throw error;
+    // The updated verification RPC distinguishes an unknown code from a disabled school.
+    const payload=Array.isArray(data)?data[0]:data;
+    if(payload?.status==='disabled'){
+      try{if(document.fullscreenElement)await document.exitFullscreen()}catch{}
+      updateFullscreenButtons();
+      setGateMessage('HAZARD PERCEPTION TEST DISABLED. PLEASE CONTACT THE PROVIDER TO CONTINUE USING THE SOFTWARE.',true);return;
+    }
+    const schoolData=payload?.school&&typeof payload.school==='object'?payload.school:payload;
+    if(!schoolData||!schoolData.id){
+      try{if(document.fullscreenElement)await document.exitFullscreen()}catch{}
+      updateFullscreenButtons();
+      setGateMessage('ACCESS CODE NOT RECOGNISED. PLEASE CHECK THE CODE OR CONTACT YOUR DRIVING SCHOOL.',true);return
+    }
+    const school={...schoolData,access_code:code};
+    applySchoolBranding(school,true);
+    codeInput.value='';
+    setGateMessage('');
+    show('schoolGate',false);show('startScreen',true);show('examScreen',false);show('resultScreen',false);
+    safeText('candName','Candidate');safeText('candPhone','');
+    updateFullscreenButtons();
+  }catch(e){
+    try{if(document.fullscreenElement)await document.exitFullscreen()}catch{}
+    updateFullscreenButtons();
+    console.error('School access verification failed:',e?.stack||e);
+    const detail=String(e?.message||'').trim();
+    const message=/PGRST202|schema cache|could not find the function|function .* does not exist/i.test(detail)
+      ?'SCHOOL ACCESS SERVICE IS NOT UPDATED. Run 11-provider-admin-and-school-status-v83.sql in the connected Supabase project.'
+      :(detail?`ACCESS VERIFICATION FAILED: ${detail.slice(0,180)}`:'ACCESS VERIFICATION UNAVAILABLE. PLEASE TRY AGAIN.');
+    setGateMessage(message,true);
+  }finally{
+    button.disabled=false;
+    if(buttonLabel)buttonLabel.textContent='CONTINUE TO TEST';
+  }
+}
+async function bootSchoolSession(){
+  // Read the saved code before clearing the current in-memory branding.
+  let saved=null;try{saved=JSON.parse(sessionStorage.getItem('hpt_school_session')||'null')}catch{}
+  resetSchoolBranding();show('startScreen',false);show('schoolGate',true);show('examScreen',false);show('resultScreen',false);
+  if(!saved?.access_code||!saved?.id)return;
+  try{
+    const sb=await supabase();if(!sb)return;
+    const {data,error}=await sb.rpc('verify_hpt_school_access_code',{p_code:saved.access_code});
+    const payload=Array.isArray(data)?data[0]:data;
+    const schoolData=payload?.school&&typeof payload.school==='object'?payload.school:payload;
+    if(!error&&payload?.status==='disabled'){
+      try{sessionStorage.removeItem('hpt_school_session')}catch{}
+      setGateMessage('HAZARD PERCEPTION TEST DISABLED. PLEASE CONTACT THE PROVIDER TO CONTINUE USING THE SOFTWARE.',true);
+    }else if(!error&&schoolData?.id&&String(schoolData.id)===String(saved.id)){
+      applySchoolBranding({...schoolData,access_code:saved.access_code},true);
+      show('schoolGate',false);show('startScreen',true);
+    }else{try{sessionStorage.removeItem('hpt_school_session')}catch{}}
+  }catch(e){console.warn('Could not restore the school session',e)}
+}
+function changeSchool(){
+  if(!$('schoolStatsModal')?.hidden)closeSchoolStatsModal();
+  // Return safely to the access-code gate and discard only the incomplete in-memory exam.
+  clearTimeout(timer);running=false;finishing=false;responseLocked=false;pos=0;order=[];scores=[];responses=[];
+  try{if(video){video.pause();video.removeAttribute('src');video.load()}}catch(e){console.warn('Could not reset the video element while changing school.',e)}
+  stopRoadAudio();resetSchoolBranding();
+  safeValue('schoolAccessCode','');safeValue('name','');safeValue('phone','');setGateMessage('');
+  show('examScreen',false);show('resultScreen',false);show('startScreen',false);show('schoolGate',true);
+  document.body.classList.remove('home-active','exam-active','result-active');
+  loadGlobalMonthlyTopThree();
+}
+async function beginHPTExam(){buttonFeedback();ensureAudio();if(!video){toast('The video player is missing. Please refresh the website.',true);return}const n=$('name').value.trim(),p=$('phone').value.trim();if(!activeSchool?.id){toast('Enter your driving school access code first.',true);changeSchool();return}if(!n||!p){toast('Enter candidate name and phone number',true);return}const sb=await supabase();if(!sb){toast('The examination service is unavailable. Please try again.',true);return}
+  try{const {data,error}=await sb.rpc('verify_hpt_school_access_code',{p_code:schoolAccessCode});if(error)throw error;const status=Array.isArray(data)?data[0]:data;if(status?.status==='disabled'||!(status?.school?.id||status?.id)){changeSchool();setGateMessage(status?.status==='disabled'?'HAZARD PERCEPTION TEST DISABLED. PLEASE CONTACT THE PROVIDER TO CONTINUE USING THE SOFTWARE.':'SCHOOL ACCESS COULD NOT BE VERIFIED. PLEASE CONTACT THE PROVIDER.',true);return}}
+  catch(e){console.warn('School access revalidation failed:',e);toast('Could not verify school access. Please try again.',true);return}
+  clips=await loadClips();if(clips.length<C.examClipCount){toast(`Need ${C.examClipCount} active clips with at least one hazard each`,true);return}candidate={name:n,phone:p};examStartedAt=new Date().toISOString();$('candName').textContent=n;$('candPhone').textContent=p;
+updateFullscreenButtons();engineStartSequence();startRoadAudio();order=shuffle(clips).slice(0,C.examClipCount);pos=0;scores=[];show('startScreen',false);show('resultScreen',false);show('examScreen',true);loadClip()}
+function begin(){
+  buttonFeedback();
+  const n=$('name').value.trim(),p=$('phone').value.trim();
+  if(!activeSchool?.id){toast('Enter your driving school access code first.',true);changeSchool();return}
+  if(!n){toast('Enter candidate name.',true);$('name').focus();return}
+  const digits=p.replace(/\D/g,'');
+  if(digits.length<10||digits.length>15){toast('Enter a valid mobile number.',true);$('phone').focus();return}
+  candidate={name:n,phone:p};
+  try{sessionStorage.setItem('hpt_learner_candidate',JSON.stringify({name:n,phone:p,school_id:activeSchool.id,school_name:activeSchool.school_name,selected_at:new Date().toISOString()}))}catch{}
+  const modal=$('testSelectionModal');if(modal)modal.hidden=false;
+}
+function closeTestSelection(){const modal=$('testSelectionModal');if(modal)modal.hidden=true}
+function chooseHptTest(){closeTestSelection();beginHPTExam()}
+function chooseLearnerTest(){
+  closeTestSelection();
+  const learnerCandidate={name:$('name').value.trim(),phone:$('phone').value.trim(),school_id:activeSchool?.id,school_name:activeSchool?.school_name,selected_at:new Date().toISOString(),mode:'mock'};
+  try{sessionStorage.setItem('hpt_learner_candidate',JSON.stringify(learnerCandidate))}catch{}
+  if(typeof window.HPTLaunchLearnerTest==='function')window.HPTLaunchLearnerTest();else toast('Learner’s Mock Test could not be opened. Please refresh and try again.',true);
+}
 async function printCertificate(examOverride=null,candidateOverride=null){
-  const exam=examOverride||window._lastExam;
+  // Ignore browser click events; only a genuine saved exam object may override _lastExam.
+  const isExamObject=examOverride&&typeof examOverride==='object'&&
+    (Object.prototype.hasOwnProperty.call(examOverride,'total')||Object.prototype.hasOwnProperty.call(examOverride,'total_score'));
+  const exam=(isExamObject?examOverride:null)||window._lastExam;
   const person=candidateOverride||candidate;
   if(!exam||Number(exam.total)<C.passMark||!window.jspdf?.jsPDF)return;
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});const W=297,H=210;
   doc.setFillColor(250,251,253);doc.rect(0,0,W,H,'F');
   doc.setDrawColor(212,162,32);doc.setLineWidth(1.1);doc.rect(8,8,W-16,H-16,'S');doc.setDrawColor(33,53,72);doc.setLineWidth(.35);doc.rect(13,13,W-26,H-26,'S');
-  let logo=null;try{logo=await imageData('raju-logo.png')}catch{}if(logo){const lw=43,lh=33.2;doc.addImage(logo,'PNG',(W-lw)/2,17,lw,lh);}
-  doc.setTextColor(33,53,72);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text('RAJU MOTOR DRIVING SCHOOL • CHALAKUDY',W/2,57,{align:'center'});
+  const school=exam.school||schoolBrand();const logoPath=school?.logo_url||(school?.school_name?.toLowerCase().includes('raju')?'raju-logo.png':'school-placeholder.svg');let logo=null;try{logo=await imageData(logoPath)}catch{}if(logo){const lw=43,lh=33.2;doc.addImage(logo,'PNG',(W-lw)/2,17,lw,lh);}
+  const schoolName=String(school?.school_name||'Driving School').toUpperCase();doc.setTextColor(33,53,72);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(schoolName,W/2,57,{align:'center',maxWidth:230});
   doc.setTextColor(184,132,12);doc.setFontSize(25);doc.text('CERTIFICATE OF HAZARD PERCEPTION',W/2,73,{align:'center'});
   doc.setDrawColor(212,162,32);doc.setLineWidth(.7);doc.line(82,79,215,79);
   doc.setTextColor(92,105,116);doc.setFont('helvetica','normal');doc.setFontSize(13);doc.text('This certificate is awarded to',W/2,94,{align:'center'});
   doc.setTextColor(25,38,51);doc.setFont('helvetica','bold');doc.setFontSize(27);doc.text(String(person?.name||exam.candidate_name||'Candidate'),W/2,112,{align:'center'});
   doc.setDrawColor(180,188,195);doc.setLineWidth(.35);doc.line(70,118,227,118);
-  doc.setTextColor(92,105,116);doc.setFont('helvetica','normal');doc.setFontSize(12);doc.text('for successfully completing the Raju Motor Driving School Hazard Perception Test',W/2,131,{align:'center'});
+  doc.setTextColor(92,105,116);doc.setFont('helvetica','normal');doc.setFontSize(12);doc.text('for successfully completing the '+(school?.school_name||'Driving School')+' Hazard Perception Test',W/2,131,{align:'center',maxWidth:230});
   doc.setTextColor(33,53,72);doc.setFont('helvetica','bold');doc.setFontSize(19);doc.text(`SCORE: ${Number(exam.total||exam.total_score||0)} / 100`,W/2,149,{align:'center'});
   doc.setTextColor(35,126,78);doc.setFontSize(16);doc.text('PASS',W/2,160,{align:'center'});
   const d=new Date(exam.completed_at||Date.now());
   doc.setTextColor(92,105,116);doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.text(`Date: ${d.toLocaleDateString('en-IN')}`,45,181);
   const certNo=exam.id?`HPT-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(exam.id).slice(0,8).toUpperCase()}`:`HPT-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
   doc.text(`Certificate No: ${certNo}`,W-45,181,{align:'right'});
-  doc.setTextColor(33,53,72);doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.text('RAJU MOTOR DRIVING SCHOOL • CHALAKUDY • SINCE 1969',W/2,191,{align:'center'});
-  doc.save(`Raju-HPT-Certificate-${String(person?.name||exam.candidate_name||'Candidate').replace(/[^a-z0-9]+/gi,'-')}.pdf`)
+  doc.setTextColor(33,53,72);doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.text([school?.school_name,school?.location,school?.contact_number].filter(Boolean).join(' • ').slice(0,120),W/2,191,{align:'center',maxWidth:250});
+  doc.save(`${String(school?.school_name||'Driving-School').replace(/[^a-z0-9]+/gi,'-')}-HPT-Certificate-${String(person?.name||exam.candidate_name||'Candidate').replace(/[^a-z0-9]+/gi,'-')}.pdf`)
 }
-async function imageData(url){return await new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=img.naturalWidth||img.width;c.height=img.naturalHeight||img.height;const x=c.getContext('2d');x.drawImage(img,0,0);resolve(c.toDataURL('image/png'))};img.onerror=reject;img.src=url+'?v='+Date.now()})}
+async function imageData(url){return await new Promise((resolve,reject)=>{const img=new Image();img.crossOrigin='anonymous';img.onload=()=>{try{const c=document.createElement('canvas');c.width=img.naturalWidth||img.width;c.height=img.naturalHeight||img.height;const x=c.getContext('2d');x.drawImage(img,0,0);resolve(c.toDataURL('image/png'))}catch(e){reject(e)}};img.onerror=reject;img.src=url+(url.includes('?')?'&':'?')+'v='+Date.now()})}
 async function lookupAttempts(){
-  const phoneInput=$('attemptPhone');const msg=$('attemptMsg');const list=$('attemptList');
+  const phoneInput=$('attemptPhone'),msg=$('attemptMsg');
   const phone=(phoneInput?.value||'').trim();
-  if(!phone){if(msg){msg.textContent='Enter your mobile number.';msg.className='attemptMsg bad'}return}
-  if(msg){msg.textContent='Searching…';msg.className='attemptMsg'}
-  list.innerHTML='<div class="attemptLoading">Loading your examination attempts…</div>';
+  if(!phone){if(msg){msg.textContent='Enter the student mobile number.';msg.className='attemptMsg bad'}return}
+  if(!activeSchool?.id||!schoolAccessCode){if(msg){msg.textContent='Please sign in with the correct school access code.';msg.className='attemptMsg bad'}return}
+  if(msg){msg.textContent='Loading student performance summary…';msg.className='attemptMsg'}
+  $('studentProfileSummary').hidden=true;
   const sb=await supabase();
-  if(!sb){list.innerHTML='';if(msg){msg.textContent='Results service is unavailable. Please try again.';msg.className='attemptMsg bad'}return}
+  if(!sb){if(msg){msg.textContent='Results service is unavailable. Please try again.';msg.className='attemptMsg bad'}return}
   try{
-    const {data,error}=await sb.rpc('hpt_get_candidate_attempts',{p_phone:phone});
+    const {data,error}=await sb.rpc('hpt_get_student_profile_by_school',{p_phone:phone,p_school_id:activeSchool.id,p_school_access_code:schoolAccessCode});
     if(error)throw error;
-    const rows=data||[];
-    if(!rows.length){list.innerHTML='<div class="attemptEmpty">No HPT attempts found for this mobile number.</div>';if(msg){msg.textContent='';msg.className='attemptMsg'}return}
-    if(msg){msg.textContent=`${rows.length} attempt${rows.length===1?'':'s'} found`;msg.className='attemptMsg ok'}
-    list.innerHTML=rows.map((r,i)=>{
-      const passed=Number(r.total_score||0)>=C.passMark;
-      const d=new Date(r.completed_at||r.started_at);
-      return `<article class="attemptCard"><div class="attemptTop"><div><span class="attemptDate">${d.toLocaleDateString('en-IN')} • ${d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span><strong>Attempt ${rows.length-i}</strong></div><span class="attemptStatus ${passed?'pass':'fail'}">${passed?'PASS':'NOT PASSED'}</span></div><div class="attemptScore"><b>${Number(r.total_score||0)}</b><span>/ 100</span></div><div class="attemptMeta">Pass mark ${C.passMark} • ${passed?'Certificate available':'Certificate not available'}</div><div class="attemptActions"><button class="attemptReportBtn" type="button" data-attempt-report="${escHtml(r.id)}">↓ DOWNLOAD REPORT</button>${passed?`<button class="attemptCertBtn" type="button" data-attempt-cert="${escHtml(r.id)}">↓ DOWNLOAD CERTIFICATE</button>`:''}</div></article>`
-    }).join('');
-    list.querySelectorAll('[data-attempt-cert]').forEach(btn=>btn.onclick=async()=>{
-      const r=rows.find(x=>String(x.id)===String(btn.dataset.attemptCert));if(!r)return;
-      btn.disabled=true;btn.textContent='GENERATING…';
-      try{await printCertificate({id:r.id,total:r.total_score,completed_at:r.completed_at,candidate_name:r.candidate_name},{name:r.candidate_name,phone:r.phone})}catch(e){console.error(e);toast('Could not generate the certificate.',true)}
-      finally{btn.disabled=false;btn.textContent='↓ DOWNLOAD CERTIFICATE'}
-    });
-    list.querySelectorAll('[data-attempt-report]').forEach(btn=>btn.onclick=async()=>{
-      const r=rows.find(x=>String(x.id)===String(btn.dataset.attemptReport));if(!r)return;
-      btn.disabled=true;btn.textContent='GENERATING…';
-      try{
-        const report=await buildHistoricalExam(r);
-        if(!window.RajuHPTReport?.generate)throw new Error('Report generator unavailable');
-        await window.RajuHPTReport.generate(report);
-        toast('Complete HPT report downloaded.');
-      }catch(e){console.error(e);toast('Could not generate the HPT report.',true)}
-      finally{btn.disabled=false;btn.textContent='↓ DOWNLOAD REPORT'}
-    });
-  }catch(e){console.error(e);list.innerHTML='';if(msg){msg.textContent='Could not load attempts. Please try again.';msg.className='attemptMsg bad'}}
+    const profile=Array.isArray(data)?data[0]:data;
+    if(!profile){if(msg){msg.textContent='No student profile found for this mobile number in this school.';msg.className='attemptMsg'}return}
+    const hptAttempts=Number(profile.hpt_attempt_count||0),learnerAttempts=Number(profile.learner_attempt_count||0);
+    const hptBest=profile.best_hpt_score==null?null:Number(profile.best_hpt_score);
+    const learnerBest=profile.best_learner_score==null?null:Number(profile.best_learner_score);
+    const name=profile.candidate_name||'Student',schoolName=profile.school_name||activeSchool.school_name||'Driving school';
+    window._currentStudentProfile={profile,phone,school:{...activeSchool}};
+    $('studentProfileSummary').hidden=false;
+    $('studentProfileName').textContent=name;
+    $('studentProfileSchool').textContent=schoolName;
+    $('studentProfilePhone').textContent=`Mobile: ${phone}`;
+    $('profileHptAttempts').textContent=hptAttempts.toLocaleString('en-IN');
+    $('profileLearnerAttempts').textContent=learnerAttempts.toLocaleString('en-IN');
+    $('profileBestHpt').textContent=`${hptBest===null?'—':hptBest} / 100`;
+    $('profileBestLearner').textContent=`${learnerBest===null?'—':learnerBest} / 30`;
+    $('profileHptBestResult').textContent=hptBest===null?'Not attempted':(hptBest>=C.passMark?'✓ Passed':'Not passed');
+    $('profileHptBestResult').classList.toggle('isFail',hptBest!==null&&hptBest<C.passMark);
+    $('profileLearnerBestResult').textContent=learnerBest===null?'Not attempted':(learnerBest>=18?'✓ Passed':'Not passed');
+    $('profileLearnerBestResult').classList.toggle('isFail',learnerBest!==null&&learnerBest<18);
+    const summaryText=`${name} has completed ${hptAttempts} HPT attempt${hptAttempts===1?'':'s'} and ${learnerAttempts} Learner’s Mock Test attempt${learnerAttempts===1?'':'s'}. Only total counts and highest scores are retained in this profile.`;
+    $('profileProgressText').textContent=summaryText;
+    if(msg){msg.textContent='Student performance summary loaded.';msg.className='attemptMsg ok'}
+  }catch(e){
+    console.error('Student profile lookup failed',e);
+    if(msg){msg.textContent='Could not load the student summary. Apply 17-learner-summary-only-profile.sql in Supabase and try again.';msg.className='attemptMsg bad'}
+  }
+}
+function printStudentProfile(){
+ const data=window._currentStudentProfile;
+ if(!data){toast('Load a student profile first.',true);return}
+ const {profile,phone,school}=data,safe=escHtml;
+ const hptAttempts=Number(profile.hpt_attempt_count||0),learnerAttempts=Number(profile.learner_attempt_count||0);
+ const hptBest=profile.best_hpt_score==null?null:Number(profile.best_hpt_score),learnerBest=profile.best_learner_score==null?null:Number(profile.best_learner_score);
+ const hptPassed=hptBest!==null&&hptBest>=C.passMark,learnerPassed=learnerBest!==null&&learnerBest>=18;
+ const schoolName=school?.school_name||profile.school_name||'Driving School',studentName=profile.candidate_name||'Student',logo=school?.logo_url||'';
+ const w=window.open('','_blank','width=980,height=760');
+ if(!w){toast('Please allow the report popup to print the student profile.',true);return}
+ w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Student Performance Report</title><style>
+ @page{size:A4 portrait;margin:12mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#172b46;margin:0;background:#eaf1f8;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact}.toolbar{max-width:190mm;margin:10px auto;padding:11px;background:#0869c9;color:#fff;border-radius:8px;text-align:center;font-size:14px;font-weight:800;cursor:pointer}.sheet{width:190mm;min-height:277mm;margin:0 auto 15px;background:#fff;border:1px solid #d7e3f0;border-radius:10px;padding:12mm;position:relative;overflow:hidden}.brand{text-align:center;padding-bottom:13px;border-bottom:3px solid #1767b5}.brand img{max-height:66px;max-width:220px;object-fit:contain;display:block;margin:0 auto 7px}.brandName{font-size:24px;font-weight:900;letter-spacing:.03em;color:#12345c}.brandSub{font-size:10px;color:#63758b;margin-top:4px}.reportTitle{margin:16px 0 18px;background:linear-gradient(90deg,#075bb2,#1685e5);color:#fff;border-radius:7px;padding:12px;text-align:center;font-size:16px;font-weight:900;letter-spacing:.06em}.identity{display:grid;grid-template-columns:1fr 1fr;gap:12px 22px;padding:5px 5px 22px}.identity div{border-bottom:1px solid #d9e2ec;padding:8px 2px;font-size:12px}.identity b{display:inline-block;min-width:112px;color:#52657c}.sectionTitle{background:#0b66bd;color:#fff;border-radius:7px 7px 0 0;padding:11px 12px;font-weight:900;font-size:12px;letter-spacing:.04em;margin-top:14px}.summary{width:100%;border-collapse:collapse;margin:0 0 15px}.summary th,.summary td{border:1px solid #d3dfeb;padding:13px 9px;text-align:center;font-size:11px}.summary th{background:#edf4fb;color:#314a68;font-size:10px}.summary td:first-child,.summary th:first-child{text-align:left}.status{display:inline-block;padding:5px 9px;border-radius:20px;font-size:10px;font-weight:900}.pass{background:#e2f7e9;color:#16803b}.fail{background:#ffeded;color:#b42332}.progress{margin-top:20px;border:1px solid #c8ddf2;background:#f0f7ff;border-radius:8px;overflow:hidden}.progress h3{margin:0;padding:10px 12px;background:#e0efff;color:#14549a;font-size:12px}.progress p{margin:0;padding:14px;font-size:12px;line-height:1.6}.footer{position:absolute;bottom:10mm;left:12mm;right:12mm;border-top:1px solid #dce6f0;padding-top:8px;color:#7b8da2;font-size:9px;display:flex;justify-content:space-between}.bottomAccent{position:absolute;bottom:0;right:0;width:75mm;height:5mm;background:linear-gradient(110deg,#d8ebff,#1685e5);clip-path:polygon(30% 0,100% 0,100% 100%,0 100%)}@media screen{.sheet{box-shadow:0 8px 28px #18365322}}@media print{body{background:#fff}.toolbar{display:none}.sheet{margin:0;border:0;border-radius:0;width:auto;min-height:277mm;padding:9mm}}
+ </style></head><body><div class="toolbar" onclick="window.print()">▣ &nbsp; PRINT PERFORMANCE REPORT (A4)</div><main class="sheet"><header class="brand">${logo?`<img src="${safe(logo)}" alt="School logo" onerror="this.style.display='none'">`:''}<div class="brandName">${safe(schoolName)}</div><div class="brandSub">${safe(school?.location||'')} ${school?.contact_number?' | '+safe(school.contact_number):''}</div></header><div class="reportTitle">STUDENT PERFORMANCE REPORT</div>
+ <section class="identity"><div><b>Student Name</b> : ${safe(studentName)}</div><div><b>Mobile Number</b> : ${safe(phone)}</div><div><b>Driving School</b> : ${safe(schoolName)}</div><div><b>Report Date</b> : ${safe(new Date().toLocaleDateString('en-IN'))}</div></section>
+ <div class="sectionTitle">EXAMINATION PERFORMANCE SUMMARY</div><table class="summary"><thead><tr><th>Examination</th><th>Total Attempts</th><th>Maximum Score</th><th>Highest Score</th><th>Best Result</th></tr></thead><tbody><tr><td>Hazard Perception Test (HPT)</td><td>${hptAttempts}</td><td>100</td><td>${hptBest===null?'—':hptBest}</td><td><span class="status ${hptPassed?'pass':'fail'}">${hptBest===null?'NOT ATTEMPTED':hptPassed?'PASSED':'NOT PASSED'}</span></td></tr><tr><td>Learner’s Mock Test</td><td>${learnerAttempts}</td><td>30</td><td>${learnerBest===null?'—':learnerBest}</td><td><span class="status ${learnerPassed?'pass':'fail'}">${learnerBest===null?'NOT ATTEMPTED':learnerPassed?'PASSED':'NOT PASSED'}</span></td></tr></tbody></table>
+ <section class="progress"><h3>LEARNING PROGRESS</h3><p>${(hptPassed&&learnerPassed)?'The student has achieved the pass benchmark in both examinations. Continue practising to maintain consistent performance.':(hptPassed||learnerPassed)?'The student has achieved the pass benchmark in one examination. Continued practice is recommended for the remaining examination.':'Further practice is recommended. The highest scores and total completed attempts are shown above.'}</p></section>
+ <footer class="footer"><span>${safe(schoolName)}</span><span>Student Performance Summary · Generated ${safe(new Date().toLocaleString('en-IN'))}</span></footer><div class="bottomAccent"></div></main><script>window.onload=()=>{const im=[...document.images];Promise.all(im.map(x=>x.complete?Promise.resolve():new Promise(r=>{x.onload=x.onerror=r}))).then(()=>setTimeout(()=>window.print(),300))} <\/script></body></html>`);
+ w.document.close();
 }
 function escHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function buildHistoricalExam(r){
@@ -247,13 +531,98 @@ async function buildHistoricalExam(r){
     return {clip_code:code,title:base.title||`Hazard Perception Clip ${code}`,file:base.file||base.video_path||`videos/${Number(code)}.webm`,hazards:hs,responses:rs,score:0};
   });
   clipsOut.forEach(c=>{c.score=c.responses.reduce((sum,x)=>sum+Number(x.points||0),0)});
-  return {id:r.id,total:Number(r.total_score||0),total_score:Number(r.total_score||0),passed:!!r.passed,candidate_name:r.candidate_name,phone:r.phone,started_at:r.started_at,completed_at:r.completed_at,clips:clipsOut};
+  return {id:r.id,total:Number(r.total_score||0),total_score:Number(r.total_score||0),passed:!!r.passed,candidate_name:r.candidate_name,phone:r.phone,started_at:r.started_at,completed_at:r.completed_at,school:schoolBrand(),clips:clipsOut};
 }
-function openAttempts(){show('attemptsModal',true);$('attemptPhone').value='';$('attemptMsg').textContent='';$('attemptList').innerHTML='<div class="attemptEmpty">Enter your mobile number to view your HPT attempts.</div>';setTimeout(()=>$('attemptPhone')?.focus(),80)}
-function closeAttempts(){show('attemptsModal',false)}
-function setupCandidateCertificate(){$('printCertBtn').onclick=printCertificate}
-$('startBtn').onclick=begin;$('resultClose').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('newBtn').onclick=()=>{show('resultScreen',false);show('startScreen',true);};$('printCertBtn').onclick=()=>printCertificate();$('downloadReportBtn').onclick=async()=>{const b=$('downloadReportBtn');if(!window._lastExam||!window.RajuHPTReport){toast('Report generator is not available. Please refresh the page.',true);return}b.disabled=true;b.textContent='GENERATING…';try{await window.RajuHPTReport.generate(window._lastExam);toast('Complete HPT report downloaded.')}catch(e){console.error(e);toast('Could not generate the HPT report.',true)}finally{b.disabled=false;b.textContent='DOWNLOAD REPORT'}};const viewAttemptsBtn=$('viewAttemptsBtn');if(viewAttemptsBtn)viewAttemptsBtn.onclick=openAttempts;$('attemptSearchBtn').onclick=lookupAttempts;$('attemptCloseBtn').onclick=closeAttempts;$('attemptPhone').onkeydown=e=>{if(e.key==='Enter')lookupAttempts()};$('attemptsModal').onclick=e=>{if(e.target===$('attemptsModal'))closeAttempts()};$('skipBtn').onclick=finishClip;$('soundBtn').onclick=()=>{setSoundState(!sound);};$('fullBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()};$('helpBtn').onclick=()=>toast('Tap when a developing hazard becomes apparent. You can make up to 5 responses per clip.');$('exitBtn').onclick=()=>{if(confirm('Exit the examination? This attempt will be incomplete.')){clearTimeout(timer);video.pause();running=false;stopRoadAudio();show('examScreen',false);show('startScreen',true);}};$('playNow').onclick=()=>video.play().then(()=>{$('playOverlay').hidden=true;running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000)}).catch(()=>toast('Video could not start',true));
-video.addEventListener('timeupdate',()=>{update();timeline()});video.addEventListener('ended',finishClip);
+function openAttempts(){show('attemptsModal',true);$('attemptPhone').value='';$('attemptMsg').textContent='';$('attemptMsg').className='attemptMsg';$('studentProfileSummary').hidden=true;setTimeout(()=>$('attemptPhone')?.focus(),50);}
+function closeAttempts(){show('attemptsModal',false);$('studentProfileSummary').hidden=true;$('attemptMsg').textContent='';}
+function setupCandidateCertificate(){const btn=$('printCertBtn');if(btn)btn.hidden=true}
+bind('whatsappInquiryBtn','click',e=>{
+  const name=$('inquirySchoolName')?.value.trim()||'',contact=$('inquiryContact')?.value.trim()||'',location=$('inquiryLocation')?.value.trim()||'';
+  if(!name||!contact||!location){e.preventDefault();const target=!name?'inquirySchoolName':!contact?'inquiryContact':'inquiryLocation';$(target)?.focus();toast('Please enter school name, contact number and location before sending the inquiry.',true);return}
+  const message=`Hello, I would like to enquire about the Hazard Perception Test for my driving school.\n\nDriving School Name: ${name}\nContact Number: ${contact}\nLocation: ${location}\n\nPlease share the registration and implementation details.`;
+  e.currentTarget.href=`https://wa.me/918943764734?text=${encodeURIComponent(message)}`;
+});
+async function loadSchoolStatsModal(){
+  const status=$('schoolStatsStatus');
+  if(!activeSchool?.id||!schoolAccessCode){if(status)status.textContent='Please sign in with your school access code.';return}
+  if(status)status.textContent='Refreshing lifetime statistics…';
+  try{
+    const sb=await supabase();if(!sb)throw new Error('Statistics service is unavailable.');
+    const {data,error}=await sb.rpc('hpt_school_dashboard_stats',{p_school_access_code:schoolAccessCode});
+    if(error)throw error;
+    const row=Array.isArray(data)?data[0]:data;
+    if(!row)throw new Error('School access is disabled or invalid. Please contact the provider.');
+    const students=Number(row.registered_students)||0,attempts=Number(row.total_attempts)||0;
+    const passed=Number(row.passed_attempts)||0,failed=Number(row.failed_attempts)||0;
+    const rate=attempts?Math.round(passed/attempts*1000)/10:0;
+    safeText('schoolStatsSchoolName',row.school_name||activeSchool.school_name||'Your driving school');
+    safeText('schoolStatsRegistered',students.toLocaleString('en-IN'));
+    safeText('schoolStatsAttempts',attempts.toLocaleString('en-IN'));
+    safeText('schoolStatsPassed',passed.toLocaleString('en-IN'));
+    safeText('schoolStatsFailed',failed.toLocaleString('en-IN'));
+    safeText('schoolStatsAverage',`${Number(row.average_score||0).toFixed(1)} / 100`);
+    safeText('schoolStatsThisMonth',`${Number(row.attempts_this_month||0).toLocaleString('en-IN')} attempts`);
+    safeText('schoolStatsPassRate',`${rate.toFixed(1)}%`);
+    safeText('schoolStatsRingValue',`${rate.toFixed(1)}%`);
+    safeText('schoolStatsPassedBarValue',passed.toLocaleString('en-IN'));
+    safeText('schoolStatsFailedBarValue',failed.toLocaleString('en-IN'));
+    safeText('schoolStatsOutcomeNote',`${passed.toLocaleString('en-IN')} passed and ${failed.toLocaleString('en-IN')} did not pass across ${attempts.toLocaleString('en-IN')} completed examinations.`);
+    const ring=$('schoolStatsRing');if(ring)ring.style.background=`conic-gradient(#35d98b ${rate}%, #ff7181 ${rate}% 100%)`;
+    const max=Math.max(1,passed,failed);
+    const pb=$('schoolStatsPassedBar'),fb=$('schoolStatsFailedBar');
+    if(pb)pb.style.width=`${passed/max*100}%`;
+    if(fb)fb.style.width=`${failed/max*100}%`;
+    const logo=$('schoolStatsLogo'),source=$('headerSchoolLogo');
+    if(logo&&source){logo.src=source.src;logo.alt=`${row.school_name||'School'} logo`}
+    if(status)status.textContent=`Updated ${new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}`;
+  }catch(e){
+    if(status)status.textContent=e.message||'Could not load statistics. Please try again.';
+  }
+}
+function openSchoolStatsModal(){
+  if(!activeSchool?.id||!schoolAccessCode){toast('Enter your school access code first.',true);return}
+  const modal=$('schoolStatsModal');if(!modal)return;
+  modal.hidden=false;document.body.classList.add('school-stats-open');
+  loadSchoolStatsModal();
+  $('schoolStatsClose')?.focus();
+}
+function closeSchoolStatsModal(){
+  const modal=$('schoolStatsModal');if(!modal)return;
+  modal.hidden=true;document.body.classList.remove('school-stats-open');
+  $('schoolStatsBtn')?.focus();
+}
+bind('schoolStatsBtn','click',openSchoolStatsModal);
+bind('schoolStatsClose','click',closeSchoolStatsModal);
+bind('schoolStatsRefresh','click',loadSchoolStatsModal);
+bind('schoolStatsModal','click',e=>{if(e.target=== $('schoolStatsModal')||e.target?.hasAttribute('data-stats-close'))closeSchoolStatsModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('schoolStatsModal')?.hidden)closeSchoolStatsModal()});
+bind('exitSchoolBtn','click',()=>{
+  const schoolName=activeSchool?.school_name||'this driving school';
+  if(!confirm(`Exit ${schoolName} and return to the school access screen?`))return;
+  changeSchool();
+});
+bind('enterSchoolBtn','click',enterSchool);
+bind('schoolAccessCode','keydown',e=>{if(e.key==='Enter')enterSchool()});
+bind('startBtn','click',begin);
+bind('chooseHptBtn','click',chooseHptTest);bind('chooseLearnerBtn','click',chooseLearnerTest);bind('testSelectionClose','click',closeTestSelection);
+bind('testSelectionModal','click',e=>{if(e.target===$('testSelectionModal')||e.target?.matches('[data-test-selection-close]'))closeTestSelection()});
+bind('printStudentProfileBtn','click',printStudentProfile);
+bind('resultClose','click',()=>{show('resultScreen',false);show('startScreen',true)});
+bind('newBtn','click',()=>{show('resultScreen',false);show('startScreen',true);loadTopScorers()});
+bind('printCertBtn','click',()=>printCertificate());
+bind('viewFullReportBtn','click',()=>{
+  if(!window._lastExam||!window.RajuHPTReport?.open){toast('Full report viewer is not available. Refresh the page and try again.',true);return}
+  window.RajuHPTReport.open(window._lastExam);
+});
+// Student Profile is wired once by setupHomeMedia(); avoid duplicate modal-opening handlers.
+bind('attemptSearchBtn','click',lookupAttempts);bind('attemptCloseBtn','click',closeAttempts);
+bind('attemptPhone','keydown',e=>{if(e.key==='Enter')lookupAttempts()});
+bind('attemptsModal','click',e=>{if(e.target===$('attemptsModal'))closeAttempts()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('attemptsModal')?.hidden)closeAttempts()});
+bind('skipBtn','click',finishClip);bind('soundBtn','click',()=>setSoundState(!sound));bind('fullBtn','click',toggleFullscreen);
+bind('helpBtn','click',()=>toast('Tap when a developing hazard becomes apparent. You can make up to 5 responses per clip.'));
+bind('exitBtn','click',()=>{if(confirm('Exit the examination? This attempt will be incomplete.')){clearTimeout(timer);video.pause();running=false;stopRoadAudio();show('examScreen',false);show('startScreen',true)}});
+bind('playNow','click',()=>video.play().then(()=>{const o=$('playOverlay');if(o)o.hidden=true;running=true;clearTimeout(timer);timer=setTimeout(finishClip,C.clipLimitSeconds*1000)}).catch(()=>toast('Video could not start',true)));
+if(video){video.addEventListener('timeupdate',()=>{update();timeline()});video.addEventListener('ended',finishClip)}
 function captureResponseFrame(){
   try{
     if(!video.videoWidth||!video.videoHeight)return null;
@@ -286,7 +655,7 @@ video.addEventListener('click',e=>{
       if(!best||rounded>best.points)best={hazard_no:hn,points:rounded};
     }
   });
-  const r={t,response_no:responses.length+1,hazard_no:best?.hazard_no||null,points:best?.points||0,frameData:captureResponseFrame()};
+  const r={t:Number(t.toFixed(3)),video_time_seconds:Number(t.toFixed(3)),clicked_at:new Date().toISOString(),response_no:responses.length+1,hazard_no:best?.hazard_no||null,points:best?.points||0,frameData:captureResponseFrame()};
   responses.push(r);
   responseBeep();
   if(responses.length>=max)responseLocked=true;
@@ -298,8 +667,8 @@ function isStandalone(){return window.matchMedia?.('(display-mode: standalone)')
 function showInstallHelp(){const m=$('installHelpModal');if(!m)return;$('installHelpText').innerHTML='On Android Chrome, use <b>Install app</b> when offered. On iPhone, open the browser share menu and choose <b>Add to Home Screen</b>.';show('installHelpModal',true)}
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;show('installAppCard',!isStandalone())});
 window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;show('installAppCard',false)});
-$('installAppBtn').onclick=async()=>{if(deferredInstallPrompt){deferredInstallPrompt.prompt();try{await deferredInstallPrompt.userChoice}catch{}deferredInstallPrompt=null;return}showInstallHelp()};
-$('installHelpClose').onclick=()=>show('installHelpModal',false);$('installHelpOk').onclick=()=>show('installHelpModal',false);
+bind('installAppBtn','click',async()=>{if(deferredInstallPrompt){deferredInstallPrompt.prompt();try{await deferredInstallPrompt.userChoice}catch{}deferredInstallPrompt=null;return}showInstallHelp()});
+bind('installHelpClose','click',()=>show('installHelpModal',false));bind('installHelpOk','click',()=>show('installHelpModal',false));
 if(!isStandalone())show('installAppCard',true);
-setupConsoleFeedback();setupHomeMedia();$('startScreen').querySelector('input')?.focus();show('startScreen',true);show('examScreen',false);show('resultScreen',false);startLoadingScreen();
+setupConsoleFeedback();setupHomeMedia();show('startScreen',false);show('schoolGate',true);show('examScreen',false);show('resultScreen',false);document.getElementById('loadingScreen')?.remove();loadGlobalMonthlyTopThree();bootSchoolSession();setInterval(()=>{if(!$('schoolGate')?.hidden)loadGlobalMonthlyTopThree()},5*60*1000);
 })();
