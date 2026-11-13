@@ -1,24 +1,22 @@
-RAJU HPT — ADMIN V6
+RAJU DRIVING SCHOOL - HAZARD PERCEPTION TEST ACCESS PAGE
 
-WHAT CHANGED
-- Candidate dashboard has no visible Admin button. Admin is a direct URL: admin.html.
-- Admin login uses the SAME Supabase Auth + admin_users(active=true) identity used by the Defensive Driving Seminar.
-- New responsive dashboard with examination statistics, candidate results, search/filter, CSV export and attempt detail.
-- Video library with add/edit/enable/disable/delete.
-- Video annotation editor: play the actual video, click the custom timeline to seek, and press MARK HAZARD 1/2. Markers reflect the exact timestamp immediately.
-- Hazard timestamps and descriptions are stored in Supabase.
-- Video binaries remain on GitHub/static hosting; the admin generates annotation JSON for Git publishing.
-- No seminar files are included or modified by this package.
+Files:
+- index.html
+- style.css
 
-SUPABASE
-Run supabase-hpt-v6.sql after your existing Raju schema. It reuses public.is_admin() and public.admin_users from the existing admin system and tightens HPT admin policies.
+This is the compact, one-screen version of the standalone HPT access page.
+On common desktop/laptop viewport sizes, the complete card and footer fit in
+one screen without vertical scrolling. On narrow or very short displays, the
+layout can scroll naturally rather than hiding content.
 
-ADMIN URL
-admin.html
+Upload both files into:
+rajudrivingschool/hazard-perception-test/
 
-VIDEO PUBLISHING
-The browser intentionally does not contain a GitHub Personal Access Token. Put the video at the exact static path saved in the HPT video metadata.
+The page will normally be available at:
+https://www.rajudrivingschool.com/hazard-perception-test/
 
+The button redirects to:
+https://www.hazardperceptiontest.co.in/#school=1132
 
-MULTI-SCHOOL PORTAL UPDATE
-See README-MULTI-SCHOOL-SETUP.txt for the shared multi-school portal setup and Supabase migration.
+This package creates a separate access page and does not replace the main
+Raju Driving School homepage.
