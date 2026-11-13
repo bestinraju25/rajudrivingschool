@@ -5,6 +5,7 @@
 <meta http-equiv="content-language" content="en-IN">
 <meta name="language" content="English">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>document.documentElement.classList.add("hpt-intro-pending");</script>
 <title>Hazard Perception Test | Driving School Road Safety Platform</title>
 <meta name="description" content="Interactive Hazard Perception Test and video-based road-safety training for driving schools and students. Explore school access, hazard-awareness assessment and road safety learning, with a focus on Kerala and schools everywhere.">
 <meta name="keywords" content="hazard perception test, hazard perception test Kerala, hazard perception platform, hazard perception training, driving school hazard perception test, school road safety assessment, road safety awareness, video-based hazard perception">
@@ -27,13 +28,19 @@
 <meta name="twitter:title" content="Hazard Perception Test">
 <meta name="twitter:description" content="A central Hazard Perception Test platform for driving schools and students, with interactive video-based learning and school access.">
 <meta name="twitter:image" content="https://www.hazardperceptiontest.co.in/hpt-preview.jpg">
-<link rel="icon" href="school-placeholder.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="192x192" href="hpt-favicon-v129-192.png"><link rel="apple-touch-icon" href="hpt-favicon-v129-192.png">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=100">
-<script src="hpt-config.js"></script>
+<link rel="stylesheet" href="style.css?v=130">
+<link rel="stylesheet" href="school-registration.css?v=130">
+<link rel="stylesheet" href="mobile-safe-area.css?v=113">
+<link rel="stylesheet" href="hpt-experience.css?v=124">
+
+<script src="hpt-config.js?v=126"></script>
+<script src="hpt-maintenance-guard.js?v=128"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
-<script src="hpt-report.js?v=62"></script>
+<script src="hpt-scoring.js?v=126"></script>
+<script src="hpt-report.js?v=126"></script>
 <style>html,body,#app{overflow-x:hidden!important;max-width:100%;}</style>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -75,9 +82,108 @@
 }
 </script>
 </head><body>
+<div id="hptIntroRoot" role="dialog" aria-modal="true" aria-label="Hazard Perception Test introduction">
+  <section class="hpt-scene hpt-scene-loading is-active" data-hpt-scene="loading" aria-hidden="false">
+    <button class="hpt-skip" id="hptIntroSkip" type="button" data-hpt-skip>
+      SKIP INTRO <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3v14l9-7zM15 3h2v14h-2z" fill="currentColor"/></svg>
+    </button>
+    <div class="hpt-opening-stack">
+      <div class="hpt-brand-block">
+        <div class="hpt-intro-eyebrow"><span></span>DIGITAL ROAD SAFETY LEARNING<span></span></div>
+        <img class="hpt-brand-mark" src="assets/hpt-brand-logo-v129.png" alt="HPT">
+        <div class="hpt-brand-title">HAZARD PERCEPTION TEST</div>
+        <div class="hpt-brand-subtitle">SEE THE HAZARD · IDENTIFY · REACT · DRIVE SAFER</div>
+      </div>
+      <div class="hpt-motivation-block">
+        <div class="hpt-motivation-title">YOUR NEXT TEST COULD PUT YOU ON THE PODIUM.</div>
+        <p>Spot hazards early. Stay sharp. Climb this month’s Global Top 5.</p>
+      </div>
+      <section class="hpt-podium-wrap" aria-label="This month’s top three students">
+        <div class="hpt-podium-heading">
+          <span class="hpt-podium-heading-icon">🏆</span>
+          <strong>THIS MONTH’S TOP 3</strong>
+          <span class="hpt-podium-month" id="hptIntroPodiumMonth"></span>
+        </div>
+        <div id="hptIntroPodium" class="hpt-intro-podium" aria-live="polite">
+          <div class="hpt-podium-loading"><i></i><span>Bringing this month’s leaders into view…</span></div>
+        </div>
+      </section>
+    </div>
+    <div class="hpt-loading-block" aria-label="Loading progress">
+      <div class="hpt-loading-row">
+        <span class="hpt-loading-label" id="hptIntroStatus">Preparing your HPT experience</span>
+        <strong class="hpt-progress-number"><span id="hptIntroProgressPercent">0</span><small>%</small></strong>
+      </div>
+      <div class="hpt-progress-track"><div class="hpt-progress-fill" id="hptIntroProgressFill"></div></div>
+    </div>
+  </section>
+</div>
+<div id="hptExamLoading" class="hpt-exam-loading" hidden role="status" aria-live="polite" aria-label="Preparing your HPT examination">
+  <div class="hpt-initialise-card">
+    <header class="hpt-initialise-brandbar">
+      <img src="assets/hpt-brand-logo-v129.png" alt="Hazard Perception Test" class="hpt-initialise-logo">
+      <span class="hpt-initialise-divider" aria-hidden="true"></span>
+      <span class="hpt-initialise-label">EXAMINATION INITIALISING</span>
+    </header>
+
+    <section class="hpt-instructions-panel" aria-labelledby="hptExamInstructionsTitle">
+      <div class="hpt-instructions-heading">
+        <span class="hpt-instructions-rule" aria-hidden="true"></span>
+        <span class="hpt-info-icon" aria-hidden="true">i</span>
+        <h2 id="hptExamInstructionsTitle">Exam Instructions</h2>
+        <span class="hpt-instructions-rule" aria-hidden="true"></span>
+      </div>
+      <p class="hpt-instructions-subtitle">Read the instructions carefully before the test begins.</p>
+
+      <div class="hpt-instructions-grid">
+        <div class="hpt-instructions-column">
+          <article class="hpt-instruction-card">
+            <span class="hpt-instruction-icon hpt-icon-play" aria-hidden="true"><i></i></span>
+            <div><h3>Watch the Video</h3><p>You will see short real-life driving clips.</p></div>
+          </article>
+          <article class="hpt-instruction-card">
+            <span class="hpt-instruction-icon hpt-icon-tap" aria-hidden="true">☝</span>
+            <div><h3>Spot the Hazard</h3><p>When you notice a developing hazard, click or tap anywhere on the video immediately.</p></div>
+          </article>
+          <article class="hpt-instruction-card">
+            <span class="hpt-instruction-icon hpt-icon-score" aria-hidden="true"><i></i><i></i><i></i></span>
+            <div><h3>Scoring</h3><p>Each clip contains a maximum of <b>2 hazards</b>. You get higher marks for quicker and correct detection.</p></div>
+          </article>
+        </div>
+        <div class="hpt-instructions-column hpt-instructions-column-side">
+          <article class="hpt-instruction-card">
+            <span class="hpt-instruction-icon hpt-icon-limit" aria-hidden="true"><b>5</b></span>
+            <div><h3>Click Limit</h3><p>You can click a maximum of <b>5 times per video.</b></p></div>
+          </article>
+          <article class="hpt-instruction-card">
+            <span class="hpt-instruction-icon hpt-icon-trophy" aria-hidden="true">🏆</span>
+            <div><h3>Pass Requirement</h3><p>Total marks: <b>100</b><br>Pass mark: <b>60 (60%)</b></p></div>
+          </article>
+        </div>
+      </div>
+
+      <div class="hpt-loader-readyline"><span class="hpt-ready-check" aria-hidden="true">✓</span><span id="hptExamLoadingStatus">The test will start automatically…</span></div>
+
+      <div class="hpt-loader-progress-wrap">
+        <div class="hpt-game-progress"><div id="hptExamLoadingFill"></div></div>
+        <div class="hpt-game-progress-meta"><span id="hptExamLoadingPercent">0%</span><span id="hptExamLoadingStep">CHECKING EXAMINATION</span></div>
+      </div>
+
+      <div class="hpt-loader-tip">
+        <span class="hpt-tip-icon" aria-hidden="true">☼</span>
+        <span class="hpt-tip-title">ROAD SAFETY TIP</span>
+        <span class="hpt-tip-divider" aria-hidden="true"></span>
+        <strong>Look well ahead. Developing hazards can appear before they become immediate danger.</strong>
+      </div>
+    </section>
+  </div>
+</div>
+<div id="hptSchoolWelcome" hidden aria-live="polite" aria-label="School access verified">
+  <div class="hpt-welcome-card"><div class="hpt-welcome-state" id="hptWelcomeState">ACCESS VERIFIED</div><img class="hpt-welcome-logo" id="hptWelcomeSchoolLogo" alt="Driving school logo" hidden><div class="hpt-welcome-brand">WELCOME TO YOUR SCHOOL PORTAL</div><div class="hpt-welcome-title" id="hptWelcomeSchoolName">Your Driving School</div><div class="hpt-welcome-location" id="hptWelcomeSchoolLocation"></div><div class="hpt-welcome-loading">Preparing your learning environment…</div><div class="hpt-progress-track"><div class="hpt-progress-fill" id="hptWelcomeProgressFill"></div></div><div class="hpt-welcome-percent"><span id="hptWelcomePercent">0</span><small>%</small></div></div>
+</div>
 <div id="app" class="app">
 <header class="topbar">
-  <div class="brand"><img id="headerSchoolLogo" src="school-placeholder.svg" class="logo" alt="Driving school logo"><div><div id="headerSchoolName" class="school">HAZARD PERCEPTION PORTAL</div><div class="testname">HAZARD PERCEPTION TEST</div></div></div>
+  <div class="brand"><img id="headerSchoolLogo" src="assets/hpt-brand-logo-v129.png" class="logo" alt="Driving school logo"><div><div id="headerSchoolName" class="school">HAZARD PERCEPTION PORTAL</div><div class="testname">HAZARD PERCEPTION TEST</div></div></div>
   <div class="hud">
     <div class="candidate"><span id="candName">Candidate</span><small id="candPhone"></small></div>
     <div class="clip">CLIP <b id="clipNo">-- / --</b></div>
@@ -97,52 +203,39 @@
   <div class="landingHero">
     <div class="landingIntro">
       <div class="gateEyebrow"><span></span> DIGITAL ROAD SAFETY LEARNING</div>
+      <img class="hpt-landing-logo" src="assets/hpt-brand-logo-v129.png" alt="HPT — Hazard Perception Test">
       <h1 id="gateHeading">Hazard Perception Test</h1>
       <p>Build safer driving habits through realistic, interactive video-based hazard perception training.</p>
     </div>
     <div class="landingColumns">
       <div class="gateCard landingLoginCard">
-        <div class="gateCardTop"><div class="gateIcon">↗</div><div><div class="gateKicker">EXISTING SCHOOLS</div><h2>School Login</h2></div></div>
-        <label for="schoolAccessCode">Access Code</label>
-        <input id="schoolAccessCode" type="text" maxlength="64" autocomplete="off" placeholder="Enter Access Code" aria-describedby="schoolGateMsg">
+        <div class="gateCardTop"><div class="hpt-login-heading"><span class="hpt-lock-mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="5" y="10" width="14" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 1 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 14v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><div class="gateKicker">REGISTERED DRIVING SCHOOLS</div><h2>ACCESS CODE</h2></div></div>
+        <label for="schoolAccessCode">ENTER YOUR SCHOOL ACCESS CODE</label>
+        <input id="schoolAccessCode" type="text" maxlength="64" autocomplete="off" placeholder="Enter your 4-digit access code" aria-describedby="schoolGateMsg">
         <div id="schoolGateMsg" class="gateMessage" role="status" aria-live="polite"></div>
-        <button id="enterSchoolBtn" class="gateButton" type="button"><span>START TEST</span><b>→</b></button>
-        <p class="landingCardNote">Secure access for registered driving schools.</p>
+        <button id="enterSchoolBtn" class="gateButton" type="button"><span>LOGIN TO SCHOOL</span><b>→</b></button>
+        <p class="landingCardNote">Contact your driving school to know your registered access code.</p>
       </div>
       <aside class="landingRegisterCard">
-        <div class="registerIcon" aria-hidden="true">✦</div>
-        <div class="gateKicker">FOR DRIVING SCHOOLS</div>
-        <h2>Don't have an access code? Register your school today!</h2>
-        <p>Enhance your students' road safety awareness with our interactive Hazard Perception Test.</p>
-        <div class="whatsappInquiryFields">
-          <label for="inquirySchoolName">Driving school name</label>
-          <input id="inquirySchoolName" type="text" maxlength="120" placeholder="Enter driving school name" autocomplete="organization">
-          <label for="inquiryContact">Contact number</label>
-          <input id="inquiryContact" type="tel" maxlength="30" inputmode="tel" placeholder="Enter contact number" autocomplete="tel">
-          <label for="inquiryLocation">Location</label>
-          <input id="inquiryLocation" type="text" maxlength="120" placeholder="Town / District" autocomplete="address-level2">
-        </div>
-        <a id="whatsappInquiryBtn" class="whatsappInquiryBtn" href="https://wa.me/918943764734" target="_blank" rel="noopener noreferrer" aria-label="Send inquiry via WhatsApp">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.52 3.48A11.83 11.83 0 0 0 12.1 0C5.57 0 .25 5.32.25 11.85c0 2.09.55 4.13 1.59 5.93L.15 24l6.37-1.67a11.86 11.86 0 0 0 5.58 1.42h.01c6.53 0 11.85-5.32 11.85-11.85 0-3.17-1.23-6.15-3.44-8.42ZM12.1 21.73a9.86 9.86 0 0 1-5.02-1.37l-.36-.21-3.78.99 1.01-3.68-.23-.38a9.82 9.82 0 0 1-1.51-5.23c0-5.44 4.43-9.87 9.88-9.87 2.64 0 5.12 1.03 6.98 2.89a9.8 9.8 0 0 1 2.89 6.98c0 5.45-4.43 9.88-9.86 9.88Zm5.42-7.4c-.3-.15-1.77-.87-2.05-.97-.28-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.47-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.89 1.22 3.09c.15.2 2.1 3.2 5.09 4.49.71.31 1.27.49 1.7.63.72.23 1.37.2 1.89.12.58-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35Z"/></svg>
-          <span>Send Inquiry via WhatsApp</span><b>↗</b>
-        </a>
-        <small>Talk to us about onboarding, access and implementation.</small>
+        <button id="hptForgotAccess" class="hptForgotAccessBtn" type="button">Forgot Access Code?</button>
+        <span class="hpt-new-school-label">New Driving School?</span>
+        <button id="hptGetAccess" class="whatsappInquiryBtn hptGetAccessBtn" type="button"><span>GET ACCESS CODE</span><b>→</b></button>
       </aside>
     </div>
     <section id="globalLeaderboard" class="globalLeaderboardCard" aria-labelledby="globalLeaderboardTitle">
       <div class="globalLeaderboardHeader">
         <div>
-          <div class="globalLeaderboardEyebrow">MONTHLY CHAMPIONS · ALL PARTICIPATING SCHOOLS</div>
-          <h2 id="globalLeaderboardTitle">🏆 Global Top 3 <span id="globalLeaderboardMonth">(October 2026)</span></h2>
-          <p>Celebrating the three highest-scoring students across participating driving schools.</p>
+          <div class="globalLeaderboardEyebrow">MONTHLY GLOBAL RANKINGS · ACTIVE PARTICIPATING SCHOOLS</div>
+          <h2 id="globalLeaderboardTitle">GLOBAL TOP 5 STUDENTS <span id="globalLeaderboardMonth">(CURRENT MONTH)</span></h2>
+          <p>Five standout performances from this month’s completed Hazard Perception Tests.</p>
         </div>
         <span class="globalLeaderboardLive"><i></i> LIVE</span>
       </div>
-      <div id="globalPodium" class="globalPodium" aria-live="polite" aria-label="Top three students across all participating driving schools">
-        <div class="globalPodiumLoading">Loading this month’s global champions…</div>
+      <div id="globalPodium" class="globalTopFiveHost" aria-live="polite" aria-label="Top five students across all participating driving schools">
+        <div class="globalPodiumLoading">Loading this month’s Global Top 5…</div>
       </div>
-      <div class="globalLeaderboardFooter"><span id="globalLeaderboardUpdated">Updated just now</span><span>Ranked by score, then average reaction time</span></div>
-      <p class="globalLeaderboardPrivacy">Student surnames are partially hidden for privacy. Monthly rankings include active participating schools only.</p>
+      <div class="globalLeaderboardFooter"><span id="globalLeaderboardUpdated">Updated just now</span><span>Best score first · average correct-response reaction time breaks ties</span></div>
+      <p class="globalLeaderboardPrivacy">Student surnames are partially hidden for privacy. Only active participating schools are included.</p>
     </section>
     <div class="landingTrust"><span>●</span> VIDEO-BASED LEARNING <i></i><span>●</span> SCHOOL-LEVEL ACCESS <i></i><span>●</span> STUDENT PERFORMANCE</div>
   </div>
@@ -162,7 +255,7 @@
       <div class="homeKicker"><span></span> COMPUTER-BASED EXAMINATION</div>
       <div class="homeIntroTitle">
         <div id="mobileSchoolBrand" class="mobileSchoolBrand" aria-label="Driving school identity">
-          <img id="mobileSchoolLogo" src="school-placeholder.svg" alt="Driving school logo">
+          <img id="mobileSchoolLogo" src="assets/hpt-brand-logo-v129.png" alt="Driving school logo">
           <strong id="mobileSchoolName">DRIVING SCHOOL</strong>
           <span>HAZARD PERCEPTION TEST</span>
         </div>
@@ -202,16 +295,15 @@
 <div class="videoWrap"><video id="video" playsinline preload="auto"></video><div id="clickLayer" class="clickLayer"></div><div id="playOverlay" class="playOverlay" hidden><button id="playNow">▶ PLAY CLIP</button></div>
 <div class="topOverlay"><div class="pill">CLIP <b id="clipNo2">1 / 10</b></div><div class="pill responsePill">RESPONSES <b id="respCount">0 / 5</b></div></div>
 <div class="rightTools"><button id="helpBtn" title="Help">?</button><button id="soundBtn" title="Sound">🔊</button><button id="fullBtn" title="Fullscreen">⛶</button><button id="exitBtn" title="Exit">×</button></div>
-<div class="tapPrompt">TAP WHEN YOU SEE A<br>DEVELOPING HAZARD</div>
-<div class="bottomHud"><div class="hint">💡 Look ahead, to the sides and behind.</div><button id="skipBtn" class="skip">SKIP CLIP »</button><div class="timeline"><span id="elapsed">00:00</span><div class="track" id="track"><div class="progressFill" id="progressFill"></div><div class="playHead" id="playHead"></div></div><span id="duration">00:50</span></div></div>
+<div class="bottomHud"><div class="hint" aria-live="polite" aria-label="Tap anywhere on the video to mark your response"><span class="hint-bulb" aria-hidden="true">💡</span><span class="hint-text">Tap anywhere on the video to mark your response.</span></div><button id="skipBtn" class="skip" type="button" hidden>SKIP CLIP »</button><div class="timeline"><span id="elapsed">00:00</span><div class="track" id="track"><div class="progressFill" id="progressFill"></div><div class="playHead" id="playHead"></div></div><span id="duration">00:50</span></div></div>
 </div></section>
-<section id="resultScreen" class="panel result" hidden><img id="resultSchoolLogo" src="school-placeholder.svg" class="resultLogo" alt="Driving school logo"><div class="eyebrow">EXAMINATION COMPLETE</div><h2>RESULT</h2><div id="candidateResult" class="candidateResult"></div><div id="finalScore" class="finalScore">0 / 100</div><div id="passText" class="status"></div><div id="resultDetails"></div><div id="resultSaveStatus" class="save-status"></div><div class="resultActions"><button id="printCertBtn" class="primary" hidden>PRINT CERTIFICATE</button><button id="viewFullReportBtn" class="secondary">VIEW FULL REPORT</button><button id="newBtn" class="secondary">NEW EXAM</button><button id="resultClose" class="secondary">CLOSE</button></div></section>
+<section id="resultScreen" class="panel result" hidden><img id="resultSchoolLogo" src="assets/hpt-brand-logo-v129.png" class="resultLogo" alt="Driving school logo"><div class="eyebrow">EXAMINATION COMPLETE</div><h2>RESULT</h2><div id="candidateResult" class="candidateResult"></div><div id="finalScore" class="finalScore">0 / 100</div><div id="passText" class="status"></div><div id="resultDetails"></div><div id="resultSaveStatus" class="save-status"></div><div class="resultActions"><button id="printCertBtn" class="primary" hidden>PRINT CERTIFICATE</button><button id="viewFullReportBtn" class="secondary">VIEW FULL REPORT</button><button id="newBtn" class="secondary">NEW EXAM</button><button id="resultClose" class="secondary">CLOSE</button></div></section>
 </main><div id="schoolStatsModal" class="schoolStatsModal" hidden role="dialog" aria-modal="true" aria-labelledby="schoolStatsTitle">
   <div class="schoolStatsBackdrop" data-stats-close></div>
   <section class="schoolStatsDialog">
     <header class="schoolStatsDialogHead">
       <div class="schoolStatsIdentity">
-        <img id="schoolStatsLogo" src="school-placeholder.svg" alt="Driving school logo">
+        <img id="schoolStatsLogo" src="assets/hpt-brand-logo-v129.png" alt="Driving school logo">
         <div><div class="eyebrow">SCHOOL PERFORMANCE</div><h2 id="schoolStatsTitle">Lifetime Statistics</h2><p id="schoolStatsSchoolName">Your driving school</p></div>
       </div>
       <div class="schoolStatsHeadActions">
@@ -263,24 +355,26 @@
   <div id="studentProfileSummary" class="studentProfileSummary" hidden>
    <div class="profileIdentity"><div><strong id="studentProfileName">—</strong><span id="studentProfileSchool">—</span><small id="studentProfilePhone"></small></div><button id="printStudentProfileBtn" type="button" class="profilePrintBtn">▣ PRINT A4 REPORT</button></div>
    <div class="profileTestCards">
-    <article class="profileTestCard hptProfileCard"><div class="profileTestTitle"><span class="profileTestIcon">▣</span><strong>Hazard Perception Test (HPT)</strong></div><div class="profileTestMetrics"><div><small>TOTAL ATTEMPTS</small><b id="profileHptAttempts">0</b></div><div><small>HIGHEST SCORE</small><b id="profileBestHpt">— / 100</b></div><div><small>BEST RESULT</small><b id="profileHptBestResult" class="profileResultBadge">—</b></div></div></article>
-    <article class="profileTestCard learnerProfileCard"><div class="profileTestTitle"><span class="profileTestIcon">▤</span><strong>Learner’s Mock Test</strong></div><div class="profileTestMetrics"><div><small>TOTAL ATTEMPTS</small><b id="profileLearnerAttempts">0</b></div><div><small>HIGHEST SCORE</small><b id="profileBestLearner">— / 30</b></div><div><small>BEST RESULT</small><b id="profileLearnerBestResult" class="profileResultBadge">—</b></div></div></article>
+    <article class="profileTestCard hptProfileCard"><div class="profileTestTitle"><span class="profileTestIcon">▣</span><strong>Hazard Perception Test (HPT)</strong></div><div class="profileTestMetrics"><div><small>TOTAL ATTEMPTS</small><b id="profileHptAttempts">0</b></div><div><small>HIGHEST SCORE</small><b id="profileBestHpt">— / 100</b></div><div><small>BEST RESULT</small><b id="profileHptBestResult" class="profileResultBadge">—</b></div></div><div class="profileCertificateActions"><button id="printHptProfileCertBtn" class="profileCertificateBtn hptCertificateBtn" type="button" hidden>▣ PRINT HPT CERTIFICATE</button></div></article>
+    <article class="profileTestCard learnerProfileCard"><div class="profileTestTitle"><span class="profileTestIcon">▤</span><strong>Learner’s Mock Test</strong></div><div class="profileTestMetrics"><div><small>TOTAL ATTEMPTS</small><b id="profileLearnerAttempts">0</b></div><div><small>HIGHEST SCORE</small><b id="profileBestLearner">— / 30</b></div><div><small>BEST RESULT</small><b id="profileLearnerBestResult" class="profileResultBadge">—</b></div></div><div class="profileCertificateActions"><button id="printLearnerProfileCertBtn" class="profileCertificateBtn learnerCertificateBtn" type="button" hidden>▤ PRINT MOCK TEST CERTIFICATE</button></div></article>
    </div>
    <div class="profileProgressNote"><span class="profileProgressIcon">✓</span><div><strong>Learning progress summary</strong><small id="profileProgressText">Your best results are shown above. Individual attempt history is not retained in this profile.</small></div></div>
   </div>
  </section>
 </div><div id="installHelpModal" class="installHelpModal" hidden><div class="installHelpCard"><button id="installHelpClose" class="installHelpClose" type="button">×</button><div class="installHelpIcon">📱</div><div class="eyebrow">HPT PORTAL</div><h3>Install on your phone</h3><p id="installHelpText">Use your browser menu and choose <b>Add to Home screen</b> or <b>Install app</b>.</p><button id="installHelpOk" class="primary" type="button">GOT IT</button></div></div><div id="responseLimitModal" class="limitModal" hidden><div class="limitCard"><div class="limitIcon">5</div><h3>5 RESPONSES ALREADY MARKED</h3><p>You cannot mark any more responses for this clip.</p><button type="button" onclick="document.getElementById('responseLimitModal').hidden=true">OK</button></div></div><div id="toast" class="toast"></div></div><div class="modal fade report-modal" id="fullReportModal" tabindex="-1" aria-labelledby="fullReportTitle" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
-    <div class="modal-header report-modal-header"><div><div class="report-modal-kicker">HAZARD PERCEPTION TEST</div><h2 class="modal-title" id="fullReportTitle">Full examination report</h2><div id="reportCandidateMeta" class="report-candidate-meta"></div></div><button type="button" class="btn-close btn-close-white" id="closeFullReportBtn" data-bs-dismiss="modal" aria-label="Close"></button></div>
-    <div class="modal-body"><div id="reportSummary" class="report-summary-strip"></div>
+    <div class="modal-header report-modal-header"><div><div class="report-modal-kicker">HAZARD PERCEPTION TEST</div><h2 class="modal-title" id="fullReportTitle">Full examination report</h2><div id="reportCandidateMeta" class="report-candidate-meta"></div></div><button type="button" class="btn-close btn-close-white" id="closeFullReportBtn" data-report-close data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <div class="modal-body"><div id="reportSummary" class="report-summary-strip"></div><div id="reportOverallFeedback" class="report-overall-feedback"></div>
       <div class="report-toolbar"><div class="report-filters" role="group" aria-label="Filter hazards"><button class="report-filter active" data-report-filter="all" type="button">All hazards</button><button class="report-filter" data-report-filter="identified" type="button">Identified</button><button class="report-filter" data-report-filter="missed" type="button">Missed</button></div><div class="report-timing-note">Times are clip positions (MM:SS.ss)</div></div>
       <div id="reportHazardList" class="report-hazard-list"><div class="report-loading">Preparing hazard evidence…</div></div>
-    </div><div class="modal-footer report-modal-footer"><span>Actual time = official hazard timestamp · Click time = video position at tap</span><button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">CLOSE REPORT</button></div>
+    </div><div class="modal-footer report-modal-footer"><span>Actual time = official hazard timestamp · Click time = video position at tap</span><button type="button" class="btn btn-outline-light" data-report-close data-bs-dismiss="modal">CLOSE REPORT</button></div>
   </div></div>
 </div>
 <div id="reportImageLightbox" class="report-lightbox" hidden role="dialog" aria-modal="true" aria-label="Hazard evidence image"><button id="reportLightboxClose" class="report-lightbox-close" type="button" aria-label="Close image">×</button><img id="reportLightboxImage" alt="Hazard evidence full size"><div id="reportLightboxCaption"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-<script src="app.js?v=102"></script><script>
+<script src="app.js?v=130"></script>
+<script src="school-registration.js?v=130"></script>
+<script src="hpt-experience.js?v=129"></script><script>
 (()=>{
  let learnerLayer=null,learnerFrame=null,wasFullscreenBeforeLearner=false;
  function sameOriginMessage(event){return location.origin==='null'?event.origin==='null':event.origin===location.origin}
@@ -300,7 +394,7 @@
   learnerLayer=document.createElement('div');learnerLayer.id='learnerTestFullscreenLayer';
   learnerLayer.style.cssText='position:fixed;inset:0;z-index:2147483000;width:100vw;height:100vh;height:100svh;background:#fff;overflow:hidden;';
   learnerFrame=document.createElement('iframe');learnerFrame.title='Kerala Learner’s Test';
-  learnerFrame.src='learner-test.html?v=104';learnerFrame.allow='fullscreen';learnerFrame.setAttribute('allowfullscreen','');
+  learnerFrame.src='learner-test.html?v=129';learnerFrame.allow='fullscreen';learnerFrame.setAttribute('allowfullscreen','');
   learnerFrame.style.cssText='display:block;width:100%;height:100%;border:0;background:#fff;';
   const schoolSession=JSON.parse(session);
   learnerFrame.addEventListener('load',()=>{

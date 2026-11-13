@@ -1,6 +1,6 @@
 (()=>{'use strict';
 const C=window.RAJU_HPT_CONFIG; const sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey); const $=id=>document.getElementById(id);
-let results=[],videos=[],editingId=null,localUrl=null,localFile=null,editingCode='',editingGitHubFilePath='',schoolDirectory=[],selectedResultsSchoolId=null;
+let results=[],videos=[],editingId=null,localUrl=null,localFile=null,editingCode='',schoolDirectory=[],learnerSummaries=[],studentDirectory=[],selectedResultsSchoolId=null,selectedExamView=null,maintenanceEnabled=false,todayActivityRows=[],examAllowSkip=false;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=s=>{s=Math.max(0,Number(s)||0);return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}.${Math.floor((s%1)*10)}`};
 const notice=(t,bad=false)=>{const e=$('notice');e.hidden=false;e.textContent=t;e.className='notice '+(bad?'bad':'good');clearTimeout(e._t);e._t=setTimeout(()=>e.hidden=true,6000)};
@@ -9,9 +9,182 @@ function showLogin(){ $('login').hidden=false;$('dashboard').hidden=true;$('logo
 function showDash(a){ $('login').hidden=true;$('dashboard').hidden=false;$('logoutBtn').hidden=false;$('adminIdentity').hidden=false;$('adminIdentity').textContent=a?.full_name||a?.email||'' }
 async function guard(){const {data:{session}}=await sb.auth.getSession();if(!session){showLogin();return null}const {data:admin,error}=await sb.from('admin_users').select('id,full_name,email').eq('id',session.user.id).eq('active',true).maybeSingle();if(error||!admin){await sb.auth.signOut();showLogin();$('loginMsg').textContent='This account is not an active provider administrator. Contact the platform provider.';return null}return {session,admin}}
 async function login(){const email=$('email').value.trim(),password=$('password').value;if(!email||!password){$('loginMsg').textContent='Enter email and password.';return}$('loginBtn').disabled=true;$('loginMsg').textContent='Signing in…';const {error}=await sb.auth.signInWithPassword({email,password});if(error){$('loginMsg').textContent=error.message;$('loginBtn').disabled=false;return}const a=await guard();$('loginBtn').disabled=false;if(a){showDash(a.admin);await refreshAll();openRequestedAdminTab()}}
-async function refreshAll(){const a=await guard();if(!a)return;await Promise.all([loadResults(),loadVideos(),loadAccessCode()]);if(window.HPTSchoolManager?.refresh)await window.HPTSchoolManager.refresh();updateStats()}
+async function refreshAll(){const a=await guard();if(!a)return;await loadStudentDirectory();await Promise.all([loadResults(),loadLearnerSummaries(),loadVideos(),loadAccessCode(),loadMaintenanceMode(),loadExamControls()]);await loadTodayActivity();if(selectedResultsSchoolId&&schoolDirectory.some(x=>String(x.id)===String(selectedResultsSchoolId)))renderSchoolExamChoices(schoolDirectory.find(x=>String(x.id)===String(selectedResultsSchoolId)));if(window.HPTSchoolManager?.refresh)await window.HPTSchoolManager.refresh();updateStats()}
 async function loadAccessCode(){const e=$('adminAccessCode'),m=$('accessCodeMsg');if(!e)return;try{const {data,error}=await sb.from('hpt_settings').select('access_code').eq('id',1).maybeSingle();if(error)throw error;e.value=data?.access_code||'1234';m.textContent=data?'':'Run the included supabase-hpt-v21-access-code.sql migration once to enable persistent access-code changes.';m.className='message '+(data?'good':'bad')}catch(err){e.value='1234';m.textContent='Access-code settings are not configured yet. Run supabase-hpt-v21-access-code.sql in Supabase.';m.className='message bad'}}
 async function saveAccessCode(){const e=$('adminAccessCode'),m=$('accessCodeMsg');const code=e.value.trim();if(!code){m.textContent='Enter an access code.';m.className='message bad';return}if(code.length<4){m.textContent='Access code must be at least 4 characters.';m.className='message bad';return}const a=await guard();if(!a)return;$('saveAccessCode').disabled=true;$('saveAccessCode').textContent='SAVING…';try{const {error}=await sb.from('hpt_settings').update({access_code:code,updated_at:new Date().toISOString()}).eq('id',1);if(error)throw error;m.textContent='✓ Candidate access code updated.';m.className='message good';notice('Candidate HPT access code updated.')}catch(err){m.textContent=err.message||'Could not update access code.';m.className='message bad';notice(err.message||'Could not update access code.',true)}finally{$('saveAccessCode').disabled=false;$('saveAccessCode').textContent='SAVE ACCESS CODE'}}
+async function loadExamControls(){
+  const toggle=$('allowSkipToggle'),badge=$('examControlsBadge'),msg=$('examControlsMsg');if(!toggle)return;
+  try{
+    const {data,error}=await sb.from('hpt_settings').select('allow_skip').eq('id',1).maybeSingle();
+    if(error)throw error;if(!data)throw new Error('HPT settings row not found.');
+    examAllowSkip=!!data.allow_skip;toggle.checked=examAllowSkip;
+    badge.textContent=examAllowSkip?'● SKIP ENABLED':'● SKIP DISABLED';badge.className='maintenance-mode-badge '+(examAllowSkip?'maintenance-on':'online');
+    msg.textContent='';msg.className='message';
+  }catch(error){
+    examAllowSkip=false;toggle.checked=false;toggle.disabled=true;$('saveExamControls').disabled=true;
+    badge.textContent='● SETUP REQUIRED';badge.className='maintenance-mode-badge setup-required';
+    msg.textContent='Run 24-hpt-daily-exam-activity.sql in Supabase to add the skip setting and daily activity log. '+(error.message||'');msg.className='message bad';
+  }
+}
+async function saveExamControls(){
+  const auth=await guard();if(!auth)return;const toggle=$('allowSkipToggle'),button=$('saveExamControls'),msg=$('examControlsMsg');
+  button.disabled=true;button.textContent='SAVING…';
+  try{
+    const next=!!toggle.checked;const {error}=await sb.from('hpt_settings').update({allow_skip:next,updated_at:new Date().toISOString()}).eq('id',1);if(error)throw error;
+    examAllowSkip=next;$('examControlsBadge').textContent=next?'● SKIP ENABLED':'● SKIP DISABLED';$('examControlsBadge').className='maintenance-mode-badge '+(next?'maintenance-on':'online');msg.textContent=next?'✓ Skip Clip is enabled for all schools.':'✓ Skip Clip is hidden for all schools.';msg.className='message good';notice(msg.textContent);
+  }catch(error){msg.textContent=error.message||'Could not save examination controls.';msg.className='message bad';notice(msg.textContent,true);await loadExamControls();}
+  finally{button.disabled=false;button.textContent='SAVE EXAM CONTROLS';}
+}
+function indiaDayRange(){
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const values={};parts.forEach(p=>{if(p.type!=='literal')values[p.type]=p.value});
+  const y=Number(values.year),m=Number(values.month),d=Number(values.day),offset=330*60000;
+  return {start:new Date(Date.UTC(y,m-1,d)-offset).toISOString(),end:new Date(Date.UTC(y,m-1,d+1)-offset).toISOString(),label:new Intl.DateTimeFormat('en-IN',{day:'2-digit',month:'long',year:'numeric',timeZone:'Asia/Kolkata'}).format(new Date())};
+}
+function todaySessionState(row){
+  if(row.status==='completed'||row.completed_at)return 'completed';
+  const last=Date.parse(row.last_seen_at||row.started_at||'');
+  return Number.isFinite(last)&&Date.now()-last<=120000?'active':'incomplete';
+}
+function renderTodayActivity(){
+  const schoolFilter=$('todayActivitySchoolFilter')?.value||'all',statusFilter=$('todayActivityStatusFilter')?.value||'all';
+  const rows=todayActivityRows.filter(r=>(schoolFilter==='all'||String(r.school_id||'')===schoolFilter)&&(statusFilter==='all'||todaySessionState(r)===statusFilter));
+  const unique=new Set(todayActivityRows.map(r=>`${r.school_id||''}|${canonicalPhone(r.phone)}`));
+  const completed=todayActivityRows.filter(r=>todaySessionState(r)==='completed').length;
+  const active=todayActivityRows.filter(r=>todaySessionState(r)==='active').length;
+  const incomplete=todayActivityRows.filter(r=>todaySessionState(r)==='incomplete').length;
+  $('todayStudentsCount').textContent=String(unique.size);$('todayCompletedCount').textContent=String(completed);$('todayActiveCount').textContent=String(active);$('todayIncompleteCount').textContent=String(incomplete);
+  $('todayActivityCount').textContent=`${rows.length} exam session${rows.length===1?'':'s'}`;
+  $('todayActivityBody').innerHTML=rows.length?rows.map(r=>{
+    const state=todaySessionState(r),label=state==='completed'?'COMPLETED':state==='active'?'ACTIVE NOW':'INCOMPLETE';
+    const time=new Date(r.started_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});
+    const completedAt=r.completed_at?new Date(r.completed_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'}):'—';
+    const school=schoolDirectory.find(s=>String(s.id)===String(r.school_id));
+    const isSessionId=typeof r.id==='string'&&!r.id.startsWith('completed-');
+    const sessionId=isSessionId?r.id:'';
+    const attemptId=r.attempt_id||(!isSessionId?String(r.id||'').replace(/^completed-/,''):'');
+    return `<tr><td>${esc(time)}</td><td><strong>${esc(r.candidate_name||'Student')}</strong></td><td>${esc(r.phone||'—')}</td><td>${esc(school?.school_name||'Unknown school')}</td><td><span class="today-status ${state}">${label}</span></td><td>${esc(completedAt)}</td><td>${state==='completed'&&r.total_score!=null?`${Number(r.total_score)} / 100`:'—'}</td><td><button class="today-delete-btn" type="button" data-hide-session="${esc(sessionId)}" data-hide-attempt="${esc(attemptId)}" title="Remove this entry from today's activity" aria-label="Remove ${esc(r.candidate_name||'student')} activity entry">🗑</button></td></tr>`;
+  }).join(''):'<tr><td colspan="8" class="today-activity-empty">No HPT exam sessions match this filter today.</td></tr>';
+  document.querySelectorAll('[data-hide-session], [data-hide-attempt]').forEach(button=>button.addEventListener('click',()=>hideTodayActivityEntry(button.dataset.hideSession,button.dataset.hideAttempt)));
+}
+async function hideTodayActivityEntry(sessionId,attemptId){
+  if(!sessionId&&!attemptId)return;
+  const row=todayActivityRows.find(r=>(sessionId&&String(r.id)===String(sessionId))||(attemptId&&String(r.attempt_id||'')===String(attemptId))||(!sessionId&&attemptId&&String(r.id||'')===`completed-${attemptId}`));
+  const name=row?.candidate_name||'this activity entry';
+  if(!confirm(`Remove ${name} from Today's HPT Student Activity?
+
+The activity entry will be hidden from this dashboard. The official student record, attempt, score and report will remain unchanged.`))return;
+  try{
+    const {error}=await sb.rpc('hpt_hide_exam_activity',{p_session_id:sessionId||null,p_attempt_id:attemptId||null});
+    if(error)throw error;
+    notice(`${name} was removed from Today's Activity. Official exam records were retained.`);
+    await loadTodayActivity();
+  }catch(error){notice(`Could not remove activity entry. Run 26-hpt-activity-hide.sql in Supabase first. ${error.message||''}`,true)}
+}
+async function loadTodayActivity(){
+  const msg=$('todayActivityMsg');if(!msg)return;
+  const range=indiaDayRange();$('todayActivityDate').textContent=`TODAY · ${range.label} · IST`;
+  try{
+    const [sessionResult,attemptResult,hiddenResult]=await Promise.all([
+      sb.from('hpt_exam_sessions').select('id,candidate_name,phone,school_id,exam_type,status,started_at,last_seen_at,completed_at,total_score,attempt_id').gte('started_at',range.start).lt('started_at',range.end).order('started_at',{ascending:false}).limit(500),
+      // Backfill completed HPT attempts from the existing results table so today's
+      // activity remains complete on the day this feature is first deployed.
+      sb.from('hpt_attempts').select('id,candidate_name,phone,school_id,started_at,completed_at,total_score').gte('started_at',range.start).lt('started_at',range.end).order('started_at',{ascending:false}).limit(500),
+      sb.from('hpt_hidden_exam_activity').select('session_id,attempt_id')
+    ]);
+    if(sessionResult.error)throw sessionResult.error;if(attemptResult.error)throw attemptResult.error;if(hiddenResult.error)throw hiddenResult.error;
+    const hiddenSessions=new Set((hiddenResult.data||[]).map(x=>String(x.session_id||'')).filter(Boolean));
+    const hiddenAttempts=new Set((hiddenResult.data||[]).map(x=>String(x.attempt_id||'')).filter(Boolean));
+    const sessions=(sessionResult.data||[]).filter(x=>!hiddenSessions.has(String(x.id))&&!(x.attempt_id&&hiddenAttempts.has(String(x.attempt_id)))),attempts=(attemptResult.data||[]).filter(x=>!hiddenAttempts.has(String(x.id)));
+    const matchedAttempts=new Set();
+    for(const session of sessions){
+      if(session.attempt_id)matchedAttempts.add(String(session.attempt_id));
+      // If the result saved but the session-completion RPC did not, reconcile the
+      // same candidate/school's near-simultaneous session from the canonical attempt.
+      if(session.status!=='completed'&&!session.attempt_id){
+        const candidate=attempts.find(a=>!matchedAttempts.has(String(a.id))&&String(a.school_id||'')===String(session.school_id||'')&&canonicalPhone(a.phone)===canonicalPhone(session.phone)&&Math.abs(Date.parse(a.started_at)-Date.parse(session.started_at))<10*60*1000);
+        if(candidate){session.status='completed';session.completed_at=candidate.completed_at;session.total_score=candidate.total_score;session.attempt_id=candidate.id;matchedAttempts.add(String(candidate.id));}
+      }
+    }
+    todayActivityRows=sessions.slice();
+    for(const attempt of attempts){
+      if(matchedAttempts.has(String(attempt.id)))continue;
+      todayActivityRows.push({id:`completed-${attempt.id}`,candidate_name:attempt.candidate_name,phone:attempt.phone,school_id:attempt.school_id,exam_type:'HPT',status:'completed',started_at:attempt.started_at,last_seen_at:attempt.completed_at||attempt.started_at,completed_at:attempt.completed_at,total_score:attempt.total_score,attempt_id:attempt.id});
+    }
+    todayActivityRows.sort((a,b)=>Date.parse(b.started_at||0)-Date.parse(a.started_at||0));
+    const select=$('todayActivitySchoolFilter'),prior=select.value;
+    const schoolOptions=schoolDirectory.map(s=>`<option value="${esc(s.id)}">${esc(s.school_name)}</option>`).join('');
+    select.innerHTML='<option value="all">All driving schools</option>'+schoolOptions;
+    if(prior==='all'||schoolDirectory.some(s=>String(s.id)===prior))select.value=prior;
+    msg.textContent='';msg.className='message';renderTodayActivity();
+  }catch(error){
+    msg.textContent='Daily HPT activity is not available yet. Run 24-hpt-daily-exam-activity.sql in the Supabase SQL Editor. '+(error.message||'');msg.className='message bad';
+    todayActivityRows=[];renderTodayActivity();
+  }
+}
+function exportTodayActivity(){
+  const schoolFilter=$('todayActivitySchoolFilter')?.value||'all',statusFilter=$('todayActivityStatusFilter')?.value||'all';
+  const rows=todayActivityRows.filter(r=>(schoolFilter==='all'||String(r.school_id||'')===schoolFilter)&&(statusFilter==='all'||todaySessionState(r)===statusFilter));
+  if(!rows.length){notice('There are no HPT activity records in the current filter to export.',true);return;}
+  const csvCell=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const lines=[['Started (IST)','Student','Mobile','Driving School','Status','Completed (IST)','Score / 100'],...rows.map(r=>{const school=schoolDirectory.find(s=>String(s.id)===String(r.school_id));const state=todaySessionState(r);return [new Date(r.started_at).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}),r.candidate_name,r.phone,school?.school_name||'Unknown school',state==='completed'?'Completed':state==='active'?'Active now':'Incomplete',r.completed_at?new Date(r.completed_at).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}):'',r.total_score??''];})];
+  const blob=new Blob(['\ufeff'+lines.map(row=>row.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`HPT-Today-Activity-${indiaDayRange().label.replace(/[^0-9A-Za-z]+/g,'-')}.csv`;a.click();URL.revokeObjectURL(url);
+}
+async function loadMaintenanceMode(){
+  const status=$('maintenanceModeStatus'),badge=$('maintenanceModeBadge'),button=$('maintenanceModeToggle'),msg=$('maintenanceModeMsg');
+  if(!status||!button)return;
+  try{
+    const {data,error}=await sb.from('hpt_site_status').select('maintenance_enabled,maintenance_title,maintenance_message').eq('id',1).maybeSingle();
+    if(error)throw error;
+    if(!data)throw new Error('Maintenance settings row is missing. Run 23-site-maintenance-mode.sql in Supabase.');
+    maintenanceEnabled=!!data.maintenance_enabled;
+    $('maintenanceTitle').value=data.maintenance_title||'We’ll be back soon!';
+    $('maintenanceMessage').value=data.maintenance_message||'Our server is currently under maintenance. We are making a few improvements and will be back shortly. Thank you for your patience.';
+    badge.textContent=maintenanceEnabled?'● MAINTENANCE MODE ON':'● PUBLIC SITE ONLINE';
+    badge.className='maintenance-mode-badge '+(maintenanceEnabled?'maintenance-on':'online');
+    button.disabled=false;
+    button.textContent=maintenanceEnabled?'DISABLE MAINTENANCE MODE':'ENABLE MAINTENANCE MODE';
+    button.className='btn '+(maintenanceEnabled?'maintenance-disable':'maintenance-enable');
+    status.textContent=maintenanceEnabled?'Visitors are currently seeing the maintenance screen.':'Visitors can access the HPT website normally.';
+    msg.textContent='';msg.className='message';
+  }catch(error){
+    maintenanceEnabled=false;button.disabled=true;badge.textContent='● SETUP REQUIRED';badge.className='maintenance-mode-badge setup-required';
+    status.textContent='Run 23-site-maintenance-mode.sql in the Supabase SQL Editor to enable this control.';
+    msg.textContent=error.message||'Maintenance settings could not be loaded.';msg.className='message bad';
+  }
+}
+async function toggleMaintenanceMode(){
+  const auth=await guard();if(!auth)return;
+  const next=!maintenanceEnabled;
+  if(next){
+    const confirmed=confirm('Enable GLOBAL MAINTENANCE MODE?\n\nAll public HPT pages will be blocked, including school access, registration, learner practice and active examinations. Existing open pages will show the maintenance screen within 30 seconds. The Admin Control Centre will remain available.\n\nEnable maintenance now?');
+    if(!confirmed)return;
+  }
+  const button=$('maintenanceModeToggle'),msg=$('maintenanceModeMsg');
+  button.disabled=true;button.textContent=next?'ENABLING…':'DISABLING…';
+  const title=$('maintenanceTitle').value.trim()||'We’ll be back soon!';
+  const message=$('maintenanceMessage').value.trim()||'Our server is currently under maintenance. We are making a few improvements and will be back shortly. Thank you for your patience.';
+  try{
+    const {error}=await sb.from('hpt_site_status').update({maintenance_enabled:next,maintenance_title:title,maintenance_message:message,updated_at:new Date().toISOString()}).eq('id',1);
+    if(error)throw error;
+    maintenanceEnabled=next;
+    await loadMaintenanceMode();
+    notice(next?'Maintenance mode enabled. Public HPT pages will be blocked.':'Maintenance mode disabled. Public HPT pages are available again.');
+    msg.textContent=next?'✓ Maintenance mode is ON. Public visitors will see your maintenance screen.':'✓ Maintenance mode is OFF. Visitors can use the HPT website again.';
+    msg.className='message good';
+  }catch(error){
+    msg.textContent=error.message||'Could not change maintenance mode.';msg.className='message bad';
+    await loadMaintenanceMode();notice(error.message||'Could not change maintenance mode.',true);
+  }finally{button.disabled=false;}
+}
+
+function canonicalPhone(value){const digits=String(value||'').replace(/\D/g,'');return digits.length>=10?digits.slice(-10):digits}
+function studentDirectoryKey(schoolId,phone){return `${String(schoolId||'')}|${canonicalPhone(phone)}`}
+function latestStudentName(schoolId,phone,fallback){const key=studentDirectoryKey(schoolId,phone);const row=studentDirectory.find(x=>studentDirectoryKey(x.school_id,x.phone_normalized)===key);return row?.candidate_name||fallback||'Student'}
+async function loadStudentDirectory(){
+  try{const {data,error}=await sb.rpc('hpt_admin_list_student_directory');if(error)throw error;studentDirectory=data||[];}
+  catch(error){studentDirectory=[];console.warn('Current student-name registry is unavailable:',error);}
+}
 async function loadResults(){
   const all=[];const pageSize=1000;let includeLearnerScore=true;
   for(let from=0;;from+=pageSize){
@@ -28,26 +201,41 @@ async function loadResults(){
     all.push(...(data||[]).map(row=>({...row,learner_score:row.learner_score==null?null:Number(row.learner_score)})));if(!data||data.length<pageSize)break;
   }
   const {data:schoolRows,error:schoolError}=await sb.from('hpt_schools')
-    .select('id,school_name,contact_number,location,logo_url,brand_color,dark_color,active').order('school_name');
+    .select('id,school_name,contact_number,location,state,logo_url,brand_color,dark_color,active').order('school_name');
   schoolDirectory=schoolRows||[];
   const schoolById=new Map(schoolDirectory.map(s=>[s.id,s]));
-  results=all.map(r=>({...r,hpt_schools:schoolById.get(r.school_id)||null}));
+  results=all.map(r=>({...r,candidate_name:latestStudentName(r.school_id,r.phone,r.candidate_name),hpt_schools:schoolById.get(r.school_id)||null}));
   populateSchoolFilter();
   if(schoolError)notice(`Results loaded, but school details could not be loaded: ${schoolError.message}`,true);
   if(selectedResultsSchoolId && schoolDirectory.some(s=>String(s.id)===String(selectedResultsSchoolId))){
-    openSchoolResults(selectedResultsSchoolId);
+    const priorExamView=selectedExamView;openSchoolResults(selectedResultsSchoolId);if(priorExamView)openExamRecords(priorExamView);
   }else{
     selectedResultsSchoolId=null;
     renderSchoolOverview();
   }
 }
+
+async function loadLearnerSummaries(){
+  try{
+    const {data,error}=await sb.rpc('hpt_admin_list_learner_summaries');
+    if(error)throw error;
+    learnerSummaries=(data||[]).map(r=>({...r,candidate_name:latestStudentName(r.school_id,r.phone_normalized,r.candidate_name),attempt_count:Number(r.attempt_count||0),best_score:r.best_score==null?null:Number(r.best_score)}));
+  }catch(error){
+    learnerSummaries=[];
+    console.error('Learner summaries could not be loaded:',error);
+    notice('Learners Mock Test summaries are unavailable. Apply 18-admin-learner-summary-read.sql in Supabase once.',true);
+  }
+}
+
 function resultStudentKey(r){
-  const phone=String(r.phone||'').replace(/\D/g,'');
+  const phone=canonicalPhone(r.phone);
   return phone||String(r.candidate_name||'').trim().toLowerCase()||String(r.id);
 }
 function schoolResultSummary(schoolId){
   const rows=results.filter(r=>String(r.school_id||'')===String(schoolId));
   const students=new Set(rows.map(resultStudentKey));
+  // Count students registered for either examination, without double-counting a shared mobile.
+  schoolLearnerSummary(schoolId).forEach(r=>students.add(canonicalPhone(r.phone_normalized)||String(r.candidate_name||'').trim().toLowerCase()));
   const passed=rows.filter(isPassed).length;
   return {rows,students:students.size,attempts:rows.length,passed,failed:rows.length-passed};
 }
@@ -64,15 +252,17 @@ function renderSchoolOverview(){
     const sum=schoolResultSummary(s.id);
     return `<article class="schoolResultCard">
       <div class="schoolResultCardHead">
-        <div class="schoolResultAvatar">${s.logo_url?`<img src="${esc(s.logo_url)}" alt="">`:`<span>${esc(String(s.school_name||'S').trim().slice(0,1).toUpperCase())}</span>`}</div>
-        <div class="schoolResultName"><h3>${esc(s.school_name)}</h3><p>${esc(s.location||'Location not set')}</p></div>
+        <div class="schoolResultAvatar"><img src="${esc(s.logo_url||'assets/hpt-brand-logo-v129.png')}" alt="${esc(s.school_name||'Driving school')} logo" onerror="this.src='assets/hpt-brand-logo-v129.png'"></div>
+        <div class="schoolResultName"><h3>${esc(s.school_name)}</h3><p>${esc(s.state||'Kerala')} · ${esc(s.location||'Location not set')}</p></div>
         <span class="schoolResultStatus ${s.active?'on':'off'}">${s.active?'ACTIVE':'DISABLED'}</span>
       </div>
       <div class="schoolResultMetrics">
-        <div><strong>${sum.students.toLocaleString('en-IN')}</strong><small>STUDENTS</small></div>
-        <div><strong>${sum.attempts.toLocaleString('en-IN')}</strong><small>ATTEMPTS</small></div>
-        <div class="good"><strong>${sum.passed.toLocaleString('en-IN')}</strong><small>PASSED</small></div>
-        <div class="bad"><strong>${sum.failed.toLocaleString('en-IN')}</strong><small>FAILED</small></div>
+        <div class="schoolStudentsHero"><strong>${sum.students.toLocaleString('en-IN')}</strong><small>REGISTERED STUDENTS</small></div>
+        <div class="schoolResultSubMetrics">
+          <div><strong>${sum.attempts.toLocaleString('en-IN')}</strong><small>ATTEMPTS</small></div>
+          <div class="good"><strong>${sum.passed.toLocaleString('en-IN')}</strong><small>PASSED</small></div>
+          <div class="bad"><strong>${sum.failed.toLocaleString('en-IN')}</strong><small>FAILED</small></div>
+        </div>
       </div>
       <button class="btn schoolResultOpen" type="button" data-open-school-results="${esc(s.id)}">VIEW STUDENTS & RESULTS <span>→</span></button>
     </article>`;
@@ -82,7 +272,7 @@ function renderSchoolOverview(){
     const students=new Set(legacy.map(resultStudentKey)),passed=legacy.filter(isPassed).length;
     return `<article class="schoolResultCard legacy">
       <div class="schoolResultCardHead"><div class="schoolResultAvatar">L</div><div class="schoolResultName"><h3>Legacy / Unassigned</h3><p>Records created before multi-school assignment</p></div><span class="schoolResultStatus off">LEGACY</span></div>
-      <div class="schoolResultMetrics"><div><strong>${students.size}</strong><small>STUDENTS</small></div><div><strong>${legacy.length}</strong><small>ATTEMPTS</small></div><div class="good"><strong>${passed}</strong><small>PASSED</small></div><div class="bad"><strong>${legacy.length-passed}</strong><small>FAILED</small></div></div>
+      <div class="schoolResultMetrics"><div class="schoolStudentsHero"><strong>${students.size}</strong><small>REGISTERED STUDENTS</small></div><div class="schoolResultSubMetrics"><div><strong>${legacy.length}</strong><small>ATTEMPTS</small></div><div class="good"><strong>${passed}</strong><small>PASSED</small></div><div class="bad"><strong>${legacy.length-passed}</strong><small>FAILED</small></div></div></div>
       <button class="btn schoolResultOpen" type="button" data-open-school-results="legacy">VIEW STUDENTS & RESULTS <span>→</span></button>
     </article>`;
   })():'';
@@ -90,6 +280,54 @@ function renderSchoolOverview(){
     directory.innerHTML=(cards+legacyCard)||'<div class="empty">No registered schools found. Add schools from the Driving Schools tab.</div>';
     directory.querySelectorAll('[data-open-school-results]').forEach(b=>b.onclick=()=>openSchoolResults(b.dataset.openSchoolResults));
   }
+}
+function schoolLearnerSummary(schoolId){
+  return learnerSummaries.filter(r=>String(r.school_id)===String(schoolId));
+}
+function renderSchoolExamChoices(school){
+  const hpt=results.filter(r=>String(r.school_id||'')===String(school.id));
+  const learners=schoolLearnerSummary(school.id);
+  const hptStudents=new Set(hpt.map(resultStudentKey)).size;
+  const learnerAttempts=learners.reduce((n,r)=>n+r.attempt_count,0);
+  const learnerPassed=learners.filter(r=>Number(r.best_score)>=18).length;
+  const root=$('schoolExamChoices');if(!root)return;
+  const kerala=String(school.state||'Kerala').trim().toLowerCase()==='kerala';
+  root.innerHTML=`<div class="examChoiceIntro"><div><div class="eyebrow">SELECT EXAMINATION</div><h3>${esc(school.school_name)}</h3><p>${kerala?'Choose which examination records you want to view.':'This school is registered outside Kerala. Only HPT records are available.'}</p></div></div><div class="examChoiceGrid ${kerala?'':'single'}">
+    <button type="button" class="examChoiceCard hpt" data-exam-view="hpt"><span class="examChoiceIcon">🚘</span><span class="examChoiceTitle">HAZARD PERCEPTION TEST</span><strong>${hpt.length.toLocaleString('en-IN')}</strong><small>${hptStudents.toLocaleString('en-IN')} students · ${hpt.filter(isPassed).length} passed</small><span class="examChoiceAction">VIEW HPT STUDENTS →</span></button>
+    ${kerala?`<button type="button" class="examChoiceCard learners" data-exam-view="learners"><span class="examChoiceIcon">📋</span><span class="examChoiceTitle">LEARNERS MOCK TEST</span><strong>${learners.length.toLocaleString('en-IN')}</strong><small>${learnerAttempts.toLocaleString('en-IN')} attempts · ${learnerPassed} passed</small><span class="examChoiceAction">VIEW LEARNERS STUDENTS →</span></button>`:''}
+  </div>`;
+  root.querySelectorAll('[data-exam-view]').forEach(b=>b.onclick=()=>openExamRecords(b.dataset.examView));
+}
+function openExamRecords(view){
+  selectedExamView=view;
+  $('schoolExamChoices').hidden=true;$('hptExamRecords').hidden=view!=='hpt';$('learnerExamRecords').hidden=view!=='learners';
+  $('backSchoolOverview').hidden=false;
+  if(view==='hpt'){if($('resultsHeading'))$('resultsHeading').textContent='Hazard Perception Test — Students';renderResults()}
+  else{if($('resultsHeading'))$('resultsHeading').textContent='Learners Mock Test — Students';renderLearnerSummaries()}
+}
+function renderLearnerSummaries(){
+  const sid=selectedResultsSchoolId;const q=$('searchLearnerSummary')?.value.trim().toLowerCase()||'';
+  const rows=schoolLearnerSummary(sid).filter(r=>!q||`${latestStudentName(r.school_id,r.phone_normalized,r.candidate_name)||''} ${r.phone_normalized||''}`.toLowerCase().includes(q)).sort((a,b)=>String(b.updated_at||'').localeCompare(String(a.updated_at||'')));
+  const status=r=>Number(r.best_score)>=18?'PASS':'NOT PASSED';
+  $('learnerSummaryBody').innerHTML=rows.map(r=>`<tr><td><b>${esc(latestStudentName(r.school_id,r.phone_normalized,r.candidate_name)||'Student')}</b></td><td>${esc(r.phone_normalized||'—')}</td><td>${r.attempt_count}</td><td class="score">${r.best_score==null?'—':`${r.best_score} / 30`}</td><td class="${Number(r.best_score)>=18?'pass':'fail'}">${r.best_score==null?'NOT ATTEMPTED':status(r)}</td><td>${r.updated_at?new Date(r.updated_at).toLocaleString('en-IN'):'—'}</td><td><button class="small danger-outline learnerDeleteBtn" data-delete-learner="${esc(r.phone_normalized)}">DELETE</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No Learners Mock Test students found for this school.</td></tr>';
+  $('learnerSummaryMobile').innerHTML=rows.map(r=>`<article class="result-card"><div class="rc-head"><h3>${esc(latestStudentName(r.school_id,r.phone_normalized,r.candidate_name)||'Student')}</h3><span class="${Number(r.best_score)>=18?'pass':'fail'}">${r.best_score==null?'—':status(r)}</span></div><div class="rc-grid"><div><small>PHONE</small><b>${esc(r.phone_normalized||'—')}</b></div><div><small>ATTEMPTS</small><b>${r.attempt_count}</b></div><div><small>BEST SCORE</small><b>${r.best_score==null?'—':`${r.best_score} / 30`}</b></div><div><small>LAST UPDATED</small><b>${r.updated_at?new Date(r.updated_at).toLocaleDateString('en-IN'):'—'}</b></div></div><div class="rc-actions"><button class="small danger-outline learnerDeleteBtn" data-delete-learner="${esc(r.phone_normalized)}">DELETE LEARNER RECORD</button></div></article>`).join('')||'<div class="empty">No Learners Mock Test students found for this school.</div>';
+  document.querySelectorAll('[data-delete-learner]').forEach(b=>b.onclick=()=>deleteLearnerSummary(b.dataset.deleteLearner));
+  $('learnerSummaryCount').textContent=`${rows.length} learners`;
+}
+async function deleteLearnerSummary(phone){
+  const school=schoolDirectory.find(s=>String(s.id)===String(selectedResultsSchoolId));
+  if(!school||!phone)return;
+  const row=schoolLearnerSummary(school.id).find(r=>canonicalPhone(r.phone_normalized)===canonicalPhone(phone));
+  const label=row?latestStudentName(row.school_id,row.phone_normalized,row.candidate_name):'this learner';
+  if(!confirm(`Delete ${label} (${phone}) from ${school.school_name} Learners Mock Test records?\n\nThis removes the learner's lifetime attempt count and best score. HPT examination records will remain. This cannot be undone.`))return;
+  try{
+    const {data,error}=await sb.rpc('hpt_admin_delete_learner_summary',{p_school_id:school.id,p_phone:phone});
+    if(error)throw error;
+    const outcome=Array.isArray(data)?data[0]:data;
+    if(!outcome?.deleted)throw new Error('No Learners Mock Test record was found for this mobile number.');
+    await loadLearnerSummaries();await loadStudentDirectory();renderLearnerSummaries();
+    notice(`${label}'s Learners Mock Test record was deleted.`);
+  }catch(error){notice(error.message||'Could not delete the learner record. Run migration 21 first.',true)}
 }
 function openSchoolResults(id){
   selectedResultsSchoolId=String(id);
@@ -100,14 +338,16 @@ function openSchoolResults(id){
   if(detail)detail.hidden=false;
   if($('backSchoolOverview'))$('backSchoolOverview').hidden=false;
   if($('exportStudentPdf'))$('exportStudentPdf').hidden=false;
-  if($('resultsHeading'))$('resultsHeading').textContent=school?`${school.school_name} — Students & Results`:'Legacy / Unassigned — Students & Results';
+  selectedExamView=null;
+  if($('schoolExamChoices'))$('schoolExamChoices').hidden=false;if($('hptExamRecords'))$('hptExamRecords').hidden=true;if($('learnerExamRecords'))$('learnerExamRecords').hidden=true;
+  if($('resultsHeading'))$('resultsHeading').textContent=school?`${school.school_name} — Examinations`:'Legacy / Unassigned — Students & Results';
   if($('resultsDescription'))$('resultsDescription').textContent='This view contains only the selected school’s student records, attempts, reports and certificate actions.';
   const select=$('schoolResultsFilter');
   if(select){select.value=id==='legacy'?'legacy':String(id);select.disabled=true}
-  renderResults();
+  if(school){renderSchoolExamChoices(school)}else{openExamRecords('hpt')}
 }
 function closeSchoolResults(){
-  selectedResultsSchoolId=null;
+  selectedResultsSchoolId=null;selectedExamView=null;
   if($('schoolResultsFilter')){$('schoolResultsFilter').disabled=false;$('schoolResultsFilter').value='all'}
   if($('searchResults'))$('searchResults').value='';
   if($('resultFilter'))$('resultFilter').value='all';
@@ -191,7 +431,7 @@ async function pdfBrandHeader(doc,title,subtitle,school){
   const W=doc.internal.pageSize.getWidth();
   doc.setFillColor(5,15,24);doc.rect(0,0,W,42,'F');
   doc.setFillColor(255,196,0);doc.rect(0,41,W,1.4,'F');
-  const logo=await pdfLoadImage(school?.logo_url);
+  let logo=await pdfLoadImage(school?.logo_url||'assets/hpt-brand-logo-v129.png');if(!logo&&school?.logo_url)logo=await pdfLoadImage('assets/hpt-brand-logo-v129.png');
   if(logo){
     try{doc.addImage(logo.data,logo.format,13,8,25,25,undefined,'FAST')}catch{}
   }else{
@@ -291,7 +531,7 @@ function buildPerformanceGroups(rows,grain){
     if(!groups.has(key))groups.set(key,{label,rows:[]});groups.get(key).rows.push(r);
   });
   return [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([,g])=>{
-    const rs=g.rows,passed=rs.filter(isPassed).length,unique=new Set(rs.map(r=>String(r.phone||r.candidate_name).replace(/\D/g,'')||String(r.candidate_name||'').toLowerCase()));
+    const rs=g.rows,passed=rs.filter(isPassed).length,unique=new Set(rs.map(r=>canonicalPhone(r.phone)||String(r.candidate_name||'').trim().toLowerCase()));
     const scores=rs.map(r=>Number(r.total_score)||0);
     return {label:g.label,attempts:rs.length,students:unique.size,passed,failed:rs.length-passed,rate:rs.length?passed/rs.length*100:0,average:scores.length?scores.reduce((x,y)=>x+y,0)/scores.length:0,highest:Math.max(0,...scores)};
   });
@@ -352,144 +592,205 @@ async function exportPerformancePdf(){
 async function deleteAttempt(id){const r=results.find(x=>x.id===id);if(!r||!confirm(`Delete the complete examination record for ${r.candidate_name}? This cannot be undone.`))return;const {error}=await sb.from('hpt_responses').delete().eq('attempt_id',id);if(error){notice(error.message,true);return}const {error:e2}=await sb.from('hpt_attempts').delete().eq('id',id);if(e2){notice(e2.message,true);return}await loadResults();updateStats();notice('Examination record deleted.')}
 async function showDetail(id){if(!(await guard()))return;const r=results.find(x=>x.id===id);if(!r)return;const {data:rs,error}=await sb.from('hpt_responses').select('response_no,click_time_seconds,hazard_no,awarded_marks,video_id').eq('attempt_id',id).order('response_no');if(error){notice(error.message,true);return}$('detailTitle').textContent=r.candidate_name;$('detailMeta').textContent=`${r.hpt_schools?.school_name||'Legacy / unknown'} • ${r.phone} • ${new Date(r.started_at).toLocaleString('en-IN')} • ${isPassed(r)?'PASS':'NOT PASSED'} • ${r.total_score}/100`;$('detailBody').innerHTML=`<div class="detail-clip"><span>Responses</span><b>${rs?.length||0}</b></div><div class="detail-clip"><span>Randomized order</span><b>${(r.clip_order||[]).map(esc).join(' → ')||'—'}</b></div>`+(rs||[]).map(x=>`<div class="detail-clip"><span>Response ${x.response_no} • ${Number(x.click_time_seconds).toFixed(1)}s • Hazard ${x.hazard_no||'—'}</span><b>+${x.awarded_marks}</b></div>`).join('');$('detailModal').hidden=false}
 function updateStats(){const scoped=typeof filteredResults==='function'?filteredResults():results;const passed=scoped.filter(isPassed).length,avg=scoped.length?Math.round(scoped.reduce((a,r)=>a+Number(r.total_score||0),0)/scoped.length):0,ready=videos.filter(v=>v.active&&v.hazard_count>=1).length;$('statAttempts').textContent=scoped.length;$('statPassed').textContent=passed;$('statAverage').textContent=avg;$('statVideos').textContent=ready}
-async function publisherRequest(action,fields={},file=null){
-  const a=await guard();if(!a)throw new Error('Admin session is required. Please sign in again.');
-  const fd=new FormData();fd.append('action',action);
-  Object.entries(fields||{}).forEach(([k,v])=>{if(v!==undefined&&v!==null)fd.append(k,String(v))});
-  if(file)fd.append('file',file);
+async function publisherRequest(action,fields={}){
+  const a=await guard();
+  if(!a)throw new Error('Admin session is required. Please sign in again.');
   let result;
-  try{result=await sb.functions.invoke('hpt-publish-video',{body:fd})}
-  catch(e){throw new Error(`Could not reach the HPT GitHub publishing service. Deploy the updated hpt-publish-video function to Supabase project ${new URL(C.supabaseUrl).hostname.split('.')[0]}. ${e?.message||''}`.trim())}
+  try{
+    result=await sb.functions.invoke('hpt-publish-video',{body:{action,...(fields||{})}});
+  }catch(e){
+    throw new Error(`Could not reach the HPT R2 upload service. Check that hpt-publish-video is deployed and your Supabase session is valid. ${e?.message||''}`.trim());
+  }
   const {data,error}=result||{};
   if(error){
     let detail=error.message||'Unknown Edge Function error.';
     const response=error.context;
     if(response&&typeof response.clone==='function'){
-      try{const body=await response.clone().text();if(body){try{const parsed=JSON.parse(body);detail=parsed.error||parsed.message||body}catch{detail=body}}}catch{}
+      try{
+        const body=await response.clone().text();
+        if(body){try{const parsed=JSON.parse(body);detail=parsed.error||parsed.message||body;}catch{detail=body;}}
+      }catch{}
     }
-    if(/fetch|network|connection/i.test(detail))detail=`The Supabase Edge Function could not be reached. Confirm that hpt-publish-video is deployed and the browser can reach Supabase. (${detail})`;
     throw new Error(detail);
   }
   if(data?.error)throw new Error(data.error);
-  if(!data||data.ok===false)throw new Error('The HPT publishing service returned an empty or unsuccessful response.');
+  if(!data||data.ok===false)throw new Error('The HPT R2 service returned an empty or unsuccessful response.');
   return data;
 }
 async function loadVideos(){
-  const {data,error}=await sb.from('hpt_videos').select('id,clip_code,title,video_path,duration_seconds,active,updated_at,hpt_hazards(id,hazard_no,timestamp_seconds,label)').order('clip_code');
-  if(error){notice(error.message,true);return}
-  const registered=(data||[]).map(v=>({...v,hazard_count:(v.hpt_hazards||[]).length,githubOnly:false,githubMissing:false}));
-  let remote=[],githubSyncOk=false;
-  try{
-    const response=await publisherRequest('list_videos');
-    remote=Array.isArray(response.videos)?response.videos:[];githubSyncOk=true;
-  }catch(e){
-    const detail=/video path is required/i.test(e.message)
-      ?'The deployed Supabase publishing function is outdated. Deploy the V73 hpt-publish-video function from this package.'
-      :e.message;
-    notice(`GitHub library sync unavailable. Showing ${registered.length} Supabase-registered clips only. ${detail}`,true);
-  }
-
-  const byCode=new Map();
-  registered.forEach(v=>byCode.set(String(Number.parseInt(String(v.clip_code).replace(/\D/g,''),10)),v));
-
-  // A clip may have more than one extension in GitHub (for example 11.webm and 11.mp4).
-  // Keep one library card per clip number and prefer the file path already stored in Supabase.
-  const remoteByCode=new Map();
-  remote.forEach(file=>{
-    const filename=String(file.name||file.path||'').split('/').pop();
-    const match=filename.match(/^(\d+)\.(webm|mp4|m4v|mov)$/i);
-    if(!match)return;
-    const number=String(Number(match[1]));
-    const row=byCode.get(number);
-    const ext=match[2].toLowerCase();
-    const score=(row&&String(row.video_path||'')===String(file.path||'')?100:0)
-      +({mp4:4,webm:3,m4v:2,mov:1}[ext]||0);
-    const previous=remoteByCode.get(number);
-    if(!previous||score>previous.score)remoteByCode.set(number,{file,score});
-  });
-
-  const used=new Set();
-  const discovered=[...remoteByCode.entries()].map(([number,entry])=>{
-    const file=entry.file;
-    const code=String(Number(number)).padStart(2,'0');
-    const row=byCode.get(number);
-    if(row){
-      used.add(row.id);
-      return {...row,clip_code:row.clip_code||code,video_path:file.path||row.video_path,githubOnly:false,githubMissing:false,githubSize:Number(file.size||0),githubSha:file.sha||null};
-    }
-    return {id:`github:${file.path}`,clip_code:code,title:`Hazard Perception Clip ${code}`,video_path:file.path,duration_seconds:0,active:false,updated_at:null,hpt_hazards:[],hazard_count:0,githubOnly:true,githubMissing:false,githubSize:Number(file.size||0),githubSha:file.sha||null};
-  });
-  const missing=registered.filter(v=>!used.has(v.id)).map(v=>({...v,githubMissing:githubSyncOk}));
-  videos=[...discovered,...missing].sort((a,b)=>Number(String(a.clip_code).replace(/\D/g,''))-Number(String(b.clip_code).replace(/\D/g,''))||String(a.video_path).localeCompare(String(b.video_path)));
-  const sync=$('videoLibrarySync');if(sync){
-    const configuredCount=discovered.filter(v=>!v.githubOnly).length;
-    const setupCount=discovered.filter(v=>v.githubOnly).length;
-    const missingCount=missing.length;
-    sync.textContent=githubSyncOk
-      ?`GitHub: ${discovered.length} unique clips • ${configuredCount} configured • ${setupCount} need hazard setup${missingCount?` • ${missingCount} registered files missing from GitHub`:''}.`
-      :`GitHub sync is unavailable. Showing ${registered.length} Supabase-registered clips only.`;
-  }
+  const {data,error}=await sb.from('hpt_videos')
+    .select('id,clip_code,title,video_path,duration_seconds,active,updated_at,hpt_hazards(id,hazard_no,timestamp_seconds,label)')
+    .order('clip_code');
+  if(error){notice(error.message,true);return;}
+  videos=(data||[]).map(v=>({...v,hazard_count:(v.hpt_hazards||[]).length}));
+  videos.sort((a,b)=>Number(String(a.clip_code).replace(/\D/g,''))-Number(String(b.clip_code).replace(/\D/g,'')));
+  const ready=videos.filter(v=>v.active&&v.hazard_count>=1).length;
+  const sync=$('videoLibrarySync');
+  if(sync)sync.textContent=`Cloudflare R2 • ${videos.length} clips registered • ${ready} ready for examinations.`;
   renderVideos();
 }
-
 function resolveAssetPath(path){
   if(!path)return '';
   if(/^https?:\/\//i.test(path))return path;
-  const clean=String(path).replace(/^\.\//,'').replace(/^\/+/, '');
-  // Local file:// admin copies do not contain videos uploaded after the ZIP was built.
-  // Load those previews directly from the public GitHub repository.
-  if(location.protocol==='file:')return new URL(clean,'https://raw.githubusercontent.com/bestinraju25/hazard-perception-test/main/').href;
-  return new URL(clean,location.href).href;
+  let clean=String(path).replace(/^\.\//,'').replace(/^\/+/, '');
+  if(clean.startsWith('videos/'))clean='clips/'+clean.slice('videos/'.length);
+  return C.videoBase+clean.split('/').map(encodeURIComponent).join('/');
 }
-function thumbPath(v){const n=String(v.clip_code||'').replace(/\D/g,'');return n?resolveAssetPath(`thumbnails/${Number(n)}.jpg`):''}
+function resolveVideoPath(path){return resolveAssetPath(path);}
+function thumbPath(v){
+  const n=String(v.clip_code||'').replace(/\D/g,'').padStart(2,'0');
+  return n?`${C.videoBase}thumbnails/${n}.jpg`:'';
+}
 function renderVideos(){
   $('videoGrid').innerHTML=videos.map(v=>{
-    const thumb=thumbPath(v),status=v.githubOnly?'SETUP REQUIRED':v.githubMissing?'GITHUB FILE MISSING':(v.active?'ACTIVE':'INACTIVE');
-    const statusClass=(v.active&&!v.githubOnly&&!v.githubMissing)?'on':'off';
+    const thumb=thumbPath(v),status=v.active?'ACTIVE':'INACTIVE';
+    const statusClass=v.active?'on':'off';
     const duration=Number(v.duration_seconds)>0?`${Number(v.duration_seconds).toFixed(1)}s`:'Duration not set';
     const hazardText=v.hazard_count===1?'1 hazard • 10 marks':v.hazard_count>=2?'2 hazards • 5 marks each':'Hazards not configured';
-    const extra=v.githubOnly?'<span>GitHub file • needs setup</span>':v.githubMissing?'<span>File not found in GitHub</span>':(v.githubSize?`<span>${(v.githubSize/1048576).toFixed(1)} MB</span>`:'');
-    return `<article class="video-card"><div class="vc-preview" data-edit="${esc(v.id)}" title="Open clip"><img class="vc-thumb" src="${esc(thumb)}" alt="Preview of Clip ${esc(v.clip_code)}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><video class="vc-thumb-fallback" src="${esc(resolveVideoPath(v.video_path))}" muted playsinline preload="metadata" hidden></video><span class="vc-play">▶</span></div><div class="vc-top"><span class="clip">CLIP ${esc(v.clip_code)}</span><span class="status ${statusClass}">● ${status}</span></div><h3>${esc(v.title)}</h3><p>${esc(v.video_path)}</p><div class="tags"><span>${duration}</span><span>${hazardText}</span>${extra}</div><div class="vc-actions"><button class="small" data-edit="${esc(v.id)}">${v.githubOnly?'CONFIGURE HAZARDS':'EDIT & MARK'}</button>${v.githubOnly?'':`<button class="small" data-toggle="${esc(v.id)}" ${v.githubMissing?'disabled':''}>${v.active?'DISABLE':'ENABLE'}</button>`}</div></article>`;
-  }).join('')||'<div class="empty">No video files found in GitHub or Supabase.</div>';
+    return `<article class="video-card"><div class="vc-preview" data-edit="${esc(v.id)}" title="Open clip"><img class="vc-thumb" src="${esc(thumb)}" alt="Preview of Clip ${esc(v.clip_code)}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><video class="vc-thumb-fallback" src="${esc(resolveVideoPath(v.video_path))}" muted playsinline preload="metadata" hidden></video><span class="vc-play">▶</span></div><div class="vc-top"><span class="clip">CLIP ${esc(v.clip_code)}</span><span class="status ${statusClass}">● ${status}</span></div><h3>${esc(v.title)}</h3><p>${esc(v.video_path)}</p><div class="tags"><span>${duration}</span><span>${hazardText}</span></div><div class="vc-actions"><button class="small" data-edit="${esc(v.id)}">EDIT & MARK</button><button class="small" data-toggle="${esc(v.id)}">${v.active?'DISABLE':'ENABLE'}</button></div></article>`;
+  }).join('')||'<div class="empty">No videos registered yet. Select “Upload New Video” to add your first examination clip to Cloudflare R2.</div>';
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editVideo(b.dataset.edit));
   document.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>toggleVideo(b.dataset.toggle));
 }
 function clearLocal(){if(localUrl){URL.revokeObjectURL(localUrl);localUrl=null}localFile=null}
-function resetEditor(){clearLocal();editingId=null;editingCode='';editingGitHubFilePath='';$('videoFile').value='';$('fileName').textContent='No file selected';$('videoTitle').value='';$('h1t').value='';$('h2t').value='';$('h1label').value='';$('h2label').value='';$('hasHazard2').checked=true;$('hazard2Block').hidden=false;$('marker2').hidden=true;$('mark2').hidden=false;$('active').checked=true;$('clipCodeDisplay').textContent='—';$('videoPathDisplay').textContent='videos/—';$('h1preview').textContent='Not set';$('h2preview').textContent='Not set';$('preview').removeAttribute('src');$('preview').load();$('previewEmpty').hidden=false;$('deleteVideo').hidden=true;emsg('')}
-function nextClipCode(){const nums=videos.map(v=>parseInt(String(v.clip_code).replace(/\D/g,''),10)).filter(Number.isFinite);let n=Math.max(10,...nums)+1;while(videos.some(v=>String(v.clip_code).padStart(2,'0')===String(n).padStart(2,'0')))n++;return String(n).padStart(2,'0')}
-function newVideo(){resetEditor();editingId=null;editingCode=nextClipCode();$('editor').hidden=false;$('editorEyebrow').textContent='NEW VIDEO';$('editorTitle').textContent='Upload HPT Video';$('editorSub').textContent='Select a video, then configure one or two developing hazards.';$('clipCodeDisplay').textContent=editingCode;$('videoPathDisplay').textContent=`videos/${editingCode}.webm`;$('videosPanel').hidden=false;$('editor').scrollIntoView({behavior:'smooth',block:'start'})}
-function editVideo(id){const v=videos.find(x=>x.id===id);if(!v)return;clearLocal();editingId=v.githubOnly?null:v.id;editingGitHubFilePath=v.githubOnly?v.video_path:'';editingCode=v.clip_code;$('editor').hidden=false;$('editorEyebrow').textContent='EDIT CLIP';$('editorTitle').textContent=`Edit Clip ${v.clip_code}`;$('editorSub').textContent='Replace the video if needed, adjust one or two hazard points, then save.';$('clipCodeDisplay').textContent=v.clip_code;$('videoPathDisplay').textContent=v.video_path;$('videoTitle').value=v.title;$('active').checked=!!v.active;$('videoFile').value='';$('fileName').textContent='No replacement selected';const hs=(v.hpt_hazards||[]).sort((a,b)=>a.hazard_no-b.hazard_no);const h1=hs.find(x=>x.hazard_no===1),h2=hs.find(x=>x.hazard_no===2);$('h1t').value=h1?.timestamp_seconds??'';$('h2t').value=h2?.timestamp_seconds??'';$('h1label').value=h1?.label??'';$('h2label').value=h2?.label??'';$('hasHazard2').checked=!!h2;$('hazard2Block').hidden=!h2;$('marker2').hidden=!h2;$('mark2').hidden=!h2;updateHazardPreviews();$('preview').src=resolveVideoPath(v.video_path);$('previewEmpty').hidden=true;$('preview').load();$('deleteVideo').hidden=false;$('videosPanel').hidden=false;$('editor').scrollIntoView({behavior:'smooth',block:'start'})}
-function resolveVideoPath(path){return resolveAssetPath(path)}
-function setMarkers(){const d=Number($('preview').duration)||50;const fill=Math.min(100,(Number($('preview').currentTime)||0)/Math.max(1,d)*100);$('trackFill').style.width=fill+'%';for(const n of [1,2]){const val=Number($(`h${n}t`).value),m=$(`marker${n}`);if(Number.isFinite(val)&&val>=0&&val<=d){m.hidden=false;m.style.left=(val/d*100)+'%'}else m.hidden=true}}
-function updateHazardPreviews(){for(const n of [1,2]){$(`h${n}preview`).textContent=Number.isFinite(Number($(`h${n}t`).value))&&$(`h${n}t`).value!==''?fmt(Number($(`h${n}t`).value)):'Not set'}setMarkers()}
-function setHaz(n){if(!$('preview').src||!Number.isFinite($('preview').currentTime)){emsg('Choose a playable video first.',true);return}const t=Number($('preview').currentTime.toFixed(1));$(`h${n}t`).value=t;updateHazardPreviews();emsg(`Hazard ${n} set at ${fmt(t)}.`)}
-function validate(){const title=$('videoTitle').value.trim(),t1=Number($('h1t').value),t2=Number($('h2t').value),d=Number($('preview').duration),has2=$('hasHazard2').checked;if(!localFile&&!editingId&&!editingGitHubFilePath)return 'Choose a video file first.';if(!title)return 'Enter a clip title.';if(!$('h1t').value.trim()||!Number.isFinite(t1))return 'Set Hazard 1 using the button below the video.';if(has2&&(!$('h2t').value.trim()||!Number.isFinite(t2)||t1===t2))return 'Set a different timestamp for Hazard 2.';if(Number.isFinite(d)&&(t1>d||(has2&&t2>d)))return 'A hazard timestamp cannot be beyond the video duration.';return ''}
-async function publishFile(path,file=localFile){return publisherRequest('publish',{path,commit_message:`HPT: publish ${editingCode}`},file)}
-async function makeVideoThumbnail(file){return await new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),v=document.createElement('video');v.muted=true;v.playsInline=true;v.preload='metadata';let done=false;const cleanup=()=>{URL.revokeObjectURL(url);v.remove()};v.onerror=()=>{if(!done){done=true;cleanup();reject(new Error('Could not read video for thumbnail.'))}};v.onloadedmetadata=()=>{try{v.currentTime=Math.min(1,Math.max(.1,(v.duration||1)*.08))}catch(e){v.currentTime=0}};v.onseeked=()=>{if(done)return;const c=document.createElement('canvas');c.width=640;c.height=360;const x=c.getContext('2d');x.drawImage(v,0,0,c.width,c.height);c.toBlob(b=>{done=true;cleanup();b?resolve(b):reject(new Error('Could not create thumbnail.'))},'image/jpeg',.86)};v.src=url;v.load()})}
-async function saveVideo(){const problem=validate();if(problem){emsg(problem,true);return}const duration=Number($('preview').duration);let path=editingGitHubFilePath||(editingId?(videos.find(v=>v.id===editingId)?.video_path||`videos/${editingCode}.webm`):`videos/${editingCode}.webm`);if(localFile){const ext=(localFile.name.split('.').pop()||'webm').toLowerCase().replace(/[^a-z0-9]/g,'');path=`videos/${editingCode}.${ext||'webm'}`}
-$('saveVideo').disabled=true;$('saveVideo').textContent='SAVING & PUBLISHING…';emsg('Uploading video…');try{if(localFile){await publishFile(path,localFile);try{const thumb=await makeVideoThumbnail(localFile);await publishFile(`thumbnails/${Number(String(editingCode).replace(/\D/g,''))}.jpg`,thumb)}catch(thumbErr){console.warn('HPT thumbnail upload skipped:',thumbErr)}}const payload={clip_code:editingCode,title:$('videoTitle').value.trim(),video_path:path,duration_seconds:Number((duration||50).toFixed(2)),active:$('active').checked,updated_at:new Date().toISOString()};let id=editingId;if(id){const {error}=await sb.from('hpt_videos').update(payload).eq('id',id);if(error)throw error}else{const {data:existing,error:qerr}=await sb.from('hpt_videos').select('id').eq('clip_code',editingCode).maybeSingle();if(qerr)throw qerr;if(existing?.id){id=existing.id;const {error}=await sb.from('hpt_videos').update(payload).eq('id',id);if(error)throw error}else{const {data,error}=await sb.from('hpt_videos').insert(payload).select('id').single();if(error)throw error;id=data.id}}
-const {error:he}=await sb.from('hpt_hazards').upsert([{video_id:id,hazard_no:1,timestamp_seconds:Number($('h1t').value),label:$('h1label').value.trim()||'Developing hazard 1'}],{onConflict:'video_id,hazard_no'});if(he)throw he;if($('hasHazard2').checked){const {error:he2}=await sb.from('hpt_hazards').upsert([{video_id:id,hazard_no:2,timestamp_seconds:Number($('h2t').value),label:$('h2label').value.trim()||'Developing hazard 2'}],{onConflict:'video_id,hazard_no'});if(he2)throw he2}else{const {error:del2}=await sb.from('hpt_hazards').delete().eq('video_id',id).eq('hazard_no',2);if(del2)throw del2}editingId=id;editingGitHubFilePath='';await loadVideos();updateStats();emsg($('hasHazard2').checked?'✓ Clip saved. Two hazards are live, 5 marks each.':'✓ Clip saved. One hazard is live and worth 10 marks.');notice(`Clip ${editingCode} saved successfully.`)}catch(e){emsg(e.message||'Could not save this clip.',true);notice(e.message||'Could not save this clip.',true)}finally{$('saveVideo').disabled=false;$('saveVideo').textContent='✓ SAVE & PUBLISH VIDEO'}}
-async function toggleVideo(id){const v=videos.find(x=>x.id===id);if(!v)return;if(v.githubOnly){editVideo(id);notice(`Configure hazard timestamps for Clip ${v.clip_code} before enabling it.`);return}const {error}=await sb.from('hpt_videos').update({active:!v.active,updated_at:new Date().toISOString()}).eq('id',id);if(error){notice(error.message,true);return}await loadVideos();updateStats()}
-async function deleteVideo(){
-  const v=videos.find(x=>x.id===editingId||(editingGitHubFilePath&&x.video_path===editingGitHubFilePath));
-  if(!v)return;
-  const removesMetadata=!!editingId;
-  const ok=confirm(`Delete Clip ${v.clip_code} permanently?\n\nThis will delete the video from GitHub${removesMetadata?' and remove its HPT metadata and hazard timestamps from Supabase':''}.\n\nThis cannot be undone.`);
-  if(!ok)return;
-  $('deleteVideo').disabled=true;$('deleteVideo').textContent='DELETING…';emsg('Deleting video from GitHub…');
-  try{
-    const j=await publisherRequest('delete',{path:v.video_path,commit_message:`HPT: delete ${v.clip_code}`});
-    emsg('GitHub video deleted. Removing HPT metadata…');
-    if(editingId){
-      const {error:h}=await sb.from('hpt_hazards').delete().eq('video_id',editingId);if(h)throw h;
-      const {error}=await sb.from('hpt_videos').delete().eq('id',editingId);if(error)throw error;
-    }
-    const wasMissing=!!j.missing;
-    closeEditor();await loadVideos();updateStats();notice(wasMissing?`Clip ${v.clip_code} GitHub file was already missing; metadata cleaned up.`:`Clip ${v.clip_code} deleted from GitHub${removesMetadata?' and Supabase':''}.`);
-  }catch(e){emsg(e.message||'Could not delete this clip.',true);notice(e.message||'Could not delete this clip.',true)}
-  finally{$('deleteVideo').disabled=false;$('deleteVideo').textContent='Delete clip'}
+function resetEditor(){
+  clearLocal();editingId=null;editingCode='';
+  $('videoFile').value='';$('fileName').textContent='No file selected';$('videoTitle').value='';
+  $('h1t').value='';$('h2t').value='';$('h1label').value='';$('h2label').value='';
+  $('hasHazard2').checked=true;$('hazard2Block').hidden=false;$('marker2').hidden=true;$('mark2').hidden=false;$('active').checked=true;
+  $('clipCodeDisplay').textContent='—';$('videoPathDisplay').textContent='R2: clips/—';
+  $('h1preview').textContent='Not set';$('h2preview').textContent='Not set';
+  $('preview').removeAttribute('src');$('preview').load();$('previewEmpty').hidden=false;$('previewEmpty').textContent='Choose a video to preview';
+  $('deleteVideo').hidden=true;emsg('');
 }
-function closeEditor(){clearLocal();$('editor').hidden=true;editingId=null;editingCode='';editingGitHubFilePath=''}
+function nextClipCode(){
+  const nums=videos.map(v=>parseInt(String(v.clip_code).replace(/\D/g,''),10)).filter(Number.isFinite);
+  let n=Math.max(0,...nums)+1;
+  while(videos.some(v=>String(v.clip_code).padStart(2,'0')===String(n).padStart(2,'0')))n++;
+  return String(n).padStart(2,'0');
+}
+function newVideo(){
+  resetEditor();editingCode=nextClipCode();$('editor').hidden=false;$('videoEditorModal').hidden=false;document.body.classList.add('video-editor-open');
+  $('editorEyebrow').textContent='NEW VIDEO';$('editorTitle').textContent='Upload HPT Video';
+  $('editorSub').textContent='Choose a video, mark one or two developing hazards, then upload directly to Cloudflare R2.';
+  $('clipCodeDisplay').textContent=editingCode;$('videoPathDisplay').textContent=`R2: clips/${editingCode}.[mp4/webm]`;
+  $('videosPanel').hidden=false;setTimeout(()=>$('videoFile').focus({preventScroll:true}),30);
+}
+function editVideo(id){
+  const v=videos.find(x=>x.id===id);if(!v)return;clearLocal();editingId=v.id;editingCode=v.clip_code;
+  $('editor').hidden=false;$('videoEditorModal').hidden=false;document.body.classList.add('video-editor-open');$('editorEyebrow').textContent='EDIT CLIP';$('editorTitle').textContent=`Edit Clip ${v.clip_code}`;
+  $('editorSub').textContent='Replace the video if needed, adjust the hazard points, then save to Cloudflare R2 and Supabase.';
+  $('clipCodeDisplay').textContent=v.clip_code;$('videoPathDisplay').textContent=v.video_path;$('videoTitle').value=v.title;
+  $('active').checked=!!v.active;$('videoFile').value='';$('fileName').textContent='No replacement selected';
+  const hs=(v.hpt_hazards||[]).sort((a,b)=>a.hazard_no-b.hazard_no),h1=hs.find(x=>x.hazard_no===1),h2=hs.find(x=>x.hazard_no===2);
+  $('h1t').value=h1?.timestamp_seconds??'';$('h2t').value=h2?.timestamp_seconds??'';
+  $('h1label').value=h1?.label??'';$('h2label').value=h2?.label??'';
+  $('hasHazard2').checked=!!h2;$('hazard2Block').hidden=!h2;$('marker2').hidden=!h2;$('mark2').hidden=!h2;
+  updateHazardPreviews();$('preview').src=resolveVideoPath(v.video_path);$('previewEmpty').hidden=true;$('preview').load();
+  $('deleteVideo').hidden=false;$('videosPanel').hidden=false;setTimeout(()=>$('videoTitle').focus({preventScroll:true}),30);
+}
+function setMarkers(){
+  const d=Number($('preview').duration)||50,fill=Math.min(100,(Number($('preview').currentTime)||0)/Math.max(1,d)*100);
+  $('trackFill').style.width=fill+'%';
+  for(const n of [1,2]){const val=Number($(`h${n}t`).value),m=$(`marker${n}`);if(Number.isFinite(val)&&val>=0&&val<=d){m.hidden=false;m.style.left=(val/d*100)+'%';}else m.hidden=true;}
+}
+function updateHazardPreviews(){
+  for(const n of [1,2])$(`h${n}preview`).textContent=Number.isFinite(Number($(`h${n}t`).value))&&$(`h${n}t`).value!==''?fmt(Number($(`h${n}t`).value)):'Not set';
+  setMarkers();
+}
+function setHaz(n){
+  if(!$('preview').src||!Number.isFinite($('preview').currentTime)){emsg('Choose a playable video first.',true);return;}
+  const t=Number($('preview').currentTime.toFixed(1));$(`h${n}t`).value=t;updateHazardPreviews();emsg(`Hazard ${n} set at ${fmt(t)}.`);
+}
+function validate(){
+  const title=$('videoTitle').value.trim(),t1=Number($('h1t').value),t2=Number($('h2t').value),d=Number($('preview').duration),has2=$('hasHazard2').checked;
+  if(!localFile&&!editingId)return 'Choose a video file first.';
+  if(!title)return 'Enter a clip title.';
+  if(!$('h1t').value.trim()||!Number.isFinite(t1))return 'Set Hazard 1 using the button below the video.';
+  if(has2&&(!$('h2t').value.trim()||!Number.isFinite(t2)||t1===t2))return 'Set a different timestamp for Hazard 2.';
+  if(Number.isFinite(d)&&(t1>d||(has2&&t2>d)))return 'A hazard timestamp cannot be beyond the video duration.';
+  return '';
+}
+function uploadToR2(uploadUrl,file,contentType,onProgress){
+  return new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();xhr.open('PUT',uploadUrl,true);xhr.setRequestHeader('Content-Type',contentType);
+    xhr.upload.onprogress=e=>{if(e.lengthComputable&&onProgress)onProgress(Math.round(e.loaded/e.total*100));};
+    xhr.onerror=()=>reject(new Error('R2 upload failed at the network/CORS stage. Check the hpt-videos CORS policy and website origin.'));
+    xhr.onload=()=>{if(xhr.status>=200&&xhr.status<300)resolve();else reject(new Error(`Cloudflare R2 upload failed (${xhr.status}). ${String(xhr.responseText||'').slice(0,300)}`));};
+    xhr.send(file);
+  });
+}
+async function publishFile(kind,file){
+  const signed=await publisherRequest('presign_upload',{
+    clip_code:editingCode,kind,filename:file.name||`${editingCode}.${kind==='video'?'mp4':'jpg'}`,size_bytes:file.size
+  });
+  await uploadToR2(signed.upload_url,file,signed.content_type,pct=>{
+    if(kind==='video')emsg(`Uploading video directly to Cloudflare R2… ${pct}%`);
+  });
+  return signed;
+}
+async function makeVideoThumbnail(file){
+  return await new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file),v=document.createElement('video');v.muted=true;v.playsInline=true;v.preload='metadata';let done=false;
+    const cleanup=()=>{URL.revokeObjectURL(url);v.remove();};
+    v.onerror=()=>{if(!done){done=true;cleanup();reject(new Error('Could not read video to create a thumbnail.'));}};
+    v.onloadedmetadata=()=>{try{v.currentTime=Math.min(1,Math.max(.1,(v.duration||1)*.08));}catch{v.currentTime=0;}};
+    v.onseeked=()=>{if(done)return;const c=document.createElement('canvas');c.width=640;c.height=360;const x=c.getContext('2d');x.drawImage(v,0,0,c.width,c.height);c.toBlob(b=>{done=true;cleanup();b?resolve(new File([b],`${editingCode}.jpg`,{type:'image/jpeg'})):reject(new Error('Could not create thumbnail.'));},'image/jpeg',.86);};
+    v.src=url;v.load();
+  });
+}
+async function saveVideo(){
+  const problem=validate();if(problem){emsg(problem,true);return;}
+  const duration=Number($('preview').duration),existing=editingId?videos.find(v=>v.id===editingId):null;
+  let path=existing?.video_path||'';let uploadedToR2=false;
+  $('saveVideo').disabled=true;$('saveVideo').textContent='UPLOADING TO R2…';emsg('Preparing secure Cloudflare R2 upload…');
+  try{
+    if(localFile){
+      const result=await publishFile('video',localFile);path=result.public_url;uploadedToR2=true;
+      try{const thumb=await makeVideoThumbnail(localFile);await publishFile('thumbnail',thumb);}
+      catch(thumbError){console.warn('HPT thumbnail upload skipped:',thumbError);notice('Video uploaded successfully. Thumbnail generation was skipped; the clip will still play.');}
+    }
+    if(!path)throw new Error('No Cloudflare R2 video URL is available. Please choose a video file.');
+    const payload={clip_code:editingCode,title:$('videoTitle').value.trim(),video_path:path,duration_seconds:Number((duration||50).toFixed(2)),active:false,updated_at:new Date().toISOString()};
+    let id=editingId;
+    if(id){const {error}=await sb.from('hpt_videos').update(payload).eq('id',id);if(error)throw error;}
+    else{
+      const {data:existingRow,error:qerr}=await sb.from('hpt_videos').select('id').eq('clip_code',editingCode).maybeSingle();if(qerr)throw qerr;
+      if(existingRow?.id){id=existingRow.id;const {error}=await sb.from('hpt_videos').update(payload).eq('id',id);if(error)throw error;}
+      else{const {data,error}=await sb.from('hpt_videos').insert(payload).select('id').single();if(error)throw error;id=data.id;}
+    }
+    const {error:h1Error}=await sb.from('hpt_hazards').upsert([{video_id:id,hazard_no:1,timestamp_seconds:Number($('h1t').value),label:$('h1label').value.trim()||'Developing hazard 1'}],{onConflict:'video_id,hazard_no'});if(h1Error)throw h1Error;
+    if($('hasHazard2').checked){const {error:h2Error}=await sb.from('hpt_hazards').upsert([{video_id:id,hazard_no:2,timestamp_seconds:Number($('h2t').value),label:$('h2label').value.trim()||'Developing hazard 2'}],{onConflict:'video_id,hazard_no'});if(h2Error)throw h2Error;}
+    else{const {error:del2Error}=await sb.from('hpt_hazards').delete().eq('video_id',id).eq('hazard_no',2);if(del2Error)throw del2Error;}
+    const {error:activateError}=await sb.from('hpt_videos').update({active:$('active').checked,updated_at:new Date().toISOString()}).eq('id',id);if(activateError)throw activateError;
+    const savedCode=editingCode;await loadVideos();updateStats();
+    closeEditor();
+    notice(`Clip ${savedCode} saved successfully to Cloudflare R2 and the video library.`);
+  }catch(e){
+    const detail=e.message||'Could not save this clip.';
+    emsg(detail,true);notice(detail,true);
+    if(uploadedToR2)console.warn('The R2 object may exist even though saving the Supabase metadata failed. Check the R2 bucket before retrying to avoid orphaned/overwritten objects.');
+  }finally{$('saveVideo').disabled=false;$('saveVideo').textContent='✓ SAVE & PUBLISH VIDEO';}
+}
+async function toggleVideo(id){
+  const v=videos.find(x=>x.id===id);if(!v)return;
+  const {error}=await sb.from('hpt_videos').update({active:!v.active,updated_at:new Date().toISOString()}).eq('id',id);
+  if(error){notice(error.message,true);return;}await loadVideos();updateStats();
+}
+async function deleteVideo(){
+  const v=videos.find(x=>x.id===editingId);if(!v)return;
+  const ok=confirm(`Delete Clip ${v.clip_code} permanently?\n\nThis removes its video and thumbnail from Cloudflare R2 and its video/hazard metadata from Supabase. Existing examination attempts and scores are retained.\n\nThis cannot be undone.`);
+  if(!ok)return;
+  $('deleteVideo').disabled=true;$('deleteVideo').textContent='DELETING…';emsg('Deleting video from Cloudflare R2…');
+  try{
+    await publisherRequest('delete_clip',{clip_code:v.clip_code,video_path:v.video_path});
+    const {error:hError}=await sb.from('hpt_hazards').delete().eq('video_id',editingId);if(hError)throw hError;
+    const {error}=await sb.from('hpt_videos').delete().eq('id',editingId);if(error)throw error;
+    closeEditor();await loadVideos();updateStats();notice(`Clip ${v.clip_code} deleted from R2 and Supabase. Historical attempt scores remain.`);
+  }catch(e){emsg(e.message||'Could not delete this clip.',true);notice(e.message||'Could not delete this clip.',true);}
+  finally{$('deleteVideo').disabled=false;$('deleteVideo').textContent='Delete clip';}
+}
+function closeEditor(){clearLocal();try{$('preview').pause();$('preview').removeAttribute('src');$('preview').load();}catch{}$('videoEditorModal').hidden=true;$('editor').hidden=false;document.body.classList.remove('video-editor-open');editingId=null;editingCode='';}
 async function imageData(url){return await new Promise((resolve,reject)=>{const img=new Image();img.crossOrigin='anonymous';img.onload=()=>{const c=document.createElement('canvas');c.width=img.naturalWidth||img.width;c.height=img.naturalHeight||img.height;const x=c.getContext('2d');x.drawImage(img,0,0);resolve(c.toDataURL('image/png'))};img.onerror=reject;img.src=url+'?v='+Date.now()})}
 async function downloadReport(id){
   const r=results.find(x=>x.id===id);if(!r||!window.RajuHPTReport){notice('Report generator is not available. Please refresh the page.',true);return}
@@ -502,23 +803,23 @@ async function downloadReport(id){
     const reportClips=codes.map((code,idx)=>{
       const v=byCode[code], clipResponses=(rs||[]).filter(x=>String(x.clip_code||'').padStart(2,'0')===code || (x.video_id&&v&&String(x.video_id)===String(v.id)));
       const hazards=(v?.hpt_hazards?.length?v.hpt_hazards:C.staticHazards?.[code]||[]).map((h,i)=>({hazard_no:Number(h.hazard_no||i+1),t:Number(h.timestamp_seconds??h.t),label:h.label||`Hazard ${i+1}`})).sort((a,b)=>a.hazard_no-b.hazard_no);
-      return {clip_code:code,title:v?.title||`Hazard Perception Clip ${code}`,file:v?.video_path?resolveVideoPath(v.video_path):`videos/${Number(code)}.webm`,hazards:hazards,responses:clipResponses.map(x=>({response_no:x.response_no,t:Number(x.click_time_seconds),hazard_no:x.hazard_no||null,points:Number(x.awarded_marks||0)})),score:clipResponses.reduce((a,x)=>a+Number(x.awarded_marks||0),0)};
+      return {clip_code:code,title:v?.title||`Hazard Perception Clip ${code}`,file:v?.video_path?resolveVideoPath(v.video_path):'',hazards:hazards,responses:clipResponses.map(x=>({response_no:x.response_no,t:Number(x.click_time_seconds),hazard_no:x.hazard_no||null,points:Number(x.awarded_marks||0)})),score:clipResponses.reduce((a,x)=>a+Number(x.awarded_marks||0),0)};
     });
     await window.RajuHPTReport.generate({id:r.id,candidate_name:r.candidate_name,phone:r.phone,total_score:r.total_score,passed:isPassed(r),started_at:r.started_at,completed_at:r.completed_at,school:r.hpt_schools||null,clips:reportClips});
-    notice(`Complete report downloaded for ${r.candidate_name}.`);
+    notice(`Complete examination report opened for ${r.candidate_name}.`);
   }catch(e){console.error(e);notice(e.message||'Could not generate the HPT report.',true)}finally{buttons.forEach(b=>{b.disabled=false;b.textContent='REPORT'})}
 }
 async function downloadCertificate(id){const r=results.find(x=>x.id===id);if(!r||!isPassed(r))return;if(!window.jspdf?.jsPDF){notice('Certificate generator is not available. Please refresh the page.',true);return}const btn=document.querySelector(`[data-certificate="${CSS.escape(id)}"]`);if(btn){btn.disabled=true;btn.textContent='…'}try{const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});const W=297,H=210;
 // Light, print-friendly certificate design.
 doc.setFillColor(250,251,253);doc.rect(0,0,W,H,'F');doc.setDrawColor(212,162,32);doc.setLineWidth(1.1);doc.rect(8,8,W-16,H-16,'S');doc.setDrawColor(33,53,72);doc.setLineWidth(.35);doc.rect(13,13,W-26,H-26,'S');
-const school=r.hpt_schools||{};const logoPath=school.logo_url||'school-placeholder.svg';let logo=null;try{logo=await imageData(logoPath)}catch{}if(logo){const lw=43,lh=33.2;doc.addImage(logo,'PNG',(W-lw)/2,17,lw,lh);}
+const school=r.hpt_schools||{};const logoPath=school.logo_url||'assets/hpt-brand-logo-v129.png';let logo=null;try{logo=await imageData(logoPath)}catch{}if(logo){const lw=43,lh=33.2;doc.addImage(logo,'PNG',(W-lw)/2,17,lw,lh);}
 const schoolName=String(school.school_name||'Driving School').toUpperCase();const schoolLocation=school.location||'';doc.setTextColor(33,53,72);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(schoolName,W/2,57,{align:'center',maxWidth:230});doc.setTextColor(184,132,12);doc.setFontSize(25);doc.text('CERTIFICATE OF HAZARD PERCEPTION',W/2,73,{align:'center'});doc.setDrawColor(212,162,32);doc.setLineWidth(.7);doc.line(82,79,215,79);
 doc.setTextColor(92,105,116);doc.setFont('helvetica','normal');doc.setFontSize(13);doc.text('This certificate is awarded to',W/2,94,{align:'center'});doc.setTextColor(25,38,51);doc.setFont('helvetica','bold');doc.setFontSize(27);doc.text(String(r.candidate_name||'Candidate'),W/2,112,{align:'center'});doc.setDrawColor(180,188,195);doc.setLineWidth(.35);doc.line(70,118,227,118);doc.setTextColor(92,105,116);doc.setFont('helvetica','normal');doc.setFontSize(12);doc.text('for successfully completing the '+(school.school_name||'Driving School')+' Hazard Perception Test',W/2,131,{align:'center',maxWidth:230});doc.setTextColor(33,53,72);doc.setFont('helvetica','bold');doc.setFontSize(19);doc.text(`SCORE: ${Number(r.total_score||0)} / 100`,W/2,149,{align:'center'});doc.setTextColor(35,126,78);doc.setFontSize(16);doc.text('PASS',W/2,160,{align:'center'});const d=new Date(r.completed_at||r.started_at);doc.setTextColor(92,105,116);doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.text(`Date: ${d.toLocaleDateString('en-IN')}`,45,181);doc.text(`Certificate No: HPT-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(r.id).slice(0,8).toUpperCase()}`,W-45,181,{align:'right'});doc.setTextColor(33,53,72);doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.text([schoolName,schoolLocation,school.contact_number].filter(Boolean).join(' • ').slice(0,120),W/2,191,{align:'center',maxWidth:250});doc.save(`${String(school.school_name||'Driving-School').replace(/[^a-z0-9]+/gi,'-')}-HPT-Certificate-${String(r.candidate_name||'Candidate').replace(/[^a-z0-9]+/gi,'-')}.pdf`);notice(`Certificate downloaded for ${r.candidate_name}.`)}catch(e){console.error(e);notice('Could not generate the certificate.',true)}finally{if(btn){btn.disabled=false;btn.textContent='PRINT'}}}
 
 function openRequestedAdminTab(){const requested=new URLSearchParams(window.location.search).get('tab');if(requested)document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.tab===requested)t.click()})}
-$('loginBtn').onclick=login;$('password').onkeydown=e=>{if(e.key==='Enter')login()};$('saveAccessCode').onclick=saveAccessCode;$('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload()};$('refreshAll').onclick=refreshAll;$('searchResults').oninput=renderResults;$('resultFilter').onchange=renderResults;$('schoolResultsFilter').onchange=renderResults;$('resultPeriod').onchange=renderResults;$('exportStudentPdf').onclick=exportStudentPdf;$('exportPerformancePdf').onclick=exportPerformancePdf;$('backSchoolOverview').onclick=closeSchoolResults;window.addEventListener('hpt:filter-school',e=>{const id=e.detail?.schoolId;if(id){document.querySelector('.tab[data-tab=results]')?.click();openSchoolResults(id);}});$('newVideo').onclick=newVideo;$('closeEditor').onclick=closeEditor;$('saveVideo').onclick=saveVideo;$('deleteVideo').onclick=deleteVideo;$('mark1').onclick=()=>setHaz(1);$('mark2').onclick=()=>{if($('hasHazard2').checked)setHaz(2)};$('hasHazard2').onchange=()=>{const on=$('hasHazard2').checked;$('hazard2Block').hidden=!on;$('marker2').hidden=!on;$('mark2').hidden=!on;if(!on){$('h2t').value='';$('h2label').value='';}updateHazardPreviews();};$('annotationTrack').onclick=e=>{const r=$('annotationTrack').getBoundingClientRect();$('preview').currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(Number($('preview').duration)||50);setMarkers()};for(const n of [1,2])$(`marker${n}`).onclick=e=>{e.stopPropagation();$('preview').currentTime=Number($(`h${n}t`).value)||0};$('preview').ontimeupdate=()=>{$('now').textContent=fmt($('preview').currentTime);$('dur').textContent=fmt($('preview').duration);setMarkers()};$('preview').onloadedmetadata=()=>{$('previewEmpty').hidden=true;$('dur').textContent=fmt($('preview').duration);setMarkers()};$('preview').onerror=()=>{$('previewEmpty').hidden=false;$('previewEmpty').textContent='Video could not be loaded. If this is an existing clip, verify its published path.'};$('videoFile').onchange=()=>{clearLocal();localFile=$('videoFile').files[0]||null;if(localFile){$('fileName').textContent=localFile.name;localUrl=URL.createObjectURL(localFile);$('preview').src=localUrl;$('previewEmpty').hidden=true;$('videoTitle').value=$('videoTitle').value||localFile.name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ');$('preview').load()}};$('closeModal').onclick=()=>$('detailModal').hidden=true;$('detailModal').onclick=e=>{if(e.target===$('detailModal'))$('detailModal').hidden=true};document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');const tab=t.dataset.tab;$('resultsPanel').hidden=tab!=='results';$('videosPanel').hidden=tab!=='videos';if($('schoolsPanel'))$('schoolsPanel').hidden=tab!=='schools';$('editor').hidden=true;if(tab==='schools'&&window.HPTSchoolManager)window.HPTSchoolManager.refresh()});
-let resultsPoll=null;
-function startResultsPolling(){clearInterval(resultsPoll);resultsPoll=setInterval(async()=>{if(document.hidden||$('dashboard').hidden)return;try{await loadResults();updateStats()}catch(e){console.error('HPT results refresh failed',e)}},5000)}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!$('dashboard').hidden)loadResults()});
+$('loginBtn').onclick=login;$('password').onkeydown=e=>{if(e.key==='Enter')login()};$('saveAccessCode').onclick=saveAccessCode;$('saveExamControls').onclick=saveExamControls;$('todayActivitySchoolFilter').onchange=renderTodayActivity;$('todayActivityStatusFilter').onchange=renderTodayActivity;$('refreshTodayActivity').onclick=loadTodayActivity;$('exportTodayActivity').onclick=exportTodayActivity;$('maintenanceModeToggle').onclick=toggleMaintenanceMode;$('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload()};$('refreshAll').onclick=refreshAll;$('searchResults').oninput=renderResults;$('resultFilter').onchange=renderResults;$('schoolResultsFilter').onchange=renderResults;$('resultPeriod').onchange=renderResults;$('exportStudentPdf').onclick=exportStudentPdf;$('exportPerformancePdf').onclick=exportPerformancePdf;$('backSchoolOverview').onclick=closeSchoolResults;$('backExamChoices').onclick=()=>{selectedExamView=null;$('schoolExamChoices').hidden=false;$('hptExamRecords').hidden=true;$('learnerExamRecords').hidden=true;const sc=schoolDirectory.find(x=>String(x.id)===String(selectedResultsSchoolId));if(sc)$('resultsHeading').textContent=`${sc.school_name} — Examinations`;};$('backHptExamChoices').onclick=()=>$('backExamChoices').click();$('searchLearnerSummary').oninput=renderLearnerSummaries;window.addEventListener('hpt:filter-school',e=>{const id=e.detail?.schoolId;if(id){document.querySelector('.tab[data-tab=results]')?.click();openSchoolResults(id);}});window.addEventListener('hpt:school-deleted',async()=>{await loadStudentDirectory();await Promise.all([loadResults(),loadLearnerSummaries()]);updateStats()});$('newVideo').onclick=newVideo;$('closeEditor').onclick=closeEditor;$('videoEditorModal').addEventListener('click',e=>{if(e.target.classList.contains('video-editor-backdrop')||e.target.hasAttribute('data-close-video-editor'))closeEditor()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('videoEditorModal').hidden)closeEditor()});$('saveVideo').onclick=saveVideo;$('deleteVideo').onclick=deleteVideo;$('mark1').onclick=()=>setHaz(1);$('mark2').onclick=()=>{if($('hasHazard2').checked)setHaz(2)};$('hasHazard2').onchange=()=>{const on=$('hasHazard2').checked;$('hazard2Block').hidden=!on;$('marker2').hidden=!on;$('mark2').hidden=!on;if(!on){$('h2t').value='';$('h2label').value='';}updateHazardPreviews();};$('annotationTrack').onclick=e=>{const r=$('annotationTrack').getBoundingClientRect();$('preview').currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(Number($('preview').duration)||50);setMarkers()};for(const n of [1,2])$(`marker${n}`).onclick=e=>{e.stopPropagation();$('preview').currentTime=Number($(`h${n}t`).value)||0};$('preview').ontimeupdate=()=>{$('now').textContent=fmt($('preview').currentTime);$('dur').textContent=fmt($('preview').duration);setMarkers()};$('preview').onloadedmetadata=()=>{$('previewEmpty').hidden=true;$('dur').textContent=fmt($('preview').duration);setMarkers()};$('preview').onerror=()=>{$('previewEmpty').hidden=false;$('previewEmpty').textContent='Video could not be loaded. If this is an existing clip, verify its published path.'};$('videoFile').onchange=()=>{clearLocal();localFile=$('videoFile').files[0]||null;if(localFile){$('fileName').textContent=localFile.name;localUrl=URL.createObjectURL(localFile);$('preview').src=localUrl;$('previewEmpty').hidden=true;$('videoTitle').value=$('videoTitle').value||localFile.name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ');$('preview').load()}};$('closeModal').onclick=()=>$('detailModal').hidden=true;$('detailModal').onclick=e=>{if(e.target===$('detailModal'))$('detailModal').hidden=true};document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');const tab=t.dataset.tab;$('resultsPanel').hidden=tab!=='results';$('videosPanel').hidden=tab!=='videos';if($('schoolsPanel'))$('schoolsPanel').hidden=tab!=='schools';if(!$('videoEditorModal').hidden)closeEditor();if(tab==='schools'&&window.HPTSchoolManager)window.HPTSchoolManager.refresh()});
+let resultsPoll=null,todayActivityPoll=null;
+function startResultsPolling(){clearInterval(resultsPoll);clearInterval(todayActivityPoll);resultsPoll=setInterval(async()=>{if(document.hidden||$('dashboard').hidden)return;try{await loadStudentDirectory();await Promise.all([loadResults(),loadLearnerSummaries()]);updateStats()}catch(e){console.error('HPT results refresh failed',e)}},5000);todayActivityPoll=setInterval(()=>{if(!document.hidden&&!$('dashboard').hidden)loadTodayActivity()},20000)}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!$('dashboard').hidden){loadResults();loadTodayActivity()}});
 (async()=>{const a=await guard();if(a){showDash(a.admin);await refreshAll();startResultsPolling();openRequestedAdminTab()}})();
 })();
