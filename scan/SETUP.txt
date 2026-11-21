@@ -1,0 +1,17 @@
+ROVIAW CLOUD SCANNER — COPY-READY WEBSITE FOLDER
+
+1. Copy this entire folder named "scan" into your website repository's published website root.
+   Example: your-website-repo/scan/index.html
+2. Open scan/src/config.js and replace PASTE_MICROSOFT_CLIENT_ID_HERE with the Application (client) ID from your Microsoft Entra app registration.
+3. In the Entra app registration, add this exact Single-page application redirect URI:
+   https://www.rajudrivingschool.com/scan/
+   Supported account type must include personal Microsoft accounts.
+   Delegated Microsoft Graph permissions used by this app: User.Read and Files.ReadWrite.
+4. Commit and push the website repository.
+5. Open https://www.rajudrivingschool.com/scan/ on each phone, sign in to the same Microsoft account, and select the same OneDrive folder.
+
+This folder is a static browser app; no npm build is required. It loads MSAL and pdf-lib as ES modules from esm.sh, so the first visit requires internet access. Microsoft sign-in and OneDrive operations always require internet access.
+
+IMPORTANT: This app currently uses the account's delegated Files.ReadWrite permission. Every phone signed into this account can access that account's OneDrive files. Use a dedicated school OneDrive account for this scanner.
+
+The current cropper supports rectangular crop, fixed photo/signature ratios, fine angle adjustment and 90-degree rotation. Automatic edge detection and four-corner perspective correction are not included in this cloud edition yet. It is a mobile web app and does not support USB/WIA scanner access.
