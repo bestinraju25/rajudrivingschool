@@ -1,12 +1,14 @@
-import { initializeAuth, signIn, signOut, getAccount } from './auth.js';
-import { getDrive, listChildren, createFolder, uploadFile } from './graph.js';
-import { getSavedBaseFolder, saveBaseFolder, createStudentRecord, saveStudentDocument, saveStudentManifest, listArchive, listStudentDocuments, formatBytes } from './onedrive.js';
 import { cropImage } from './image.js';
-import { imagesToPdf } from './pdf.js';
+import { createLocalStudentRecord, saveLocalStudentDocument, saveLocalStudentManifest, listLocalArchive, listLocalStudentDocuments, saveLocalMergedFile, savePhoneDirectoryHandle, getPhoneDirectoryHandle, getLocalStudentRecord, requestPersistentPhoneStorage } from './local-store.js';
 
 const $ = id => document.getElementById(id);
 const views = ['welcomeView','folderView','homeView','studentView','documentsView','archiveView','mergeView','settingsView'];
 let account = null;
+let authApi = null, authStateCache = null, authInitialized = false;
+let graphApi = null, oneDriveApi = null;
+let storageMode = localStorage.getItem('roviaw_storage_mode') || '';
+let phoneDirectoryName = '';
+let phoneFolderWriteAvailable = false;
 let baseFolder = null;
 let folderStack = [{ id:'root', name:'OneDrive', path:'OneDrive' }];
 let activeStudent = null;
@@ -40,12 +42,39 @@ function hideProgress() { $('progressModal').classList.remove('open'); }
 function displayNameForAccount() { return account?.name || account?.username || 'Microsoft account connected'; }
 function humanDate(date) { return new Date(`${date}T00:00:00`).toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'}); }
 
+async function prepareAuth() {
+  if(!authApi) authApi=await import('./auth.js');
+  if(!authInitialized) { authStateCache=await authApi.initializeAuth(); authInitialized=true; }
+  return authStateCache;
+}
+async function loadCloudApis() {
+  if(!graphApi) graphApi=await import('./graph.js');
+  if(!oneDriveApi) oneDriveApi=await import('./onedrive.js');
+}
+async function createPdf(files,layout) {
+  const pdfModule=await import('./pdf.js');
+  return pdfModule.imagesToPdf(files,layout);
+}
+function formatBytes(bytes) {
+  if(bytes<1024)return `${bytes} B`;
+  return `${(bytes/1024).toFixed(1)} KB`;
+}
+
 async function boot() {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/scan/sw.js').catch(()=>{});
   document.querySelectorAll('[data-back]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.back)));
   document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.nav)));
   document.querySelectorAll('[data-doc]').forEach(b=>b.addEventListener('click',()=>startDocument(b.dataset.doc)));
   $('signInButton').addEventListener('click',handleSignIn);
-  $('changeFolderButton').addEventListener('click',openFolderSetup);
+  $('phoneStorageButton').addEventListener('click',activatePhoneStorage);
+  $('choosePhoneFolderButton').addEventListener('click',choosePhoneFolder);
+  $('settingsChoosePhoneFolder').addEventListener('click',choosePhoneFolder);
+  $('settingsSwitchPhone').addEventListener('click',activatePhoneStorage);
+  $('settingsSwitchOneDrive').addEventListener('click',handleSignIn);
+  $('changeFolderButton').addEventListener('click',()=>{
+    if(storageMode==='local'){fillSettings();showView('settingsView');}
+    else openFolderSetup().catch(e=>toast(e.message,true));
+  });
   $('folderRootButton').addEventListener('click',()=>{folderStack=[{id:'root',name:'OneDrive',path:'OneDrive'}];renderFolderBrowser();});
   $('useFolderButton').addEventListener('click',chooseCurrentFolder);
   $('createStudentButton').addEventListener('click',handleCreateStudent);
@@ -58,44 +87,101 @@ async function boot() {
   $('newStudentButton').addEventListener('click',()=>showView('studentView'));
   $('mergeButton').addEventListener('click',()=>showView('mergeView'));
   $('settingsButton').addEventListener('click',()=>{fillSettings();showView('settingsView');});
-  $('settingsChangeFolder').addEventListener('click',openFolderSetup);
-  $('signOutButton').addEventListener('click',async()=>{await signOut();localStorage.removeItem('roviaw_cloud_base_folder_v1');account=null;setCloudStatus('Not connected');showView('welcomeView');});
+  $('settingsChangeFolder').addEventListener('click',()=>storageMode==='local'?choosePhoneFolder():openFolderSetup());
+  $('signOutButton').addEventListener('click',async()=>{if(authApi)await authApi.signOut();localStorage.removeItem('roviaw_cloud_base_folder_v1');localStorage.removeItem('roviaw_storage_mode');account=null;storageMode='';setCloudStatus('Choose storage');showView('welcomeView');});
   $('mergeCreateButton').addEventListener('click',handleMergeFiles);
   $('cameraInput').addEventListener('change',e=>handleCapturedFiles(e.target.files,'camera'));
   $('fileInput').addEventListener('change',e=>handleCapturedFiles(e.target.files,'file'));
   $('captureClose').addEventListener('click',closeCaptureModal);
   $('cropClose').addEventListener('click',()=> $('cropModal').classList.remove('open'));
   $('documentChecklist').addEventListener('click',()=>{});
+  $('savedDocsList').addEventListener('click',e=>{
+    const button=e.target.closest('[data-download-doc]');
+    if(!button)return;
+    const doc=savedDocs.find(x=>x.name===button.dataset.downloadDoc);
+    if(doc?.blob)downloadBlob(doc.blob,doc.name);
+  });
 
-  try {
-    const authState=await initializeAuth();
-    if(!authState.configured) {
-      $('signInButton').disabled=true;
-      $('signInButton').textContent='Microsoft app setup required';
-      toast('Add your Microsoft Client ID in scan/src/config.js before signing in.',true);
-      showView('welcomeView'); return;
+  if(storageMode==='local') {
+    await activatePhoneStorage(false);
+    return;
+  }
+  if(storageMode==='onedrive') {
+    try {
+      const authState=await prepareAuth();
+      if(authState.configured && authState.account) {
+        account=authState.account;
+        await afterLogin();
+        return;
+      }
+      $('signInButton').textContent='OneDrive setup required';
+    } catch(error) {
+      console.warn('OneDrive could not initialize. Phone storage remains available.',error);
     }
-    account=authState.account;
-    if(!account){setCloudStatus('Not connected');showView('welcomeView');return;}
-    await afterLogin();
-  } catch(error) { toast(error.message,true); showView('welcomeView'); }
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/scan/sw.js').catch(()=>{});
+  }
+  setCloudStatus('Choose storage');
+  showView('welcomeView');
+}
+
+async function activatePhoneStorage(showMessage=true) {
+  storageMode='local';
+  localStorage.setItem('roviaw_storage_mode','local');
+  baseFolder={id:'phone-root',name:'Phone storage',path:'This phone',local:true};
+  try {
+    const handle=await getPhoneDirectoryHandle();
+    phoneDirectoryName=handle?.name||'';
+    phoneFolderWriteAvailable=!!handle;
+    await requestPersistentPhoneStorage();
+  } catch { phoneFolderWriteAvailable=false; }
+  account=null;
+  setCloudStatus('Saved on this phone',true);
+  await showHome();
+  if(showMessage) toast(phoneFolderWriteAvailable?`Phone storage ready · ${phoneDirectoryName}`:'Phone storage ready. Files stay in this app until downloaded or a folder is selected.');
+}
+
+async function choosePhoneFolder() {
+  if(!('showDirectoryPicker' in window)) {
+    if(storageMode!=='local') await activatePhoneStorage(false);
+    toast('This browser cannot write directly to a chosen folder. Student files will stay in this app; use Download to save them into your phone storage.',true);
+    return;
+  }
+  try {
+    const handle=await window.showDirectoryPicker({id:'roviaw-scan-folder',mode:'readwrite'});
+    const permission=handle.requestPermission?await handle.requestPermission({mode:'readwrite'}):'granted';
+    if(permission!=='granted') throw new Error('Folder access was not granted. Choose the folder again to allow saving.');
+    await savePhoneDirectoryHandle(handle);
+    phoneDirectoryName=handle.name||'Selected folder';
+    phoneFolderWriteAvailable=true;
+    if(storageMode!=='local') await activatePhoneStorage(false);
+    fillSettings();
+    toast(`Phone folder selected: ${phoneDirectoryName}`);
+  } catch(error) {
+    if(error.name==='AbortError')return;
+    toast(error.message||'Could not select that folder.',true);
+  }
 }
 
 async function handleSignIn() {
-  try { account=await signIn(); await afterLogin(); }
-  catch(error) { toast(error.message,true); }
+  try {
+    const authState=await prepareAuth();
+    if(!authState.configured) throw new Error('OneDrive setup is not finished yet. Add the Microsoft Client ID in scan/src/config.js, or continue using Phone storage.');
+    account=await authApi.signIn();
+    await afterLogin();
+  } catch(error) { toast(error.message,true); }
 }
 
 async function afterLogin() {
-  if(!account) account=getAccount();
+  await loadCloudApis();
+  if(!account) account=authApi?.getAccount();
+  storageMode='onedrive';
+  localStorage.setItem('roviaw_storage_mode','onedrive');
   setCloudStatus('OneDrive connected',true);
   $('accountLabel').textContent=displayNameForAccount();
-  try { await getDrive(); }
+  try { await graphApi.getDrive(); }
   catch(error) { setCloudStatus('OneDrive unavailable'); throw error; }
-  baseFolder=getSavedBaseFolder();
+  baseFolder=oneDriveApi.getSavedBaseFolder();
   if(baseFolder?.id) {
-    try { await listChildren(baseFolder.id); await showHome(); return; }
+    try { await graphApi.listChildren(baseFolder.id); await showHome(); return; }
     catch { baseFolder=null; localStorage.removeItem('roviaw_cloud_base_folder_v1'); }
   }
   await openFolderSetup();
@@ -114,7 +200,7 @@ async function renderFolderBrowser() {
   $('folderCrumbs').querySelectorAll('[data-crumb]').forEach(b=>b.addEventListener('click',()=>{folderStack=folderStack.slice(0,Number(b.dataset.crumb)+1);renderFolderBrowser().catch(e=>toast(e.message,true));}));
   $('folderList').innerHTML='<div class="loading-line">Loading folders…</div>';
   try {
-    const items=await listChildren(current.id);
+    const items=await graphApi.listChildren(current.id);
     const folders=items.filter(x=>x.folder).sort((a,b)=>a.name.localeCompare(b.name));
     $('folderList').innerHTML=folders.length?folders.map(f=>`<button class="folder-row" data-folder-id="${f.id}" data-folder-name="${escapeAttr(f.name)}"><span>📁</span><strong>${escapeHtml(f.name)}</strong><span>›</span></button>`).join(''):'<div class="empty-state">No folders here. You can use this folder or create a folder in OneDrive first.</div>';
     $('folderList').querySelectorAll('[data-folder-id]').forEach(b=>b.addEventListener('click',()=>{
@@ -126,21 +212,22 @@ async function renderFolderBrowser() {
 function chooseCurrentFolder() {
   const current=folderStack[folderStack.length-1];
   baseFolder={id:current.id,name:current.name,path:current.path};
-  saveBaseFolder(baseFolder);
+  oneDriveApi.saveBaseFolder(baseFolder);
   showHome().catch(e=>toast(e.message,true));
 }
 
 async function showHome() {
-  $('storageName').textContent=baseFolder?.name || 'OneDrive';
-  $('storagePath').textContent=baseFolder?.path || 'OneDrive root';
-  $('accountLabel').textContent=displayNameForAccount();
+  $('storageName').textContent=storageMode==='local'?'Phone storage':(baseFolder?.name || 'OneDrive');
+  document.querySelector('.storage-icon').textContent=storageMode==='local'?'📱':'☁';
+  $('storagePath').textContent=storageMode==='local'?(phoneDirectoryName?`Folder: ${phoneDirectoryName}`:'Saved inside this app'):(baseFolder?.path || 'OneDrive root');
+  $('accountLabel').textContent=storageMode==='local'?'This phone · Local storage':displayNameForAccount();
   showView('homeView');
   await refreshHome();
 }
 
 async function refreshHome() {
   if(!baseFolder)return;
-  const groups=await listArchive(baseFolder);
+  const groups=storageMode==='local'?await listLocalArchive():await oneDriveApi.listArchive(baseFolder);
   const recent=groups.flatMap(g=>g.students.map(s=>({...s,date:g.date}))).slice(0,5);
   $('recentList').innerHTML=recent.length?recent.map(s=>`<button class="record-row" data-folder="${s.folderId}"><span class="record-avatar">${escapeHtml(s.name.charAt(0).toUpperCase())}</span><span class="record-copy"><strong>${escapeHtml(s.name)}</strong><small>${humanDate(s.date)}</small></span><span>›</span></button>`).join(''):'<div class="empty-state">No students saved yet. Create your first customer.</div>';
   $('recentList').querySelectorAll('[data-folder]').forEach(b=>b.addEventListener('click',()=>openArchivedStudent(b.dataset.folder,b.querySelector('strong').textContent)));
@@ -149,15 +236,16 @@ async function refreshHome() {
 async function handleCreateStudent() {
   const name=$('studentName').value.trim();
   if(!name){toast('Enter the student name.',true);$('studentName').focus();return;}
-  if(!baseFolder){toast('Choose a OneDrive save location first.',true);return;}
+  if(!baseFolder){toast('Choose a storage location first.',true);return;}
   $('createStudentButton').disabled=true;
-  showProgress('Creating student folder','Preparing date-wise OneDrive folder…',10);
+  showProgress('Creating student folder',storageMode==='local'?'Preparing phone storage…':'Preparing date-wise OneDrive folder…',10);
   try {
-    const student=await createStudentRecord(baseFolder,{name,mobile:$('studentMobile').value,address:$('studentAddress').value});
+    const details={name,mobile:$('studentMobile').value,address:$('studentAddress').value};
+    const student=storageMode==='local'?await createLocalStudentRecord(baseFolder,details):await oneDriveApi.createStudentRecord(baseFolder,details);
     activeStudent=student;savedDocs=[];
     $('studentName').value='';$('studentMobile').value='';$('studentAddress').value='';
     updateStudentHeader();renderStudentDocuments();
-    hideProgress();showView('documentsView');toast('Student created successfully in OneDrive.');
+    hideProgress();showView('documentsView');toast(storageMode==='local'?'Student created on this phone.':'Student created successfully in OneDrive.');
   } catch(error) { hideProgress();toast(error.message,true); }
   finally { $('createStudentButton').disabled=false; }
 }
@@ -170,7 +258,11 @@ function renderStudentDocuments() {
   const expected=['Photo.jpg','Signature.jpg','Aadhaar.pdf','Licence.pdf'];
   $('documentChecklist').innerHTML=expected.map(n=>`<span class="check-item ${savedDocs.some(x=>x.name===n)?'done':''}"><i>${savedDocs.some(x=>x.name===n)?'✓':'•'}</i>${n.replace('.jpg','').replace('.pdf','')}</span>`).join('');
   $('documentCount').textContent=`${savedDocs.length} saved`;
-  $('savedDocsList').innerHTML=savedDocs.length?savedDocs.map(x=>`<div class="record-row"><span class="record-avatar">${x.name.endsWith('.pdf')?'PDF':'JPG'}</span><span class="record-copy"><strong>${escapeHtml(x.name)}</strong><small>${formatBytes(x.size)} · Saved to OneDrive</small></span></div>`).join(''):'<div class="empty-state">No documents saved yet.</div>';
+  $('savedDocsList').innerHTML=savedDocs.length?savedDocs.map(x=>{
+    const status=storageMode==='local'?(x.writtenToFolder?'Saved to phone folder':'Saved in app storage'):'Saved to OneDrive';
+    const action=storageMode==='local'&&x.blob?`<button class="text-btn" data-download-doc="${escapeAttr(x.name)}">Download</button>`:'';
+    return `<div class="record-row"><span class="record-avatar">${x.name.endsWith('.pdf')?'PDF':'JPG'}</span><span class="record-copy"><strong>${escapeHtml(x.name)}</strong><small>${formatBytes(x.size)} · ${status}</small></span>${action}</div>`;
+  }).join(''):'<div class="empty-state">No documents saved yet.</div>';
 }
 
 let captureState=null;
@@ -219,7 +311,7 @@ async function handleCapturedFiles(fileList,source) {
         $('captureModal').querySelector('.capture-actions label[for="fileInput"]').textContent='Choose second side';
       } else {
         const layout=confirm('Both sides are ready.\nOK = Keep front and back on separate PDF pages.\nCancel = Arrange both sides on one A4 page.');
-        const pdf=await imagesToPdf(state.files,layout?'separate':'single');
+        const pdf=await createPdf(state.files,layout?'separate':'single');
         await saveDocument(`${state.type}.pdf`,pdf);
         closeCaptureModal();
       }
@@ -241,20 +333,30 @@ async function uploadSingleImage(type,blob) {
 async function saveOtherPdf(state) {
   showProgress('Preparing named document','Combining pages into PDF…',15);
   try {
-    const pdf=await imagesToPdf(state.files,'separate');
+    const pdf=await createPdf(state.files,'separate');
     await saveDocument(`${sanitizeFileName(state.name)}.pdf`,pdf);
   } catch(error) { hideProgress();toast(error.message,true); }
 }
 
 async function saveDocument(filename,blob) {
-  showProgress(`Saving ${filename}`,'Uploading directly to OneDrive…',0);
+  showProgress(`Saving ${filename}`,storageMode==='local'?'Saving to this phone…':'Uploading directly to OneDrive…',0);
   try {
-    const saved=await saveStudentDocument(activeStudent,filename,blob,percent=>updateProgress(`Uploading ${filename}…`,percent));
+    if(storageMode==='local') {
+      const saved=await saveLocalStudentDocument(activeStudent,filename,blob);
+      const index=savedDocs.findIndex(x=>x.name===filename);
+      if(index>=0)savedDocs[index]=saved;else savedDocs.push(saved);
+      await saveLocalStudentManifest(activeStudent,savedDocs);
+      updateProgress('Saved on this phone',100);
+      renderStudentDocuments();hideProgress();
+      toast(saved.writtenToFolder?`${filename} saved to selected phone folder.`:`${filename} saved in app storage. Download it from the document list.`);
+      return;
+    }
+    const saved=await oneDriveApi.saveStudentDocument(activeStudent,filename,blob,percent=>updateProgress(`Uploading ${filename}…`,percent));
     const index=savedDocs.findIndex(x=>x.name===filename);
     if(index>=0)savedDocs[index]=saved;else savedDocs.push(saved);
-    await saveStudentManifest(activeStudent,savedDocs);
+    await oneDriveApi.saveStudentManifest(activeStudent,savedDocs);
     updateProgress('Verifying file in OneDrive…',100);
-    const items=await listChildren(activeStudent.folderId);
+    const items=await graphApi.listChildren(activeStudent.folderId);
     if(!items.some(x=>x.name===filename && x.file))throw new Error('OneDrive did not confirm the saved file. Please retry.');
     renderStudentDocuments();hideProgress();toast(`${filename} saved successfully.`);
   } catch(error) { hideProgress();throw error; }
@@ -262,13 +364,18 @@ async function saveDocument(filename,blob) {
 
 async function refreshStudentDocuments() {
   if(!activeStudent)return;
-  const items=await listStudentDocuments(activeStudent.folderId);
-  savedDocs=items.map(x=>({name:x.name,size:x.size,webUrl:x.webUrl}));renderStudentDocuments();
+  if(storageMode==='local') {
+    savedDocs=await listLocalStudentDocuments(activeStudent.folderId);
+  } else {
+    const items=await oneDriveApi.listStudentDocuments(activeStudent.folderId);
+    savedDocs=items.map(x=>({name:x.name,size:x.size,webUrl:x.webUrl}));
+  }
+  renderStudentDocuments();
 }
 
 async function refreshArchive() {
-  $('archiveList').innerHTML='<div class="loading-line">Loading OneDrive archive…</div>';
-  currentArchive=await listArchive(baseFolder);renderArchive();
+  $('archiveList').innerHTML='<div class="loading-line">Loading saved records…</div>';
+  currentArchive=storageMode==='local'?await listLocalArchive():await oneDriveApi.listArchive(baseFolder);renderArchive();
 }
 function renderArchive() {
   const term=$('archiveSearch').value.trim().toLowerCase();
@@ -285,13 +392,13 @@ function renderArchive() {
 }
 
 async function openArchivedStudent(folderId,name) {
-  const files=await listStudentDocuments(folderId);
-  savedDocs=files.map(x=>({name:x.name,size:x.size,webUrl:x.webUrl}));
+  const files=storageMode==='local'?await listLocalStudentDocuments(folderId):await oneDriveApi.listStudentDocuments(folderId);
+  savedDocs=storageMode==='local'?files:files.map(x=>({name:x.name,size:x.size,webUrl:x.webUrl}));
   $('activeStudentName').textContent=name;
-  $('activeStudentMeta').textContent='Saved in OneDrive archive';
+  $('activeStudentMeta').textContent=storageMode==='local'?'Saved on this phone':'Saved in OneDrive archive';
   $('documentChecklist').innerHTML='';$('documentCount').textContent=`${files.length} saved`;
-  $('savedDocsList').innerHTML=files.map(f=>`<a class="record-row file-link" href="${f.webUrl}" target="_blank" rel="noopener"><span class="record-avatar">${f.name.endsWith('.pdf')?'PDF':'JPG'}</span><span class="record-copy"><strong>${escapeHtml(f.name)}</strong><small>${formatBytes(f.size)}</small></span><span>↗</span></a>`).join('')||'<div class="empty-state">No documents found for this student.</div>';
-  activeStudent={folderId,id:folderId,name,documents:[]};showView('documentsView');
+  $('savedDocsList').innerHTML=storageMode==='local'?files.map(f=>`<div class="record-row"><span class="record-avatar">${f.name.endsWith('.pdf')?'PDF':'JPG'}</span><span class="record-copy"><strong>${escapeHtml(f.name)}</strong><small>${formatBytes(f.size)} · Saved on this phone</small></span><button class="text-btn" data-download-doc="${escapeAttr(f.name)}">Download</button></div>`).join('')||'<div class="empty-state">No documents found for this student.</div>':files.map(f=>`<a class="record-row file-link" href="${f.webUrl}" target="_blank" rel="noopener"><span class="record-avatar">${f.name.endsWith('.pdf')?'PDF':'JPG'}</span><span class="record-copy"><strong>${escapeHtml(f.name)}</strong><small>${formatBytes(f.size)}</small></span><span>↗</span></a>`).join('')||'<div class="empty-state">No documents found for this student.</div>'; 
+  activeStudent=storageMode==='local'?{...(await getLocalStudentRecord(folderId)),folderId,local:true}:{folderId,id:folderId,name,documents:[]};showView('documentsView');
 }
 
 async function handleMergeFiles() {
@@ -299,22 +406,43 @@ async function handleMergeFiles() {
   if(!files.length){toast('Choose at least one image.',true);return;}
   showProgress('Creating PDF','Preparing selected images…',10);
   try {
-    const pdf=await imagesToPdf(files,$('mergeLayout').value);
-    const date=new Date().toISOString().slice(0,10);
-    const mergeFolder=await createFolder(baseFolder.id,`Merged Files`);
-    const dayFolder=await createFolder(mergeFolder.id,date);
-    const outFolder=await createFolder(dayFolder.id,name+'__'+crypto.randomUUID().slice(0,8));
-    await uploadFile(outFolder.id,`${name}.pdf`,pdf,p=>updateProgress('Uploading PDF to OneDrive…',p));
-    hideProgress();toast('Merged PDF saved to OneDrive.');$('mergeInput').value='';$('mergeName').value='';
+    const pdf=await createPdf(files,$('mergeLayout').value);
+    if(storageMode==='local') {
+      const saved=await saveLocalMergedFile(`${name}.pdf`,pdf);
+      hideProgress();
+      if(!saved.writtenToFolder) downloadBlob(pdf,`${name}.pdf`);
+      toast(saved.writtenToFolder?'Merged PDF saved to selected phone folder.':'Merged PDF downloaded to your phone.');
+    } else {
+      const date=new Date().toISOString().slice(0,10);
+      const mergeFolder=await graphApi.createFolder(baseFolder.id,`Merged Files`);
+      const dayFolder=await graphApi.createFolder(mergeFolder.id,date);
+      const outFolder=await graphApi.createFolder(dayFolder.id,name+'__'+crypto.randomUUID().slice(0,8));
+      await graphApi.uploadFile(outFolder.id,`${name}.pdf`,pdf,p=>updateProgress('Uploading PDF to OneDrive…',p));
+      hideProgress();toast('Merged PDF saved to OneDrive.');
+    }
+    $('mergeInput').value='';$('mergeName').value='';
   } catch(error){hideProgress();toast(error.message,true);}
 }
 
-function fillSettings() {
-  $('settingsAccount').textContent=displayNameForAccount();
-  $('settingsPath').textContent=baseFolder?.path||'Not selected';
+async function fillSettings() {
+  $('settingsAccount').textContent=storageMode==='local'?'Not required · This phone':displayNameForAccount();
+  $('settingsPath').textContent=storageMode==='local'?(phoneDirectoryName||'Saved inside this app'):baseFolder?.path||'Not selected';
+  $('settingsMode').textContent=storageMode==='local'?'Phone storage':'OneDrive';
   const ua=navigator.userAgent; const label=/Android/i.test(ua)?'Android phone':/iPhone|iPad/i.test(ua)?'Apple mobile device':'Mobile browser';
   $('deviceLabel').textContent=label;
+  $('settingsSwitchPhone').hidden=storageMode==='local';
+  $('settingsSwitchOneDrive').hidden=storageMode==='onedrive';
+  $('settingsChangeFolder').textContent=storageMode==='local'?'Change folder':'Change';
+  $('signOutButton').hidden=storageMode!=='onedrive';
 }
+
+function downloadBlob(blob,filename) {
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;a.style.display='none';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
+
 function sanitizeFileName(v){return v.trim().replace(/[\\/:*?"<>|#%{}~]/g,'-').replace(/\s+/g,' ').slice(0,70)||'Document';}
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function escapeAttr(v){return escapeHtml(v).replace(/`/g,'&#96;');}

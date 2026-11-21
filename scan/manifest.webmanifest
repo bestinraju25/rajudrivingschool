@@ -2,7 +2,7 @@
   "id": "/scan/",
   "name": "ROVIAW Cloud Scanner",
   "short_name": "ROVIAW Scan",
-  "description": "Mobile student document scanning to OneDrive",
+  "description": "Mobile student document scanning with OneDrive or phone storage",
   "start_url": "/scan/",
   "scope": "/scan/",
   "display": "standalone",

@@ -2,16 +2,27 @@ ROVIAW CLOUD SCANNER — COPY-READY WEBSITE FOLDER
 
 1. Copy this entire folder named "scan" into your website repository's published website root.
    Example: your-website-repo/scan/index.html
-2. Open scan/src/config.js and replace PASTE_MICROSOFT_CLIENT_ID_HERE with the Application (client) ID from your Microsoft Entra app registration.
+2. For OneDrive mode, open scan/src/config.js and replace PASTE_MICROSOFT_CLIENT_ID_HERE with your Microsoft Entra Application (client) ID.
 3. In the Entra app registration, add this exact Single-page application redirect URI:
    https://www.rajudrivingschool.com/scan/
    Supported account type must include personal Microsoft accounts.
-   Delegated Microsoft Graph permissions used by this app: User.Read and Files.ReadWrite.
+   Delegated Microsoft Graph permissions: User.Read and Files.ReadWrite.
 4. Commit and push the website repository.
-5. Open https://www.rajudrivingschool.com/scan/ on each phone, sign in to the same Microsoft account, and select the same OneDrive folder.
+5. Open https://www.rajudrivingschool.com/scan/ on your phone.
+6. Choose either:
+   - Continue with OneDrive: sign in using the same personal Microsoft account on each phone and select the same OneDrive folder.
+   - Save on this phone: no Microsoft sign-in is needed. Student records remain in this browser's local app storage.
+7. In Settings, use "Choose" under Phone folder access to select an actual phone folder if your browser supports direct folder access.
 
-This folder is a static browser app; no npm build is required. It loads MSAL and pdf-lib as ES modules from esm.sh, so the first visit requires internet access. Microsoft sign-in and OneDrive operations always require internet access.
+PHONE STORAGE NOTES
+- If direct folder access is supported, captured files are written into the selected folder using date/student subfolders.
+- If the browser does not support writing to a selected folder, records remain in this browser's private app storage. Each saved document has a Download action; the browser then lets you save it to the phone's Downloads or another location.
+- Browser app storage is local to that browser on that phone. It does not automatically sync to another phone or appear in the phone's Files app. Do not clear browser site data if you need those locally stored records.
+- Merged PDFs are saved to the selected folder when supported; otherwise they are downloaded to the phone.
 
-IMPORTANT: This app currently uses the account's delegated Files.ReadWrite permission. Every phone signed into this account can access that account's OneDrive files. Use a dedicated school OneDrive account for this scanner.
-
-The current cropper supports rectangular crop, fixed photo/signature ratios, fine angle adjustment and 90-degree rotation. Automatic edge detection and four-corner perspective correction are not included in this cloud edition yet. It is a mobile web app and does not support USB/WIA scanner access.
+TECHNICAL NOTES
+- This folder is a static browser app; no npm build is required. MSAL and pdf-lib are loaded from esm.sh, so the first page load requires internet access.
+- OneDrive sign-in and uploads require internet. Phone storage works without OneDrive sign-in; after the app has loaded, the scanner can store records locally.
+- The cropper supports rectangular crop, fixed photo/signature ratios, angle adjustment and 90-degree rotation. Automatic edge detection and four-corner perspective correction are not included in this cloud edition.
+- This is a mobile web app and does not support USB/WIA scanner access.
+- OneDrive mode uses delegated Files.ReadWrite, which gives the signed-in app access to that account's OneDrive files. Consider a dedicated school Microsoft account.

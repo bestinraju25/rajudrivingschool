@@ -24,15 +24,17 @@
         <div class="hero-card">
           <div class="eyebrow">MOBILE DOCUMENT WORKSPACE</div>
           <h1>Scan. Save.<br><em>Access anywhere.</em></h1>
-          <p>Manage student photos, signatures and documents directly from your phone. Files are saved to your OneDrive.</p>
-          <div class="hero-pills"><span>Mobile-first</span><span>Cloud storage</span><span>Multi-phone ready</span></div>
+          <p>Manage student photos, signatures and documents directly from your phone. Choose OneDrive for shared access or phone storage for this device.</p>
+          <div class="hero-pills"><span>Mobile-first</span><span>OneDrive or phone</span><span>Multi-phone ready</span></div>
         </div>
         <div class="panel auth-panel">
           <div class="panel-icon">☁</div>
-          <h2>Connect your OneDrive</h2>
-          <p>Sign in with your personal Microsoft account. Use the same account on every phone that will access this scanner.</p>
-          <button id="signInButton" class="btn btn-primary btn-full">Sign in with Microsoft</button>
-          <div class="small-note">Your Microsoft password is entered only on Microsoft's sign-in page. ROVIAW does not see or store your password.</div>
+          <h2>Choose where to save</h2>
+          <p>Use OneDrive to share student records across phones, or save directly on this phone.</p>
+          <button id="signInButton" class="btn btn-primary btn-full">Continue with OneDrive</button>
+          <button id="phoneStorageButton" class="btn btn-light btn-full storage-choice-btn">Save on this phone</button>
+          <button id="choosePhoneFolderButton" class="text-btn folder-choice-btn">Choose a folder on this phone</button>
+          <div class="small-note">OneDrive needs an internet connection. Phone storage works without a Microsoft sign-in. You can change this later in Settings.</div>
         </div>
       </section>
 
@@ -48,7 +50,7 @@
       </section>
 
       <section id="homeView" class="view">
-        <div class="home-heading"><div><div class="eyebrow">CLOUD WORKSPACE</div><h1>Good day 👋</h1><p id="accountLabel">OneDrive connected</p></div><button id="changeFolderButton" class="icon-btn" title="Change storage location">⚙</button></div>
+        <div class="home-heading"><div><div class="eyebrow">DOCUMENT WORKSPACE</div><h1>Good day 👋</h1><p id="accountLabel">OneDrive connected</p></div><button id="changeFolderButton" class="icon-btn" title="Change storage location">⚙</button></div>
         <div class="storage-banner"><div class="storage-icon">☁</div><div><strong id="storageName">OneDrive storage</strong><span id="storagePath">Selected folder</span></div><span class="online-dot"></span></div>
         <div class="action-grid">
           <button id="newStudentButton" class="action-tile tile-primary"><span class="tile-icon">＋</span><strong>New student</strong><small>Create record and scan</small></button>
@@ -85,26 +87,30 @@
       </section>
 
       <section id="archiveView" class="view">
-        <div class="page-heading"><button class="back-btn" data-back="homeView">← Home</button><div class="eyebrow">STUDENT RECORDS</div><h1>People Archive</h1><p>Records are grouped by date in your selected OneDrive folder.</p></div>
+        <div class="page-heading"><button class="back-btn" data-back="homeView">← Home</button><div class="eyebrow">STUDENT RECORDS</div><h1>People Archive</h1><p>Records are grouped by date in your selected storage.</p></div>
         <div class="search-row"><span>⌕</span><input id="archiveSearch" type="search" placeholder="Search student name…" /><button id="archiveRefreshButton" class="text-btn">Refresh</button></div>
         <div id="archiveList" class="archive-list"><div class="empty-state">Loading archive…</div></div>
       </section>
 
       <section id="mergeView" class="view">
-        <div class="page-heading"><button class="back-btn" data-back="homeView">← Home</button><div class="eyebrow">PDF TOOL</div><h1>Merge Files</h1><p>Select images from this phone and combine them into a PDF saved to OneDrive.</p></div>
+        <div class="page-heading"><button class="back-btn" data-back="homeView">← Home</button><div class="eyebrow">PDF TOOL</div><h1>Merge Files</h1><p>Select images from this phone and combine them into a PDF saved to your selected storage.</p></div>
         <div class="panel form-panel">
           <label>File name<input id="mergeName" type="text" placeholder="Enter merged file name" /></label>
           <label>Select images<input id="mergeInput" type="file" accept="image/*" multiple /></label>
           <label>PDF layout<select id="mergeLayout"><option value="separate">Each image on a separate page</option><option value="single">Fit all images on one A4 page</option></select></label>
-          <button id="mergeCreateButton" class="btn btn-primary btn-full">Create PDF and save to OneDrive</button>
+          <button id="mergeCreateButton" class="btn btn-primary btn-full">Create PDF and save</button>
         </div>
       </section>
 
       <section id="settingsView" class="view">
         <div class="page-heading"><button class="back-btn" data-back="homeView">← Home</button><div class="eyebrow">PREFERENCES</div><h1>Settings</h1></div>
         <div class="panel settings-panel">
-          <div class="setting-row"><div><strong>Connected Microsoft account</strong><small id="settingsAccount">—</small></div><button id="signOutButton" class="btn btn-light">Sign out</button></div>
-          <div class="setting-row"><div><strong>OneDrive save location</strong><small id="settingsPath">—</small></div><button id="settingsChangeFolder" class="btn btn-light">Change</button></div>
+          <div class="setting-row"><div><strong>Current storage</strong><small id="settingsMode">OneDrive</small></div></div>
+          <div class="setting-row"><div><strong>Account</strong><small id="settingsAccount">—</small></div><button id="signOutButton" class="btn btn-light">Sign out</button></div>
+          <div class="setting-row"><div><strong>Save location</strong><small id="settingsPath">—</small></div><button id="settingsChangeFolder" class="btn btn-light">Change</button></div>
+          <div class="setting-row"><div><strong>Phone folder access</strong><small>Choose a folder to save files directly when supported by this browser.</small></div><button id="settingsChoosePhoneFolder" class="btn btn-light">Choose</button></div>
+          <div class="setting-row"><div><strong>Use this phone</strong><small>Keep student records on this device.</small></div><button id="settingsSwitchPhone" class="btn btn-light">Switch</button></div>
+          <div class="setting-row"><div><strong>Use OneDrive</strong><small>Share records across your phones.</small></div><button id="settingsSwitchOneDrive" class="btn btn-light">Switch</button></div>
           <div class="setting-row"><div><strong>This phone</strong><small id="deviceLabel">Mobile device</small></div><span class="online-dot"></span></div>
         </div>
       </section>
