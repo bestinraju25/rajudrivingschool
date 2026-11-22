@@ -1,15 +1,18 @@
 import { cropImage } from './image.js';
 import { createZipBlob, safeZipName } from './zip.js';
 import { getConfiguredClientId, storeConfiguredClientId } from './config.js';
-import { createLocalStudentRecord, saveLocalStudentDocument, saveLocalStudentManifest, listLocalArchive, listLocalStudentDocuments, saveLocalMergedFile, savePhoneDirectoryHandle, getPhoneDirectoryHandle, getLocalStudentRecord, updateLocalStudentRecord, deleteLocalStudentRecord, requestPersistentPhoneStorage } from './local-store.js';
+import { createLocalStudentRecord, saveLocalStudentDocument, saveLocalStudentManifest, listLocalArchive, listLocalStudentDocuments, saveLocalMergedFile, savePhoneDirectoryHandle, getPhoneDirectoryHandle, getLocalStudentRecord, updateLocalStudentRecord, deleteLocalStudentRecord, requestPersistentPhoneStorage, getPhoneSetting, savePhoneSetting, deletePhoneSetting } from './local-store.js';
 
 const $ = id => document.getElementById(id);
+function safePreferenceGet(key, fallback='') { try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; } }
+function safePreferenceSet(key, value) { try { localStorage.setItem(key, value); return true; } catch { return false; } }
+function safePreferenceRemove(key) { try { localStorage.removeItem(key); } catch { /* optional preference only */ } }
 const MAX_PDF_BYTES = 480 * 1024;
 const views = ['welcomeView','folderView','homeView','studentView','documentsView','archiveView','mergeView','settingsView'];
 let account = null;
 let authApi = null, authStateCache = null, authInitialized = false;
 let graphApi = null, oneDriveApi = null;
-let storageMode = localStorage.getItem('roviaw_storage_mode') || '';
+let storageMode = safePreferenceGet('roviaw_storage_mode', '');
 let phoneDirectoryName = '';
 let phoneFolderWriteAvailable = false;
 let baseFolder = null;
@@ -71,6 +74,12 @@ function formatBytes(bytes) {
 }
 
 async function boot() {
+  if (!storageMode) {
+    try { storageMode = await getPhoneSetting('preferredStorageMode') || ''; } catch { /* no prior local app database */ }
+  }
+  $('choosePhoneFolderButton').textContent = supportsDirectPhoneFolderPicker()
+    ? 'Choose a folder on this phone (optional)'
+    : 'Use Phone Storage (no folder picker needed)';
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/scan/sw.js').catch(()=>{});
   document.querySelectorAll('[data-back]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.back)));
   document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>{showView(b.dataset.nav);if(b.dataset.nav==='archiveView')refreshArchive();if(b.dataset.nav==='homeView')refreshHome().catch(error=>toast(error.message,true));if(b.dataset.nav==='documentsView')refreshStudentDocuments().catch(error=>toast(error.message,true));}));
@@ -109,7 +118,7 @@ async function boot() {
   $('welcomeSettingsButton').addEventListener('click',()=>openSettings('welcomeView'));
   $('settingsBackButton').addEventListener('click',()=>showView(settingsReturnView));
   $('settingsChangeFolder').addEventListener('click',()=>storageMode==='local'?choosePhoneFolder():openFolderSetup('homeView'));
-  $('signOutButton').addEventListener('click',async()=>{if(authApi)await authApi.signOut();localStorage.removeItem('roviaw_cloud_base_folder_v1');localStorage.removeItem('roviaw_storage_mode');account=null;storageMode='';setCloudStatus('Choose storage');showView('welcomeView');});
+  $('signOutButton').addEventListener('click',async()=>{if(authApi)await authApi.signOut();safePreferenceRemove('roviaw_cloud_base_folder_v1');safePreferenceRemove('roviaw_storage_mode');try{await deletePhoneSetting('preferredStorageMode');}catch{}account=null;storageMode='';setCloudStatus('Choose storage');showView('welcomeView');});
   $('mergeCreateButton').addEventListener('click',handleMergeFiles);
   $('cameraInput').addEventListener('change',e=>handleCapturedFiles(e.target.files,'camera'));
   $('fileInput').addEventListener('change',e=>handleCapturedFiles(e.target.files,'file'));
@@ -163,26 +172,55 @@ async function boot() {
   showView('welcomeView');
 }
 
+function supportsDirectPhoneFolderPicker() {
+  return !!(window.isSecureContext && typeof window.showDirectoryPicker === 'function');
+}
+
 async function activatePhoneStorage(showMessage=true) {
-  storageMode='local';
-  localStorage.setItem('roviaw_storage_mode','local');
-  baseFolder={id:'phone-root',name:'Phone storage',path:'This phone',local:true};
+  // IndexedDB is the durable, browser-portable storage layer. Test it before
+  // switching modes so an unsupported/private browser doesn't appear connected
+  // and then fail later when the first student is created.
   try {
+    if (!('indexedDB' in window) || !window.indexedDB) {
+      throw new Error('This browser has disabled local website storage. Open the scanner in a normal browser tab (not private/incognito mode), enable site storage, or use OneDrive.');
+    }
+    await listLocalArchive(); // opens and verifies the IndexedDB database
+    await requestPersistentPhoneStorage(); // request non-evictable storage where the browser allows it
     const handle=await getPhoneDirectoryHandle();
     phoneDirectoryName=handle?.name||'';
     phoneFolderWriteAvailable=!!handle;
-    await requestPersistentPhoneStorage();
-  } catch { phoneFolderWriteAvailable=false; }
-  account=null;
-  setCloudStatus('Saved on this phone',true);
-  await showHome();
-  if(showMessage) toast(phoneFolderWriteAvailable?`Phone storage ready · ${phoneDirectoryName}`:'Phone storage ready. Files stay in this app until downloaded or a folder is selected.');
+    storageMode='local';
+    safePreferenceSet('roviaw_storage_mode','local');
+    await savePhoneSetting('preferredStorageMode','local');
+    baseFolder={id:'phone-root',name:'Phone storage',path:'This phone',local:true};
+    account=null;
+    setCloudStatus('Saved on this phone',true);
+    await showHome();
+    if(showMessage) {
+      if(phoneFolderWriteAvailable) toast(`Phone storage ready · ${phoneDirectoryName}`);
+      else toast('Phone storage is ready. Records stay inside this browser; use the student or date ZIP downloads to save copies into Downloads.');
+    }
+    return true;
+  } catch (error) {
+    storageMode='';
+    safePreferenceRemove('roviaw_storage_mode');
+    try { await deletePhoneSetting('preferredStorageMode'); } catch { /* optional preference */ }
+    setCloudStatus('Choose storage');
+    showView('welcomeView');
+    const detail=error?.name==='QuotaExceededError'
+      ? 'The browser has no free storage space. Clear space or use OneDrive.'
+      : (error?.message || 'Phone storage could not be opened.');
+    toast(detail,true);
+    return false;
+  }
 }
 
 async function choosePhoneFolder() {
-  if(!('showDirectoryPicker' in window)) {
-    if(storageMode!=='local') await activatePhoneStorage(false);
-    toast('This browser cannot write directly to a chosen folder. Student files will stay in this app; use Download to save them into your phone storage.',true);
+  if(!supportsDirectPhoneFolderPicker()) {
+    const ready=storageMode==='local' || await activatePhoneStorage(false);
+    if(!ready) return;
+    await fillSettings();
+    toast('This browser does not support choosing a folder directly. Phone Storage still works inside the scanner; use Download by person or Download by date to save files into the phone’s Downloads folder.');
     return;
   }
   try {
@@ -192,12 +230,19 @@ async function choosePhoneFolder() {
     await savePhoneDirectoryHandle(handle);
     phoneDirectoryName=handle.name||'Selected folder';
     phoneFolderWriteAvailable=true;
-    if(storageMode!=='local') await activatePhoneStorage(false);
-    fillSettings();
+    if(storageMode!=='local') {
+      const ready=await activatePhoneStorage(false);
+      if(!ready) return;
+    }
+    await fillSettings();
     toast(`Phone folder selected: ${phoneDirectoryName}`);
   } catch(error) {
     if(error.name==='AbortError')return;
-    toast(error.message||'Could not select that folder.',true);
+    if(error.name==='SecurityError'||error.name==='NotAllowedError') {
+      toast('The browser blocked folder access. Phone Storage is still available inside the app; use the ZIP downloads to save copies.',false);
+      return;
+    }
+    toast(error.message||'Could not select that folder. Phone Storage inside the app remains available.',true);
   }
 }
 
@@ -214,7 +259,8 @@ async function afterLogin() {
   await loadCloudApis();
   if(!account) account=authApi?.getAccount();
   storageMode='onedrive';
-  localStorage.setItem('roviaw_storage_mode','onedrive');
+  safePreferenceSet('roviaw_storage_mode','onedrive');
+  try { await savePhoneSetting('preferredStorageMode','onedrive'); } catch { /* OneDrive can still be used for this session */ }
   setCloudStatus('OneDrive connected',true);
   $('accountLabel').textContent=displayNameForAccount();
   try { await graphApi.getDrive(); }
@@ -222,7 +268,7 @@ async function afterLogin() {
   baseFolder=oneDriveApi.getSavedBaseFolder();
   if(baseFolder?.id) {
     try { await graphApi.listChildren(baseFolder.id); await showHome(); return; }
-    catch { baseFolder=null; localStorage.removeItem('roviaw_cloud_base_folder_v1'); }
+    catch { baseFolder=null; safePreferenceRemove('roviaw_cloud_base_folder_v1'); }
   }
   await openFolderSetup('homeView');
 }
@@ -267,7 +313,7 @@ function openSettings(returnView='homeView') { settingsReturnView=returnView; fi
 async function showHome() {
   $('storageName').textContent=storageMode==='local'?'Phone storage':(baseFolder?.name || 'OneDrive');
   document.querySelector('.storage-icon').textContent=storageMode==='local'?'📱':'☁';
-  $('storagePath').textContent=storageMode==='local'?(phoneDirectoryName?`Folder: ${phoneDirectoryName}`:'Saved inside this app'):(baseFolder?.path || 'OneDrive root');
+  $('storagePath').textContent=storageMode==='local'?(phoneDirectoryName?`Folder: ${phoneDirectoryName}`:'Saved in this browser'):(baseFolder?.path || 'OneDrive root');
   $('accountLabel').textContent=storageMode==='local'?'This phone · Local storage':displayNameForAccount();
   showView('homeView');
   await refreshHome();
@@ -884,10 +930,17 @@ async function handleMergeFiles() {
 
 async function fillSettings() {
   $('settingsAccount').textContent=storageMode==='local'?'Not required · This phone':storageMode==='onedrive'?displayNameForAccount():'Not connected';
-  $('settingsPath').textContent=storageMode==='local'?(phoneDirectoryName||'Saved inside this app'):baseFolder?.path||'Not selected';
+  $('settingsPath').textContent=storageMode==='local'?(phoneDirectoryName||'Saved in this browser') : baseFolder?.path||'Not selected';
   $('settingsMode').textContent=storageMode==='local'?'Phone storage':storageMode==='onedrive'?'OneDrive':'Not connected';
   const ua=navigator.userAgent; const label=/Android/i.test(ua)?'Android phone':/iPhone|iPad/i.test(ua)?'Apple mobile device':'Mobile browser';
   $('deviceLabel').textContent=label;
+  const folderPickerSupported=supportsDirectPhoneFolderPicker();
+  $('settingsChoosePhoneFolder').disabled=!folderPickerSupported;
+  $('settingsChoosePhoneFolder').textContent=folderPickerSupported?'Choose':'Not supported';
+  const folderHelp=$('settingsPhoneFolderHelp');
+  if(folderHelp) folderHelp.textContent=folderPickerSupported
+    ? 'Select a real phone folder for direct file copies. App storage remains the reliable backup.'
+    : 'This browser cannot grant a website direct folder access. Phone storage inside the scanner still works; use ZIP downloads to save files into Downloads.';
   $('settingsSwitchPhone').hidden=storageMode==='local';
   $('settingsSwitchOneDrive').hidden=storageMode==='onedrive';
   $('settingsChangeFolder').textContent=storageMode==='local'?'Change folder':'Change';
@@ -917,7 +970,8 @@ async function handleSaveMicrosoftId() {
     account=null;
     if(storageMode==='onedrive') {
       storageMode='';
-      localStorage.removeItem('roviaw_storage_mode');
+      safePreferenceRemove('roviaw_storage_mode');
+    try { await deletePhoneSetting('preferredStorageMode'); } catch { /* optional preference */ }
     }
     await fillSettings();
     setCloudStatus('OneDrive ready to connect');

@@ -5,33 +5,64 @@ let dbPromise;
 
 function openDb() {
   if (dbPromise) return dbPromise;
-  dbPromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+  const opening = new Promise((resolve, reject) => {
+    let request;
+    try {
+      request = indexedDB.open(DB_NAME, DB_VERSION);
+    } catch (cause) {
+      reject(new Error(cause?.name === 'SecurityError'
+        ? 'The browser has blocked website storage. Open the scanner in a normal tab and allow site data.'
+        : 'This browser could not open phone storage. Allow website storage or use OneDrive.'));
+      return;
+    }
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORES.students)) db.createObjectStore(STORES.students, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(STORES.documents)) db.createObjectStore(STORES.documents, { keyPath: 'key' });
       if (!db.objectStoreNames.contains(STORES.settings)) db.createObjectStore(STORES.settings, { keyPath: 'key' });
     };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error('Could not open phone storage.'));
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => { try { db.close(); } catch { /* ignore */ } dbPromise = null; };
+      resolve(db);
+    };
+    request.onerror = () => {
+      dbPromise = null;
+      const cause = request.error;
+      const message = cause?.name === 'QuotaExceededError'
+        ? 'Phone storage is full. Free some space or switch to OneDrive.'
+        : 'The browser could not open phone storage. Use a normal browser tab, allow website storage, and avoid private/incognito mode.';
+      reject(new Error(message));
+    };
+    request.onblocked = () => {
+      dbPromise = null;
+      reject(new Error('Phone storage is busy in another scanner tab. Close other scanner tabs and try again.'));
+    };
   });
+  dbPromise = opening.catch(error => { dbPromise = null; throw error; });
   return dbPromise;
 }
 
 async function requestStore(storeName, mode, operation) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, mode);
+    let tx;
+    try { tx = db.transaction(storeName, mode); }
+    catch (error) { reject(error); return; }
     const store = tx.objectStore(storeName);
-    let request;
-    try { request = operation(store); } catch (error) { reject(error); return; }
-    if (request) {
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error || new Error('Phone storage operation failed.'));
-    } else {
-      tx.oncomplete = () => resolve(null);
-      tx.onerror = () => reject(tx.error || new Error('Phone storage operation failed.'));
+    let result = null;
+    tx.oncomplete = () => resolve(result);
+    tx.onerror = () => reject(tx.error || new Error('Phone storage operation failed.'));
+    tx.onabort = () => reject(tx.error || new Error('Phone storage operation was cancelled.'));
+    try {
+      const request = operation(store);
+      if (request) {
+        request.onsuccess = () => { result = request.result; };
+        request.onerror = () => reject(request.error || new Error('Phone storage operation failed.'));
+      }
+    } catch (error) {
+      try { tx.abort(); } catch { /* transaction may already be closed */ }
+      reject(error);
     }
   });
 }
@@ -53,6 +84,16 @@ export async function savePhoneDirectoryHandle(handle) {
 export async function getPhoneDirectoryHandle() {
   const setting = await get(STORES.settings, 'directoryHandle');
   return setting?.value || null;
+}
+export async function getPhoneSetting(key) {
+  const setting = await get(STORES.settings, key);
+  return setting?.value ?? null;
+}
+export async function savePhoneSetting(key, value) {
+  await put(STORES.settings, { key, value });
+}
+export async function deletePhoneSetting(key) {
+  await requestStore(STORES.settings, 'readwrite', store => store.delete(key));
 }
 
 async function writeDirectoryFile(parts, filename, blob) {

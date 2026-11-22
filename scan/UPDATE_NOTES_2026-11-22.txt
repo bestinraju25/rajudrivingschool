@@ -1,0 +1,24 @@
+ROVIAW CLOUD SCANNER — MOBILE COMPATIBILITY UPDATE
+
+Crop editor
+- Reworked responsive canvas display sizing so image/canvas coordinates are mapped from the actual on-screen rectangle, not assumed screen dimensions.
+- Increased finger hit areas for the four crop corners and redraws when the viewport size changes.
+- Pointer movement is tracked at window level, so a drag continues if the finger moves outside the canvas.
+- Added touch and mouse event fallback for browsers without Pointer Events.
+- Keeps fixed-ratio photo/signature crops anchored within the image when resizing from any corner; vertical or horizontal finger movement can resize the ratio-locked box.
+- Keeps four-corner page crops convex and rejects crossing corners with a more scale-aware geometry check.
+- Downscales very large source camera images to a 3200px maximum edge before editing to reduce memory use on lower-memory phones.
+- Added a JPEG encoder fallback for browsers without canvas.toBlob.
+
+Phone storage
+- Phone Storage uses IndexedDB and no longer requires the optional direct-folder picker.
+- The selected storage mode is also saved in IndexedDB, so it can be restored if localStorage preferences are blocked.
+- The app checks that IndexedDB can be opened before switching to Phone Storage and displays a useful error if browser storage is blocked or full.
+- Direct folder writing remains optional and is only offered when the secure-context File System Access folder picker exists.
+- If a browser does not support folder picking, keep using Phone Storage inside the scanner and use Download all documents (.ZIP) or Download by date (.ZIP) to export to the device's normal Downloads/share flow.
+- Updated the service worker cache version to refresh the new app assets after deployment.
+
+Limitations
+- A website cannot force a user-selected Android/iOS file-system folder on browsers that do not expose a supported folder-picker API. This is a browser security/platform limitation, not an app connection failure.
+- Browser-private/incognito modes may clear website databases when the session ends. For important or shared student records, use OneDrive and keep regular ZIP backups.
+- Actual testing on the customer's different Android/iOS phone/browser combinations is still required after deployment.

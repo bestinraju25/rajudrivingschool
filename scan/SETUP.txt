@@ -12,7 +12,7 @@ ROVIAW CLOUD SCANNER — COPY-READY WEBSITE FOLDER
 6. Choose either:
    - Continue with OneDrive: sign in using the same personal Microsoft account on each phone and select the same OneDrive folder.
    - Save on this phone: no Microsoft sign-in is needed. Student records remain in this browser's local app storage.
-7. In Settings, use "Choose" under Phone folder access to select an actual phone folder if your browser supports direct folder access.
+7. In Settings, use "Choose" under Phone folder access to select an actual phone folder only if your browser supports the File System Access folder picker. This is optional; Phone Storage itself uses browser storage and does not need a folder picker.
 
 SCANNING FLOW (MOBILE CLOUD EDITION)
 1. Select OneDrive or Phone storage. For shared records, sign in with the same Microsoft account on every phone and select the same OneDrive folder once on each phone.
@@ -44,15 +44,17 @@ MICROSOFT CLIENT ID SETTINGS
 - Saving from Settings does NOT write to GitHub or update the website repository. It configures only that browser on that phone. To preconfigure OneDrive for all phones, set the ID in scan/src/config.js and push the website; alternatively, enter it separately in Settings on each phone.
 
 PHONE STORAGE NOTES
-- If direct folder access is supported, captured files are written into the selected folder using date/student subfolders.
-- If the browser does not support writing to a selected folder, records remain in this browser's private app storage. Each saved document has a Download action; the browser then lets you save it to the phone's Downloads or another location.
+- Student records and original document blobs are stored in IndexedDB for the scanner website on that phone. This works in current mainstream browsers that permit website storage and does not require a folder picker.
+- If direct folder access is supported in a secure browser context, the scanner can also write copies into the selected folder using date/student subfolders. Folder picking is an optional browser feature and is not available in every mobile browser.
+- If folder picking is unavailable or blocked, Phone Storage still works inside the scanner. Use Download all documents (.ZIP) from a person or Download by date (.ZIP) from People Archive; the browser saves the ZIP through its normal download/share flow. The ZIP is visible in the phone's Downloads folder or the browser's download manager.
+- Browsers in private/incognito mode, browsers with site storage disabled, or devices with full storage may block or clear IndexedDB data. Use a normal browser tab and OneDrive for shared/important records; download regular ZIP backups.
 - Browser app storage is local to that browser on that phone. It does not automatically sync to another phone or appear in the phone's Files app. Do not clear browser site data if you need those locally stored records.
 - Merged PDFs are saved to the selected folder when supported; otherwise they are downloaded to the phone.
 
 TECHNICAL NOTES
 - This folder is a static browser app; no npm build is required. MSAL and pdf-lib are loaded from esm.sh, so the first page load requires internet access.
 - OneDrive sign-in and uploads require internet. Phone storage works without OneDrive sign-in; after the app has loaded, the scanner can store records locally.
-- Photo/signature and Aadhaar/Licence use the existing rectangular crop workflow, fixed photo/signature ratios, angle adjustment and 90-degree rotation. Named documents use four independently adjustable corners and piecewise affine straightening. This is manual corner adjustment, not automatic edge detection or a full projective lens correction.
+- The crop editor uses responsive canvas sizing, screen-coordinate conversion, larger touch hit areas, pointer-event handling plus legacy touch/mouse fallback, and redraws after viewport changes. Photo/signature maintain their fixed ratios; named documents use four independently adjustable corners and piecewise affine straightening. Large phone-camera images are downscaled to a safe working resolution before editing to reduce memory pressure. This is manual corner adjustment, not automatic edge detection or a full projective lens correction.
 - This is a mobile web app and does not support USB/WIA scanner access.
 - OneDrive mode uses delegated Files.ReadWrite, which gives the signed-in app access to that account's OneDrive files. Consider a dedicated school Microsoft account.
 - OneDrive document thumbnails use Microsoft Graph thumbnail sets when available. Graph may return no thumbnail for some items; those display a file-type placeholder. Thumbnails are previews, not the original document files.

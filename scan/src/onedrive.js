@@ -12,11 +12,17 @@ const shortId = value => String(value || '').replace(/-/g, '').slice(0, 8).toUpp
 export function getSavedBaseFolder() {
   try { return JSON.parse(localStorage.getItem(BASE_KEY) || 'null'); } catch { return null; }
 }
-export function saveBaseFolder(folder) { localStorage.setItem(BASE_KEY, JSON.stringify(folder)); }
+export function saveBaseFolder(folder) { try { localStorage.setItem(BASE_KEY, JSON.stringify(folder)); } catch { throw new Error('This browser could not remember the selected OneDrive folder. Enable site storage and select the folder again.'); } }
+let memoryDeviceId = null;
 export function getDeviceId() {
-  let id = localStorage.getItem(DEVICE_KEY);
-  if (!id) { id = crypto.randomUUID(); localStorage.setItem(DEVICE_KEY, id); }
-  return id;
+  try {
+    let id = localStorage.getItem(DEVICE_KEY);
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem(DEVICE_KEY, id); }
+    return id;
+  } catch {
+    if (!memoryDeviceId) memoryDeviceId = crypto.randomUUID();
+    return memoryDeviceId;
+  }
 }
 
 export async function createStudentRecord(baseFolder, details) {

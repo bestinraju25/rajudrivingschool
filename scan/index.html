@@ -33,9 +33,9 @@
           <p>Use OneDrive to share student records across phones, or save directly on this phone.</p>
           <button id="signInButton" class="btn btn-primary btn-full">Continue with OneDrive</button>
           <button id="phoneStorageButton" class="btn btn-light btn-full storage-choice-btn">Save on this phone</button>
-          <button id="choosePhoneFolderButton" class="text-btn folder-choice-btn">Choose a folder on this phone</button>
+          <button id="choosePhoneFolderButton" class="text-btn folder-choice-btn">Choose a folder on this phone (optional)</button>
           <button id="welcomeSettingsButton" class="text-btn folder-choice-btn">Settings · Configure OneDrive</button>
-          <div class="small-note">OneDrive needs an internet connection. Phone storage works without a Microsoft sign-in. You can change this later in Settings.</div>
+          <div class="small-note">Phone storage works without Microsoft sign-in. On browsers that do not allow folder picking, records still save inside the scanner; use ZIP downloads to save copies into Downloads.</div>
         </div>
       </section>
 
@@ -118,7 +118,7 @@
           <div class="setting-row"><div><strong>Current storage</strong><small id="settingsMode">OneDrive</small></div></div>
           <div class="setting-row"><div><strong>Account</strong><small id="settingsAccount">—</small></div><button id="signOutButton" class="btn btn-light">Sign out</button></div>
           <div class="setting-row"><div><strong>Save location</strong><small id="settingsPath">—</small></div><button id="settingsChangeFolder" class="btn btn-light">Change</button></div>
-          <div class="setting-row"><div><strong>Phone folder access</strong><small>Choose a folder to save files directly when supported by this browser.</small></div><button id="settingsChoosePhoneFolder" class="btn btn-light">Choose</button></div>
+          <div class="setting-row"><div><strong>Phone folder access</strong><small id="settingsPhoneFolderHelp">Direct folder access depends on browser support. App storage works separately.</small></div><button id="settingsChoosePhoneFolder" class="btn btn-light">Choose</button></div>
           <div class="setting-row"><div><strong>Use this phone</strong><small>Keep student records on this device.</small></div><button id="settingsSwitchPhone" class="btn btn-light">Switch</button></div>
           <div class="setting-row"><div><strong>Use OneDrive</strong><small>Share records across your phones.</small></div><button id="settingsSwitchOneDrive" class="btn btn-light">Switch</button></div>
           <div class="setting-row"><div><strong>This phone</strong><small id="deviceLabel">Mobile device</small></div><span class="online-dot"></span></div>

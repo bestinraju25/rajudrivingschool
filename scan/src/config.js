@@ -11,9 +11,11 @@ export const CONFIG = {
 };
 
 export function getConfiguredClientId() {
-  return localStorage.getItem(CLIENT_ID_STORAGE_KEY) || CONFIG.clientId;
+  try { return localStorage.getItem(CLIENT_ID_STORAGE_KEY) || CONFIG.clientId; }
+  catch { return CONFIG.clientId; }
 }
 
 export function storeConfiguredClientId(value) {
-  localStorage.setItem(CLIENT_ID_STORAGE_KEY, value.trim());
+  try { localStorage.setItem(CLIENT_ID_STORAGE_KEY, value.trim()); }
+  catch { throw new Error('This browser is blocking site preferences. Enable website storage or use a normal browser tab before saving the Microsoft ID.'); }
 }

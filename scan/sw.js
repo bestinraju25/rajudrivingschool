@@ -1,4 +1,4 @@
-const CACHE_NAME = 'roviaw-cloud-shell-v7-person-date-zip-download';
+const CACHE_NAME = 'roviaw-cloud-shell-v8-mobile-crop-storage-compat';
 const APP_SHELL = ['/scan/', '/scan/manifest.webmanifest', '/scan/favicon.svg', '/scan/icons/icon-192.png', '/scan/icons/icon-512.png', '/scan/src/main.js', '/scan/src/auth.js', '/scan/src/config.js', '/scan/src/graph.js', '/scan/src/image.js', '/scan/src/onedrive.js', '/scan/src/pdf.js', '/scan/src/local-store.js', '/scan/src/zip.js', '/scan/src/styles.css'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
