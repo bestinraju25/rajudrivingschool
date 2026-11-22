@@ -48,16 +48,40 @@ export async function saveStudentManifest(student, documents) {
 }
 
 export async function listArchive(baseFolder) {
+  // Archive data is read live from OneDrive on every refresh. Deleting a student
+  // folder in OneDrive therefore removes that person from this list.
   const children = await listChildren(baseFolder.id);
   const dateFolders = children.filter(x => x.folder && /^\d{4}-\d{2}-\d{2}$/.test(x.name)).sort((a,b) => b.name.localeCompare(a.name));
-  const result = [];
+  const groups = new Map();
   for (const dateFolder of dateFolders) {
-    const students = (await listChildren(dateFolder.id)).filter(x => x.folder).sort((a,b) => a.name.localeCompare(b.name));
-    result.push({ date: dateFolder.name, id: dateFolder.id, students: students.map(s => ({ id:s.id, folderId:s.id, folderName:s.name, name:s.name.replace(/__[A-F0-9]{8}$/i,'') })) });
+    const students = (await listChildren(dateFolder.id))
+      .filter(x => x.folder)
+      .sort((a,b) => a.name.localeCompare(b.name))
+      .map(s => ({
+        id: s.id, folderId: s.id, folderName: s.name,
+        name: s.name.replace(/__[A-F0-9]{8}$/i,''), source: 'onedrive'
+      }));
+    if (students.length) groups.set(dateFolder.name, students);
   }
-  return result;
-}
 
+  // Also include student folders uploaded manually at the selected OneDrive
+  // root (outside a date folder), provided they contain files directly. The
+  // special Merged Files utility folder is intentionally excluded.
+  const looseFolders = children.filter(x => x.folder && !/^\d{4}-\d{2}-\d{2}$/.test(x.name) && x.name.toLowerCase() !== 'merged files');
+  for (const folder of looseFolders) {
+    const contents = await listChildren(folder.id);
+    if (!contents.some(x => x.file)) continue;
+    const stamp = folder.createdDateTime || folder.lastModifiedDateTime;
+    const date = stamp ? stamp.slice(0,10) : todayKey();
+    const students = groups.get(date) || [];
+    students.push({ id: folder.id, folderId: folder.id, folderName: folder.name, name: folder.name.replace(/__[A-F0-9]{8}$/i,''), source: 'onedrive' });
+    groups.set(date, students);
+  }
+
+  return [...groups.entries()]
+    .sort((a,b) => b[0].localeCompare(a[0]))
+    .map(([date, students]) => ({ date, id: date, students: students.sort((a,b) => a.name.localeCompare(b.name)) }));
+}
 export async function listStudentDocuments(studentFolderId) {
   return (await listChildren(studentFolderId)).filter(x => x.file && x.name !== 'student.json');
 }

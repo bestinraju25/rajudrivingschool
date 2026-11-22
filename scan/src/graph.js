@@ -23,8 +23,8 @@ export async function getDrive() { return graphRequest('/me/drive?$select=id,nam
 
 export async function listChildren(parentId = 'root') {
   let url = parentId === 'root'
-    ? `${CONFIG.graphBase}/me/drive/root/children?$select=id,name,folder,file,size,webUrl,lastModifiedDateTime&$top=200`
-    : `${CONFIG.graphBase}/me/drive/items/${encodeURIComponent(parentId)}/children?$select=id,name,folder,file,size,webUrl,lastModifiedDateTime&$top=200`;
+    ? `${CONFIG.graphBase}/me/drive/root/children?$select=id,name,folder,file,size,webUrl,lastModifiedDateTime,createdDateTime&$top=200`
+    : `${CONFIG.graphBase}/me/drive/items/${encodeURIComponent(parentId)}/children?$select=id,name,folder,file,size,webUrl,lastModifiedDateTime,createdDateTime&$top=200`;
   const items = [];
   while (url) {
     const page = await graphRequest(url);

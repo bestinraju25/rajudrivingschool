@@ -126,7 +126,7 @@ export async function listLocalArchive() {
   const groups = new Map();
   for (const s of sorted) {
     if (!groups.has(s.date)) groups.set(s.date, []);
-    groups.get(s.date).push({ id: s.id, folderId: s.id, folderName: s.folderName, name: s.name });
+    groups.get(s.date).push({ id: s.id, folderId: s.id, folderName: s.folderName, name: s.name, source: 'phone' });
   }
   return [...groups.entries()].map(([date, students]) => ({ date, id: date, students }));
 }

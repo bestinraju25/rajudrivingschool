@@ -1,7 +1,7 @@
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 const PROFILES = {
-  Photo: { width: 205, height: 286, preferredMin: 13 * 1024, preferredMax: 18 * 1024 },
-  Signature: { width: 312, height: 243, preferredMin: 13 * 1024, preferredMax: 18 * 1024 }
+  Photo: { width: 205, height: 286, preferredMin: 10 * 1024, preferredMax: 18 * 1024 },
+  Signature: { width: 312, height: 243, preferredMin: 10 * 1024, preferredMax: 18 * 1024 }
 };
 
 function loadImage(file) {
@@ -52,18 +52,58 @@ async function ensureJfif96Dpi(blob) {
   return new Blob([output], {type:'image/jpeg'});
 }
 
+async function padJpegToMinimum(blob, minimumBytes) {
+  if (blob.size >= minimumBytes) return blob;
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  if (bytes.length < 2 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return blob;
+  const padding = Math.max(4, minimumBytes - bytes.length);
+  const payloadLength = padding - 4;
+  if (payloadLength > 65533) return blob;
+  // A JPEG COM segment is ignored by image decoders; it pads very small signature files
+  // into the required upload band without changing the visible pixels.
+  const segment = new Uint8Array(padding);
+  segment[0] = 0xff; segment[1] = 0xfe;
+  const segmentLength = payloadLength + 2;
+  segment[2] = (segmentLength >> 8) & 0xff; segment[3] = segmentLength & 0xff;
+  segment.fill(0x20, 4);
+  // Insert the padding comment after the JPEG header segments (including JFIF APP0)
+  // and immediately before image scan data, preserving the JFIF APP0-first convention.
+  let insertAt = 2;
+  let pos = 2;
+  while (pos + 4 < bytes.length && bytes[pos] === 0xff) {
+    const marker = bytes[pos + 1];
+    if (marker === 0xda || marker === 0xd9) break;
+    if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd7)) { pos += 2; insertAt = pos; continue; }
+    const length = (bytes[pos + 2] << 8) | bytes[pos + 3];
+    if (length < 2 || pos + 2 + length > bytes.length) break;
+    pos += 2 + length;
+    insertAt = pos;
+  }
+  const output = new Uint8Array(bytes.length + segment.length);
+  output.set(bytes.subarray(0, insertAt), 0);
+  output.set(segment, insertAt);
+  output.set(bytes.subarray(insertAt), insertAt + segment.length);
+  return new Blob([output], { type: 'image/jpeg' });
+}
+
 async function exportJpeg(canvas, profile) {
   if (!profile) return ensureJfif96Dpi(await canvasBlob(canvas, 0.9));
   let best = null;
-  for (let quality = 0.96; quality >= 0.20; quality -= 0.025) {
+  const maximum = profile.preferredMax - 24; // reserve space for the JFIF density metadata
+  for (let quality = 0.98; quality >= 0.20; quality -= 0.02) {
     const blob = await canvasBlob(canvas, quality);
-    if (blob.size <= profile.preferredMax) {
-      best = blob; // first candidate is the highest quality that fits the cap
+    if (blob.size <= maximum) {
+      best = blob; // highest-quality candidate that will fit after metadata is added
       break;
     }
   }
-  if (!best) throw new Error('This image cannot fit within the preferred file size. Try a sharper, evenly lit capture and crop closer to the subject.');
-  return ensureJfif96Dpi(best);
+  if (!best) throw new Error('This image cannot fit within 18 KB. Try a sharper, evenly lit capture and crop closer to the subject.');
+  let output = await ensureJfif96Dpi(best);
+  output = await padJpegToMinimum(output, profile.preferredMin);
+  if (output.size < profile.preferredMin || output.size > profile.preferredMax) {
+    throw new Error('Photo and signature files must be between 10 KB and 18 KB. Please capture and crop the image again.');
+  }
+  return output;
 }
 
 export async function cropImage(file, profile, onOpen) {
@@ -131,7 +171,9 @@ export async function cropImage(file, profile, onOpen) {
     canvas.width=Math.max(1,Math.round(sourceCanvas.width*scale)); canvas.height=Math.max(1,Math.round(sourceCanvas.height*scale));
     crop=initialCrop(canvas.width,canvas.height,profile); draw();
   };
-  document.getElementById('cropModal').classList.add('open'); draw();
+  document.getElementById('cropModal').classList.add('open');
+  if (typeof onOpen === 'function') onOpen();
+  draw();
   return new Promise((resolve,reject)=>{
     document.getElementById('cropClose').onclick=document.getElementById('cropCancel').onclick=()=>{document.getElementById('cropModal').classList.remove('open');resolve(null);};
     document.getElementById('cropSave').onclick=async()=>{

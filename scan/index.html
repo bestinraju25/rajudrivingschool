@@ -34,6 +34,7 @@
           <button id="signInButton" class="btn btn-primary btn-full">Continue with OneDrive</button>
           <button id="phoneStorageButton" class="btn btn-light btn-full storage-choice-btn">Save on this phone</button>
           <button id="choosePhoneFolderButton" class="text-btn folder-choice-btn">Choose a folder on this phone</button>
+          <button id="welcomeSettingsButton" class="text-btn folder-choice-btn">Settings · Configure OneDrive</button>
           <div class="small-note">OneDrive needs an internet connection. Phone storage works without a Microsoft sign-in. You can change this later in Settings.</div>
         </div>
       </section>
@@ -76,34 +77,40 @@
         <div class="page-heading"><button class="back-btn" data-back="homeView">← Home</button><div class="eyebrow">STUDENT DOCUMENTS</div><h1 id="activeStudentName">Student</h1><p id="activeStudentMeta">Documents are uploaded directly to OneDrive.</p></div>
         <div class="student-progress"><div class="student-progress-title"><strong>Document checklist</strong><span id="documentCount">0 saved</span></div><div class="checklist" id="documentChecklist"></div></div>
         <div class="document-grid">
-          <button class="document-tile" data-doc="Photo"><span>📷</span><strong>Photograph</strong><small>205 × 286 px · JPG</small></button>
-          <button class="document-tile" data-doc="Signature"><span>✍</span><strong>Signature</strong><small>312 × 243 px · JPG</small></button>
-          <button class="document-tile" data-doc="Aadhaar"><span>▣</span><strong>Aadhaar</strong><small>Front and back · PDF</small></button>
-          <button class="document-tile" data-doc="Licence"><span>▤</span><strong>Licence</strong><small>Front and back · PDF</small></button>
-          <button class="document-tile wide" data-doc="Other"><span>＋</span><strong>Other named document</strong><small>One or more pages · PDF</small></button>
+          <button class="document-tile" data-doc="Photo"><span>📷</span><strong>Photograph</strong><small>205 × 286 px · JPG · 10–18 KB</small></button>
+          <button class="document-tile" data-doc="Signature"><span>✍</span><strong>Signature</strong><small>312 × 243 px · JPG · 10–18 KB</small></button>
+          <button class="document-tile" data-doc="Aadhaar"><span>▣</span><strong>Aadhaar</strong><small>Front and back · PDF · Max 480 KB</small></button>
+          <button class="document-tile" data-doc="Licence"><span>▤</span><strong>Licence</strong><small>Front and back · PDF · Max 480 KB</small></button>
+          <button class="document-tile wide" data-doc="Other"><span>＋</span><strong>Other named document</strong><small>1–8 pages · PDF · Max 480 KB</small></button>
         </div>
         <div class="panel saved-doc-panel"><div class="section-head"><h2>Saved documents</h2><button id="refreshDocsButton" class="text-btn">Refresh</button></div><div id="savedDocsList" class="record-list"><div class="empty-state">No documents saved yet.</div></div></div>
         <button id="finishStudentButton" class="btn btn-light btn-full">Finish this student</button>
       </section>
 
       <section id="archiveView" class="view">
-        <div class="page-heading"><button class="back-btn" data-back="homeView">← Home</button><div class="eyebrow">STUDENT RECORDS</div><h1>People Archive</h1><p>Records are grouped by date in your selected storage.</p></div>
+        <div class="page-heading"><button class="back-btn" data-back="homeView">← Home</button><div class="eyebrow">STUDENT RECORDS</div><h1>People Archive</h1><p>Choose Phone, OneDrive or All sources. People are grouped by date, newest first; OneDrive changes appear after refresh.</p></div>
+        <div class="archive-source-tabs" role="tablist" aria-label="People Archive storage source">
+          <button type="button" class="active" data-archive-source="all" role="tab" aria-selected="true">All sources</button>
+          <button type="button" data-archive-source="phone" role="tab" aria-selected="false">📱 Phone</button>
+          <button type="button" data-archive-source="onedrive" role="tab" aria-selected="false">☁ OneDrive</button>
+        </div>
+        <div id="archiveSourceNote" class="archive-source-note" hidden><span id="archiveSourceNoteText"></span><button id="archiveConnectOneDriveButton" class="text-btn" type="button" hidden>Connect OneDrive</button></div>
         <div class="search-row"><span>⌕</span><input id="archiveSearch" type="search" placeholder="Search student name…" /><button id="archiveRefreshButton" class="text-btn">Refresh</button></div>
         <div id="archiveList" class="archive-list"><div class="empty-state">Loading archive…</div></div>
       </section>
 
       <section id="mergeView" class="view">
-        <div class="page-heading"><button class="back-btn" data-back="homeView">← Home</button><div class="eyebrow">PDF TOOL</div><h1>Merge Files</h1><p>Select images from this phone and combine them into a PDF saved to your selected storage.</p></div>
+        <div class="page-heading"><button class="back-btn" data-back="homeView">← Home</button><div class="eyebrow">PDF TOOL</div><h1>Merge Files</h1><p>Select 1–10 images. Review and crop every page, then combine them into one compressed PDF (maximum 480 KB).</p></div>
         <div class="panel form-panel">
           <label>File name<input id="mergeName" type="text" placeholder="Enter merged file name" /></label>
-          <label>Select images<input id="mergeInput" type="file" accept="image/*" multiple /></label>
+          <label>Select images (1–10)<input id="mergeInput" type="file" accept="image/*" multiple /></label>
           <label>PDF layout<select id="mergeLayout"><option value="separate">Each image on a separate page</option><option value="single">Fit all images on one A4 page</option></select></label>
           <button id="mergeCreateButton" class="btn btn-primary btn-full">Create PDF and save</button>
         </div>
       </section>
 
       <section id="settingsView" class="view">
-        <div class="page-heading"><button class="back-btn" data-back="homeView">← Home</button><div class="eyebrow">PREFERENCES</div><h1>Settings</h1></div>
+        <div class="page-heading"><button class="back-btn" id="settingsBackButton">← Back</button><div class="eyebrow">PREFERENCES</div><h1>Settings</h1></div>
         <div class="panel settings-panel">
           <div class="setting-row"><div><strong>Current storage</strong><small id="settingsMode">OneDrive</small></div></div>
           <div class="setting-row"><div><strong>Account</strong><small id="settingsAccount">—</small></div><button id="signOutButton" class="btn btn-light">Sign out</button></div>
@@ -113,6 +120,14 @@
           <div class="setting-row"><div><strong>Use OneDrive</strong><small>Share records across your phones.</small></div><button id="settingsSwitchOneDrive" class="btn btn-light">Switch</button></div>
           <div class="setting-row"><div><strong>This phone</strong><small id="deviceLabel">Mobile device</small></div><span class="online-dot"></span></div>
         </div>
+        <div class="panel form-panel client-id-panel">
+          <div><div class="eyebrow">MICROSOFT ONE DRIVE</div><h2>Application Client ID</h2><p>Enter the Client ID from your Microsoft app registration. This is a public ID, not a password or client secret.</p></div>
+          <label>Microsoft Application (client) ID<input id="settingsClientId" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" /></label>
+          <button id="saveMicrosoftIdButton" class="btn btn-primary btn-full">Save Client ID</button>
+          <small id="settingsMicrosoftStatus" class="small-note">Client ID not configured.</small>
+          <div class="small-note">This saves the ID only in this browser on this phone. It does not edit or push your GitHub website files. To preconfigure the same ID for everyone, add it to <b>scan/src/config.js</b> and push the updated website.</div>
+        </div>
+        <div class="small-note size-policy-note">File size rules: Photo and Signature 10–18 KB each. Aadhaar, Licence, named documents and Merge Files PDFs must never exceed 480 KB. Oversized files are blocked from saving or uploading.</div>
       </section>
     </main>
 

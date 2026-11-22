@@ -2,7 +2,7 @@ ROVIAW CLOUD SCANNER — COPY-READY WEBSITE FOLDER
 
 1. Copy this entire folder named "scan" into your website repository's published website root.
    Example: your-website-repo/scan/index.html
-2. For OneDrive mode, open scan/src/config.js and replace PASTE_MICROSOFT_CLIENT_ID_HERE with your Microsoft Entra Application (client) ID.
+2. You can enter your Microsoft Entra Application (client) ID from Settings → Application Client ID (the Settings link is available on the welcome screen before OneDrive sign-in). This saves it on that phone. For a preconfigured ID shared by all phones, also put it in scan/src/config.js before pushing.
 3. In the Entra app registration, add this exact Single-page application redirect URI:
    https://www.rajudrivingschool.com/scan/
    Supported account type must include personal Microsoft accounts.
@@ -13,6 +13,34 @@ ROVIAW CLOUD SCANNER — COPY-READY WEBSITE FOLDER
    - Continue with OneDrive: sign in using the same personal Microsoft account on each phone and select the same OneDrive folder.
    - Save on this phone: no Microsoft sign-in is needed. Student records remain in this browser's local app storage.
 7. In Settings, use "Choose" under Phone folder access to select an actual phone folder if your browser supports direct folder access.
+
+SCANNING FLOW (MOBILE CLOUD EDITION)
+1. Select OneDrive or Phone storage. For shared records, sign in with the same Microsoft account on every phone and select the same OneDrive folder once on each phone.
+2. Tap New student, enter the student name (mobile and address are optional), then create the student.
+3. Tap Photograph or Signature, capture with the camera or choose an image, adjust the crop/angle, and tap Use this crop. The saved JPG is kept at the Vahan reference dimensions: Photo 205 × 286 px; Signature 312 × 243 px. Both are enforced between 10 KB and 18 KB with 96 DPI metadata.
+4. Tap Aadhaar or Licence. Capture and crop the front side, then capture and crop the reverse side. Choose separate PDF pages or both sides on one A4 page. The PDF is compressed and checked before saving.
+5. For Other named document, enter a document name and capture pages one by one or select multiple images (1–8 pages). Full pages are retained without crop editing, then combined into a compressed PDF.
+6. Finish this student to close the record and return to the home screen. Use People Archive to find saved records later.
+7. People Archive has All sources, Phone and OneDrive tabs. Phone shows only records stored by this browser on this phone. OneDrive reads the currently selected shared OneDrive folder live whenever the archive is refreshed. All sources combines this phone's local records with the shared OneDrive records when the OneDrive account is connected. Lists are grouped by date, newest first.
+8. Merge Files is a separate utility for 1–10 selected images. Every image opens in the crop/review editor before the pages are combined into a compressed PDF.
+
+PEOPLE ARCHIVE AND EXTERNAL ONEDRIVE CHANGES
+- If a student folder is deleted from the selected OneDrive folder, that person disappears from the OneDrive archive after Refresh. Deleting only a document inside the student's folder leaves the person listed, but the deleted document is no longer available.
+- Students created by this app on any phone using the same OneDrive account and same selected base folder appear in the OneDrive tab after Refresh.
+- You may also upload a separate student folder manually into the selected OneDrive folder; a direct-upload student folder with documents inside it is included in the archive and dated from its OneDrive creation/modification date.
+- The standard date-wise structure is preferred: YYYY-MM-DD / StudentName__ID / student documents. Folders such as Merged Files are not treated as people. Loose files uploaded directly into the root without a student folder cannot be reliably identified as a person and will not appear as a person record.
+- Phone records are private to that browser/device. Deleting a OneDrive folder does not delete a separate Phone record with the same name.
+
+The mobile cloud edition replaces the Windows PC QR pairing: each phone signs into OneDrive directly and works with the same shared cloud folder. It does not send files to a Windows PC session.
+
+STRICT FILE SIZE RULES
+- Photo.jpg and Signature.jpg: 10 KB minimum, 18 KB maximum.
+- Aadhaar.pdf, Licence.pdf, named-document PDFs and Merge Files PDFs: 480 KB maximum (491,520 bytes).
+- PDF generation retries with lower image dimensions/quality. If the final PDF still exceeds 480 KB, the app refuses to save or upload it and shows an error.
+
+MICROSOFT CLIENT ID SETTINGS
+- The Settings screen accepts the public Microsoft Application (client) ID and saves it in this browser's local storage. No client secret is needed or requested.
+- Saving from Settings does NOT write to GitHub or update the website repository. It configures only that browser on that phone. To preconfigure OneDrive for all phones, set the ID in scan/src/config.js and push the website; alternatively, enter it separately in Settings on each phone.
 
 PHONE STORAGE NOTES
 - If direct folder access is supported, captured files are written into the selected folder using date/student subfolders.
