@@ -106,88 +106,183 @@ async function exportJpeg(canvas, profile) {
   return output;
 }
 
-export async function cropImage(file, profile, onOpen) {
+export async function cropImage(file, profile, onOpen, options = {}) {
+  const perspective = options.perspective === true;
   const image = await loadImage(file);
   let angle = 0;
   let sourceCanvas = rotatedCanvas(image, angle);
   const canvas = document.getElementById('cropCanvas');
   const ctx = canvas.getContext('2d');
   const maxW = 900, maxH = 610;
-  let scale = Math.min(maxW/sourceCanvas.width, maxH/sourceCanvas.height, 1);
-  canvas.width = Math.max(1, Math.round(sourceCanvas.width * scale));
-  canvas.height = Math.max(1, Math.round(sourceCanvas.height * scale));
-  let crop = initialCrop(canvas.width, canvas.height, profile);
+  let scale = 1;
+  let crop = null;
+  let quad = null;
   let gesture = null;
+
+  function resizeStage() {
+    scale = Math.min(maxW/sourceCanvas.width, maxH/sourceCanvas.height, 1);
+    canvas.width = Math.max(1, Math.round(sourceCanvas.width * scale));
+    canvas.height = Math.max(1, Math.round(sourceCanvas.height * scale));
+    if (perspective) quad = initialQuad(canvas.width, canvas.height);
+    else crop = initialCrop(canvas.width, canvas.height, profile);
+  }
+  resizeStage();
+
   const draw = () => {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.drawImage(sourceCanvas,0,0,canvas.width,canvas.height);
-    ctx.fillStyle = 'rgba(5,12,24,.58)'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.clearRect(crop.x,crop.y,crop.w,crop.h);
-    ctx.drawImage(sourceCanvas,
-      crop.x/scale,crop.y/scale,crop.w/scale,crop.h/scale,
-      crop.x,crop.y,crop.w,crop.h);
-    ctx.strokeStyle = '#39e38a'; ctx.lineWidth = 3; ctx.strokeRect(crop.x,crop.y,crop.w,crop.h);
-    const handles = [[crop.x,crop.y],[crop.x+crop.w,crop.y],[crop.x+crop.w,crop.y+crop.h],[crop.x,crop.y+crop.h]];
-    for (const [x,y] of handles) { ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill(); ctx.lineWidth=3; ctx.strokeStyle='#1bbd72'; ctx.stroke(); }
+    ctx.fillStyle = 'rgba(5,12,24,.62)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    if (perspective) {
+      ctx.save();
+      ctx.beginPath();
+      quad.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(sourceCanvas,0,0,canvas.width,canvas.height);
+      ctx.restore();
+      ctx.beginPath();
+      quad.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+      ctx.closePath();
+      ctx.strokeStyle='#39e38a';ctx.lineWidth=3;ctx.stroke();
+      for (const p of quad) {
+        ctx.beginPath();ctx.arc(p.x,p.y,9,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+        ctx.lineWidth=3;ctx.strokeStyle='#1bbd72';ctx.stroke();
+      }
+    } else {
+      ctx.clearRect(crop.x,crop.y,crop.w,crop.h);
+      ctx.drawImage(sourceCanvas,
+        crop.x/scale,crop.y/scale,crop.w/scale,crop.h/scale,
+        crop.x,crop.y,crop.w,crop.h);
+      ctx.strokeStyle = '#39e38a'; ctx.lineWidth = 3; ctx.strokeRect(crop.x,crop.y,crop.w,crop.h);
+      const handles = [[crop.x,crop.y],[crop.x+crop.w,crop.y],[crop.x+crop.w,crop.y+crop.h],[crop.x,crop.y+crop.h]];
+      for (const [x,y] of handles) { ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill(); ctx.lineWidth=3; ctx.strokeStyle='#1bbd72'; ctx.stroke(); }
+    }
   };
-  const point = e => { const r=canvas.getBoundingClientRect(); return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}; };
+
+  const point = e => {
+    const r=canvas.getBoundingClientRect();
+    return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};
+  };
   const ratio = profile ? profile.width/profile.height : null;
   canvas.onpointerdown = e => {
-    e.preventDefault(); canvas.setPointerCapture(e.pointerId);
-    const p=point(e), corners=[[crop.x,crop.y],[crop.x+crop.w,crop.y],[crop.x+crop.w,crop.y+crop.h],[crop.x,crop.y+crop.h]];
-    let corner=-1; corners.forEach((c,i)=>{if(Math.hypot(c[0]-p.x,c[1]-p.y)<30)corner=i;});
-    gesture={mode:corner>=0?'resize':'move',corner,start:p,original:{...crop}};
+    e.preventDefault();canvas.setPointerCapture(e.pointerId);
+    const p=point(e);
+    if (perspective) {
+      let corner=-1;quad.forEach((c,i)=>{if(Math.hypot(c.x-p.x,c.y-p.y)<34)corner=i;});
+      gesture={mode:corner>=0?'corner':'move',corner,start:p,original:quad.map(q=>({...q}))};
+    } else {
+      const corners=[[crop.x,crop.y],[crop.x+crop.w,crop.y],[crop.x+crop.w,crop.y+crop.h],[crop.x,crop.y+crop.h]];
+      let corner=-1;corners.forEach((c,i)=>{if(Math.hypot(c[0]-p.x,c[1]-p.y)<30)corner=i;});
+      gesture={mode:corner>=0?'resize':'move',corner,start:p,original:{...crop}};
+    }
   };
   canvas.onpointermove = e => {
-    if(!gesture)return; e.preventDefault(); const p=point(e), dx=p.x-gesture.start.x,dy=p.y-gesture.start.y, o=gesture.original;
-    if(gesture.mode==='move'){
-      crop.x=clamp(o.x+dx,0,canvas.width-o.w); crop.y=clamp(o.y+dy,0,canvas.height-o.h);
+    if(!gesture)return;e.preventDefault();
+    const p=point(e),dx=p.x-gesture.start.x,dy=p.y-gesture.start.y;
+    if (perspective) {
+      const next=gesture.original.map(q=>({...q}));
+      if(gesture.mode==='corner') {
+        next[gesture.corner]={x:clamp(p.x,0,canvas.width),y:clamp(p.y,0,canvas.height)};
+      } else {
+        const minX=Math.min(...gesture.original.map(q=>q.x)),maxX=Math.max(...gesture.original.map(q=>q.x));
+        const minY=Math.min(...gesture.original.map(q=>q.y)),maxY=Math.max(...gesture.original.map(q=>q.y));
+        const ox=clamp(dx,-minX,canvas.width-maxX),oy=clamp(dy,-minY,canvas.height-maxY);
+        for(const q of next){q.x+=ox;q.y+=oy;}
+      }
+      if(validQuad(next))quad=next;
     } else {
-      let w=gesture.corner===0||gesture.corner===3?o.w-dx:o.w+dx;
-      let h=ratio ? w/ratio : (gesture.corner===0||gesture.corner===1?o.h-dy:o.h+dy);
-      if(!ratio) h=Math.max(40,h); else h=Math.max(40,h);
-      w=Math.max(40,w); if(ratio) h=w/ratio;
-      if(gesture.corner===0){crop.x=o.x+o.w-w;crop.y=o.y+o.h-h;}
-      if(gesture.corner===1){crop.x=o.x;crop.y=o.y+o.h-h;}
-      if(gesture.corner===2){crop.x=o.x;crop.y=o.y;}
-      if(gesture.corner===3){crop.x=o.x+o.w-w;crop.y=o.y;}
-      crop.w=w;crop.h=h;
-      crop.x=clamp(crop.x,0,canvas.width-crop.w);crop.y=clamp(crop.y,0,canvas.height-crop.h);
+      const o=gesture.original;
+      if(gesture.mode==='move'){
+        crop.x=clamp(o.x+dx,0,canvas.width-o.w);crop.y=clamp(o.y+dy,0,canvas.height-o.h);
+      } else {
+        let w=gesture.corner===0||gesture.corner===3?o.w-dx:o.w+dx;
+        let h=ratio?w/ratio:(gesture.corner===0||gesture.corner===1?o.h-dy:o.h+dy);
+        h=Math.max(40,h);w=Math.max(40,w);if(ratio)h=w/ratio;
+        if(gesture.corner===0){crop.x=o.x+o.w-w;crop.y=o.y+o.h-h;}
+        if(gesture.corner===1){crop.x=o.x;crop.y=o.y+o.h-h;}
+        if(gesture.corner===2){crop.x=o.x;crop.y=o.y;}
+        if(gesture.corner===3){crop.x=o.x+o.w-w;crop.y=o.y;}
+        crop.w=w;crop.h=h;crop.x=clamp(crop.x,0,canvas.width-crop.w);crop.y=clamp(crop.y,0,canvas.height-crop.h);
+      }
     }
     draw();
   };
-  canvas.onpointerup = canvas.onpointercancel = () => { gesture=null; };
-  document.getElementById('cropReset').onclick = () => { crop=initialCrop(canvas.width,canvas.height,profile); draw(); };
-  document.getElementById('cropRotate').onclick = () => {
-    angle=(angle+90)%360; sourceCanvas=rotatedCanvas(image,angle); scale=Math.min(maxW/sourceCanvas.width,maxH/sourceCanvas.height,1);
-    canvas.width=Math.max(1,Math.round(sourceCanvas.width*scale)); canvas.height=Math.max(1,Math.round(sourceCanvas.height*scale));
-    crop=initialCrop(canvas.width,canvas.height,profile); draw();
+  canvas.onpointerup=canvas.onpointercancel=()=>{gesture=null;};
+  document.getElementById('cropReset').onclick=()=>{if(perspective)quad=initialQuad(canvas.width,canvas.height);else crop=initialCrop(canvas.width,canvas.height,profile);draw();};
+  document.getElementById('cropRotate').onclick=()=>{
+    angle=(angle+90)%360;sourceCanvas=rotatedCanvas(image,angle);resizeStage();draw();
   };
   const angleRange=document.getElementById('angleRange');
-  angleRange.value='0'; document.getElementById('angleValue').textContent='0°';
+  angleRange.value='0';document.getElementById('angleValue').textContent='0°';
   angleRange.oninput=()=>{
-    const fine=Number(angleRange.value); document.getElementById('angleValue').textContent=`${fine}°`;
-    sourceCanvas=rotatedCanvas(image,angle+fine); scale=Math.min(maxW/sourceCanvas.width,maxH/sourceCanvas.height,1);
-    canvas.width=Math.max(1,Math.round(sourceCanvas.width*scale)); canvas.height=Math.max(1,Math.round(sourceCanvas.height*scale));
-    crop=initialCrop(canvas.width,canvas.height,profile); draw();
+    const fine=Number(angleRange.value);document.getElementById('angleValue').textContent=`${fine}°`;
+    sourceCanvas=rotatedCanvas(image,angle+fine);resizeStage();draw();
   };
   document.getElementById('cropModal').classList.add('open');
-  if (typeof onOpen === 'function') onOpen();
+  if(typeof onOpen==='function')onOpen();
   draw();
+
   return new Promise((resolve,reject)=>{
-    document.getElementById('cropClose').onclick=document.getElementById('cropCancel').onclick=()=>{document.getElementById('cropModal').classList.remove('open');resolve(null);};
+    document.getElementById('cropClose').onclick=document.getElementById('cropCancel').onclick=()=>{
+      document.getElementById('cropModal').classList.remove('open');resolve(null);
+    };
     document.getElementById('cropSave').onclick=async()=>{
       try {
-        const outW=profile?.width || Math.max(1,Math.round(crop.w/scale));
-        const outH=profile?.height || Math.max(1,Math.round(crop.h/scale));
-        const out=document.createElement('canvas');out.width=outW;out.height=outH;
-        const outCtx=out.getContext('2d',{alpha:false});outCtx.fillStyle='#fff';outCtx.fillRect(0,0,outW,outH);
-        outCtx.drawImage(sourceCanvas,crop.x/scale,crop.y/scale,crop.w/scale,crop.h/scale,0,0,outW,outH);
+        const out=document.createElement('canvas');
+        if (perspective) {
+          const src=quad.map(p=>({x:p.x/scale,y:p.y/scale}));
+          const edgeWidth=(distance(src[0],src[1])+distance(src[3],src[2]))/2;
+          const edgeHeight=(distance(src[0],src[3])+distance(src[1],src[2]))/2;
+          const cap=2600;
+          const fit=Math.min(1,cap/Math.max(edgeWidth,edgeHeight));
+          out.width=Math.max(1,Math.round(edgeWidth*fit));out.height=Math.max(1,Math.round(edgeHeight*fit));
+          const dst=[{x:0,y:0},{x:out.width,y:0},{x:out.width,y:out.height},{x:0,y:out.height}];
+          const outCtx=out.getContext('2d',{alpha:false});outCtx.fillStyle='#fff';outCtx.fillRect(0,0,out.width,out.height);
+          drawWarpTriangle(outCtx,sourceCanvas,[src[0],src[1],src[2]],[dst[0],dst[1],dst[2]]);
+          drawWarpTriangle(outCtx,sourceCanvas,[src[0],src[2],src[3]],[dst[0],dst[2],dst[3]]);
+        } else {
+          const outW=profile?.width||Math.max(1,Math.round(crop.w/scale));
+          const outH=profile?.height||Math.max(1,Math.round(crop.h/scale));
+          out.width=outW;out.height=outH;
+          const outCtx=out.getContext('2d',{alpha:false});outCtx.fillStyle='#fff';outCtx.fillRect(0,0,outW,outH);
+          outCtx.drawImage(sourceCanvas,crop.x/scale,crop.y/scale,crop.w/scale,crop.h/scale,0,0,outW,outH);
+        }
         const blob=await exportJpeg(out,profile);
-        document.getElementById('cropModal').classList.remove('open'); resolve(blob);
+        document.getElementById('cropModal').classList.remove('open');resolve(blob);
       } catch(error) { reject(error); }
     };
   });
+}
+
+function initialQuad(width,height) {
+  const x=width*.07,y=height*.07,w=width*.86,h=height*.86;
+  return [{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}];
+}
+function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+function validQuad(points) {
+  if(points.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)))return false;
+  const crosses=[];
+  for(let i=0;i<4;i++){
+    const a=points[i],b=points[(i+1)%4],c=points[(i+2)%4];
+    crosses.push((b.x-a.x)*(c.y-b.y)-(b.y-a.y)*(c.x-b.x));
+  }
+  return crosses.every(v=>v>120)||crosses.every(v=>v< -120);
+}
+function drawWarpTriangle(ctx,image,src,dst) {
+  const [p0,p1,p2]=src,[q0,q1,q2]=dst;
+  const sx1=p1.x-p0.x,sy1=p1.y-p0.y,sx2=p2.x-p0.x,sy2=p2.y-p0.y;
+  const dx1=q1.x-q0.x,dy1=q1.y-q0.y,dx2=q2.x-q0.x,dy2=q2.y-q0.y;
+  const det=sx1*sy2-sx2*sy1;
+  if(Math.abs(det)<.0001)throw new Error('The four crop corners overlap. Reset the crop and adjust the corners again.');
+  const a=(dx1*sy2-dx2*sy1)/det;
+  const c=(sx1*dx2-sx2*dx1)/det;
+  const b=(dy1*sy2-dy2*sy1)/det;
+  const d=(sx1*dy2-sx2*dy1)/det;
+  const e=q0.x-a*p0.x-c*p0.y;
+  const f=q0.y-b*p0.x-d*p0.y;
+  ctx.save();ctx.beginPath();ctx.moveTo(q0.x,q0.y);ctx.lineTo(q1.x,q1.y);ctx.lineTo(q2.x,q2.y);ctx.closePath();ctx.clip();
+  ctx.transform(a,b,c,d,e,f);ctx.drawImage(image,0,0);ctx.restore();
 }
 
 function initialCrop(width,height,profile) {

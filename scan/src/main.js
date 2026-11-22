@@ -1,6 +1,6 @@
 import { cropImage } from './image.js';
 import { getConfiguredClientId, storeConfiguredClientId } from './config.js';
-import { createLocalStudentRecord, saveLocalStudentDocument, saveLocalStudentManifest, listLocalArchive, listLocalStudentDocuments, saveLocalMergedFile, savePhoneDirectoryHandle, getPhoneDirectoryHandle, getLocalStudentRecord, requestPersistentPhoneStorage } from './local-store.js';
+import { createLocalStudentRecord, saveLocalStudentDocument, saveLocalStudentManifest, listLocalArchive, listLocalStudentDocuments, saveLocalMergedFile, savePhoneDirectoryHandle, getPhoneDirectoryHandle, getLocalStudentRecord, updateLocalStudentRecord, deleteLocalStudentRecord, requestPersistentPhoneStorage } from './local-store.js';
 
 const $ = id => document.getElementById(id);
 const MAX_PDF_BYTES = 480 * 1024;
@@ -18,6 +18,9 @@ let pendingMulti = null;
 let savedDocs = [];
 let currentArchive = [];
 let currentArchiveSource = 'all';
+let archiveLoadVersion = 0;
+let editingStudent = null;
+const documentObjectUrls = new Map();
 let folderSetupReturnView = 'homeView';
 let settingsReturnView = 'homeView';
 let toastTimer;
@@ -69,7 +72,7 @@ function formatBytes(bytes) {
 async function boot() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/scan/sw.js').catch(()=>{});
   document.querySelectorAll('[data-back]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.back)));
-  document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.nav)));
+  document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>{showView(b.dataset.nav);if(b.dataset.nav==='archiveView')refreshArchive();if(b.dataset.nav==='homeView')refreshHome().catch(error=>toast(error.message,true));if(b.dataset.nav==='documentsView')refreshStudentDocuments().catch(error=>toast(error.message,true));}));
   document.querySelectorAll('[data-doc]').forEach(b=>b.addEventListener('click',()=>startDocument(b.dataset.doc)));
   $('signInButton').addEventListener('click',handleSignIn);
   $('phoneStorageButton').addEventListener('click',activatePhoneStorage);
@@ -85,7 +88,7 @@ async function boot() {
   $('folderRootButton').addEventListener('click',()=>{folderStack=[{id:'root',name:'OneDrive',path:'OneDrive'}];renderFolderBrowser();});
   $('useFolderButton').addEventListener('click',chooseCurrentFolder);
   $('createStudentButton').addEventListener('click',handleCreateStudent);
-  $('finishStudentButton').addEventListener('click',()=>{activeStudent=null;showView('homeView');refreshHome().catch(e=>toast(e.message,true));});
+  $('finishStudentButton').addEventListener('click',()=>{activeStudent=null;revokeDocumentObjectUrls();showView('homeView');refreshHome().catch(e=>toast(e.message,true));});
   $('archiveButton').addEventListener('click',()=>{currentArchiveSource='all';showView('archiveView');refreshArchive().catch(e=>toast(e.message,true));});
   $('refreshRecentButton').addEventListener('click',()=>refreshHome().catch(e=>toast(e.message,true)));
   $('refreshDocsButton').addEventListener('click',()=>refreshStudentDocuments().catch(e=>toast(e.message,true)));
@@ -107,11 +110,33 @@ async function boot() {
   $('cropClose').addEventListener('click',()=> $('cropModal').classList.remove('open'));
   $('documentChecklist').addEventListener('click',()=>{});
   $('savedDocsList').addEventListener('click',e=>{
-    const button=e.target.closest('[data-download-doc]');
-    if(!button)return;
-    const doc=savedDocs.find(x=>x.name===button.dataset.downloadDoc);
-    if(doc?.blob)downloadBlob(doc.blob,doc.name);
+    const downloadButton=e.target.closest('[data-download-doc]');
+    const openButton=e.target.closest('[data-open-doc]');
+    const key=downloadButton?.dataset.downloadDoc || openButton?.dataset.openDoc;
+    if(!key)return;
+    const doc=savedDocs.find(x=>x.name===key);
+    if(!doc)return;
+    if(downloadButton && doc.blob)downloadBlob(doc.blob,doc.name);
+    else if(doc.webUrl)window.open(doc.webUrl,'_blank','noopener');
+    else if(doc.blob)window.open(documentThumbSource(doc),'_blank','noopener');
   });
+  $('archiveList').addEventListener('click',e=>{
+    const action=e.target.closest('[data-student-action]');
+    if(action){
+      e.preventDefault();e.stopPropagation();
+      const student={folderId:action.dataset.folderId,name:action.dataset.name,folderName:action.dataset.folderName,source:action.dataset.source,date:action.dataset.date};
+      if(action.dataset.studentAction==='edit')openStudentEditor(student).catch(error=>toast(error.message,true));
+      if(action.dataset.studentAction==='delete')deleteStudent(student).catch(error=>toast(error.message,true));
+      return;
+    }
+    const open=e.target.closest('[data-open-student]');
+    if(open)openArchivedStudent(open.dataset.folderId,open.dataset.name,open.dataset.source,open.dataset.date,open.dataset.folderName).catch(error=>toast(error.message,true));
+  });
+  $('editActiveStudentButton').addEventListener('click',()=>activeStudent&&openStudentEditor(activeStudent).catch(error=>toast(error.message,true)));
+  $('deleteActiveStudentButton').addEventListener('click',()=>activeStudent&&deleteStudent(activeStudent).catch(error=>toast(error.message,true)));
+  $('studentEditClose').addEventListener('click',closeStudentEditor);
+  $('studentEditCancel').addEventListener('click',closeStudentEditor);
+  $('studentEditSave').addEventListener('click',saveStudentEdits);
 
   if(storageMode==='local') {
     await activatePhoneStorage(false);
@@ -248,8 +273,8 @@ async function refreshHome() {
   if(!baseFolder)return;
   const groups=storageMode==='local'?await listLocalArchive():await oneDriveApi.listArchive(baseFolder);
   const recent=groups.flatMap(g=>g.students.map(s=>({...s,date:g.date}))).slice(0,5);
-  $('recentList').innerHTML=recent.length?recent.map(s=>`<button class="record-row" data-folder="${s.folderId}"><span class="record-avatar">${escapeHtml(s.name.charAt(0).toUpperCase())}</span><span class="record-copy"><strong>${escapeHtml(s.name)}</strong><small>${humanDate(s.date)}</small></span><span>›</span></button>`).join(''):'<div class="empty-state">No students saved yet. Create your first customer.</div>';
-  $('recentList').querySelectorAll('[data-folder]').forEach(b=>b.addEventListener('click',()=>openArchivedStudent(b.dataset.folder,b.querySelector('strong').textContent,storageMode==='local'?'phone':'onedrive')));
+  $('recentList').innerHTML=recent.length?recent.map(s=>`<button class="record-row" data-folder="${escapeAttr(s.folderId)}" data-folder-name="${escapeAttr(s.folderName||s.name)}" data-date="${escapeAttr(s.date)}"><span class="record-avatar">${escapeHtml(s.name.charAt(0).toUpperCase())}</span><span class="record-copy"><strong>${escapeHtml(s.name)}</strong><small>${humanDate(s.date)}</small></span><span>›</span></button>`).join(''):'<div class="empty-state">No students saved yet. Create your first customer.</div>';
+  $('recentList').querySelectorAll('[data-folder]').forEach(b=>b.addEventListener('click',()=>openArchivedStudent(b.dataset.folder,b.querySelector('strong').textContent,storageMode==='local'?'phone':'onedrive',b.dataset.date,b.dataset.folderName)));
 }
 
 async function handleCreateStudent() {
@@ -261,7 +286,7 @@ async function handleCreateStudent() {
   try {
     const details={name,mobile:$('studentMobile').value,address:$('studentAddress').value};
     const student=storageMode==='local'?await createLocalStudentRecord(baseFolder,details):await oneDriveApi.createStudentRecord(baseFolder,details);
-    activeStudent={...student,storage:storageMode==='local'?'phone':'onedrive'};savedDocs=[];
+    revokeDocumentObjectUrls();activeStudent={...student,storage:storageMode==='local'?'phone':'onedrive'};savedDocs=[];
     $('studentName').value='';$('studentMobile').value='';$('studentAddress').value='';
     updateStudentHeader();renderStudentDocuments();
     hideProgress();showView('documentsView');toast(storageMode==='local'?'Student created on this phone.':'Student created successfully in OneDrive.');
@@ -272,17 +297,36 @@ async function handleCreateStudent() {
 function isPhoneStudent(student=activeStudent) { return student?.storage==='phone' || student?.local===true; }
 function updateStudentHeader() {
   $('activeStudentName').textContent=activeStudent?.name||'Student';
-  $('activeStudentMeta').textContent=activeStudent?`${activeStudent.date||''} · ${isPhoneStudent(activeStudent)?'Phone storage':'OneDrive'} · ${activeStudent.folderName||''}`:'Choose a storage source to begin.';
+  const source=isPhoneStudent(activeStudent)?'Phone storage':'OneDrive';
+  const contact=activeStudent?.mobile?` · ${activeStudent.mobile}`:'';
+  $('activeStudentMeta').textContent=activeStudent?`${activeStudent.date||''} · ${source}${contact}`:'Choose a storage source to begin.';
+}
+function revokeDocumentObjectUrls() {
+  for(const url of documentObjectUrls.values())URL.revokeObjectURL(url);
+  documentObjectUrls.clear();
+}
+function documentThumbSource(doc) {
+  if(doc.thumbnailUrl)return doc.thumbnailUrl;
+  if(doc.blob) {
+    if(!documentObjectUrls.has(doc.name))documentObjectUrls.set(doc.name,URL.createObjectURL(doc.blob));
+    return documentObjectUrls.get(doc.name);
+  }
+  return '';
 }
 function renderStudentDocuments() {
   const expected=['Photo.jpg','Signature.jpg','Aadhaar.pdf','Licence.pdf'];
   $('documentChecklist').innerHTML=expected.map(n=>`<span class="check-item ${savedDocs.some(x=>x.name===n)?'done':''}"><i>${savedDocs.some(x=>x.name===n)?'✓':'•'}</i>${n.replace('.jpg','').replace('.pdf','')}</span>`).join('');
   $('documentCount').textContent=`${savedDocs.length} saved`;
   $('savedDocsList').innerHTML=savedDocs.length?savedDocs.map(x=>{
-    const status=isPhoneStudent(activeStudent)?(x.writtenToFolder?'Saved to phone folder':'Saved in app storage'):'Saved to OneDrive';
+    const status=isPhoneStudent(activeStudent)?(x.writtenToFolder?'Phone folder':'Phone app storage'):'OneDrive';
+    const thumb=documentThumbSource(x);
+    const preview=thumb?`<img class="doc-thumb" src="${escapeAttr(thumb)}" alt="${escapeAttr(x.name)} preview" data-file-name="${escapeAttr(x.name)}" loading="lazy" />`:`<span class="doc-thumb doc-thumb-fallback ${x.name.toLowerCase().endsWith('.pdf')?'pdf':''}">${x.name.toLowerCase().endsWith('.pdf')?'PDF':'IMG'}</span>`;
     const action=isPhoneStudent(activeStudent)&&x.blob?`<button class="text-btn" data-download-doc="${escapeAttr(x.name)}">Download</button>`:'';
-    return `<div class="record-row"><span class="record-avatar">${x.name.endsWith('.pdf')?'PDF':'JPG'}</span><span class="record-copy"><strong>${escapeHtml(x.name)}</strong><small>${formatBytes(x.size)} · ${status}</small></span>${action}</div>`;
+    return `<div class="saved-document-row"><button class="doc-preview-button" type="button" data-open-doc="${escapeAttr(x.name)}" aria-label="Open ${escapeAttr(x.name)}">${preview}</button><span class="record-copy"><strong>${escapeHtml(x.name)}</strong><small>${formatBytes(x.size)} · ${status}</small></span>${action}${x.webUrl?`<a class="text-btn" href="${escapeAttr(x.webUrl)}" target="_blank" rel="noopener">Open</a>`:''}</div>`;
   }).join(''):'<div class="empty-state">No documents saved yet.</div>';
+  $('savedDocsList').querySelectorAll('img.doc-thumb').forEach(img=>img.addEventListener('error',()=>{
+    const fallback=document.createElement('span');const isPdf=(img.dataset.fileName||'').toLowerCase().endsWith('.pdf');fallback.className=`doc-thumb doc-thumb-fallback ${isPdf?'pdf':''}`;fallback.textContent=isPdf?'PDF':'IMG';img.replaceWith(fallback);
+  },{once:true}));
 }
 
 let captureState=null;
@@ -297,7 +341,7 @@ function startDocument(type) {
     if(!Number.isInteger(pageCount)||pageCount<1||pageCount>8){toast('Choose a page count from 1 to 8.',true);return;}
     captureState={type:'Other',name:name.trim(),files:[],maxPages:pageCount};
     $('captureTitle').textContent=`${name.trim()} · Page 1`;$('captureEyebrow').textContent=`NAMED DOCUMENT · PAGE 1 OF ${pageCount}`;
-    $('captureHelp').textContent=`Capture ${pageCount} full page(s) in order or select the images together. Named document pages are not cropped.`;
+    $('captureHelp').textContent=`Capture ${pageCount} page(s) in order or select the images together. Each page opens in a four-corner crop and straightening editor.`;
     $('pagePrompt').hidden=true;$('pagePrompt').innerHTML='';
     $('cameraInput').multiple=false;$('fileInput').multiple=true;
     $('captureModal').querySelector('.capture-actions label[for="cameraInput"]').textContent='📷 Capture page 1';
@@ -323,28 +367,40 @@ async function handleCapturedFiles(fileList,source) {
   const state=captureState;
   if(state.type==='Other') {
     if(state.files.length+files.length>state.maxPages){toast(`This document was set for ${state.maxPages} page(s). Select only the remaining page(s).`,true);return;}
-    state.files.push(...files);
+    $('captureModal').classList.remove('open');
+    try {
+      for(let i=0;i<files.length;i++) {
+        const pageNumber=state.files.length+1;
+        const cropped=await cropImage(files[i],null,()=>{
+          $('cropTitle').textContent=`${state.name} · Page ${pageNumber} of ${state.maxPages}`;
+          $('cropInstructions').textContent='Adjust all four green corners to fit the page. The scanner will straighten the page automatically.';
+        },{perspective:true});
+        if(!cropped){$('captureModal').classList.add('open');return;}
+        state.files.push(cropped);
+      }
+    } catch(error) { $('captureModal').classList.add('open');toast(error.message,true);return; }
     if(state.files.length<state.maxPages) {
       const nextPage=state.files.length+1;
       $('captureTitle').textContent=`${state.name} · Page ${nextPage}`;
-      $('captureEyebrow').textContent=`NAMED DOCUMENT · ${state.files.length} OF ${state.maxPages} CAPTURED`;
-      $('captureHelp').textContent=`${state.files.length} of ${state.maxPages} pages captured. Capture the next full page or choose the remaining images. No crop is applied.`;
+      $('captureEyebrow').textContent=`NAMED DOCUMENT · ${state.files.length} OF ${state.maxPages} CROPPED`;
+      $('captureHelp').textContent=`${state.files.length} of ${state.maxPages} pages are ready. Capture or choose the remaining pages; each page gets four-corner adjustment.`;
       $('captureModal').querySelector('.capture-actions label[for="cameraInput"]').textContent=`📷 Capture page ${nextPage}`;
       $('captureModal').querySelector('.capture-actions label[for="fileInput"]').textContent='Choose remaining pages';
       $('pagePrompt').hidden=false;
-      $('pagePrompt').innerHTML=`<strong>Page ${state.files.length} of ${state.maxPages} captured.</strong> <button type="button" id="retakeNamedPageButton" class="text-btn">Retake last page</button>`;
+      $('pagePrompt').innerHTML=`<strong>${state.files.length} of ${state.maxPages} pages ready.</strong> <button type="button" id="retakeNamedPageButton" class="text-btn">Retake last page</button>`;
       $('retakeNamedPageButton').addEventListener('click',()=>{
         state.files.pop();
         const page=state.files.length+1;
         $('captureTitle').textContent=`${state.name} · Page ${page}`;
-        $('captureEyebrow').textContent=`NAMED DOCUMENT · ${state.files.length} OF ${state.maxPages} CAPTURED`;
-        $('captureHelp').textContent='Retake the current full page. Named document pages are kept uncropped.';
+        $('captureEyebrow').textContent=`NAMED DOCUMENT · ${state.files.length} OF ${state.maxPages} READY`;
+        $('captureHelp').textContent='Retake the current page. It will open in the four-corner crop editor.';
         $('captureModal').querySelector('.capture-actions label[for="cameraInput"]').textContent=`📷 Capture page ${page}`;
         $('pagePrompt').hidden=true;$('pagePrompt').innerHTML='';
       });
+      $('captureModal').classList.add('open');
       return;
     }
-    closeCaptureModal(); await saveOtherPdf(state); return;
+    closeCaptureModal();await saveOtherPdf(state);return;
   }
   $('captureModal').classList.remove('open');
   const profile=state.type==='Photo'?{width:205,height:286,preferredMin:10*1024,preferredMax:18*1024}:state.type==='Signature'?{width:312,height:243,preferredMin:10*1024,preferredMax:18*1024}:null;
@@ -443,6 +499,7 @@ async function saveDocument(filename,blob) {
   try {
     if(saveToPhone) {
       const saved=await saveLocalStudentDocument(activeStudent,filename,blob);
+      const oldUrl=documentObjectUrls.get(filename);if(oldUrl){URL.revokeObjectURL(oldUrl);documentObjectUrls.delete(filename);}
       const index=savedDocs.findIndex(x=>x.name===filename);
       if(index>=0)savedDocs[index]=saved;else savedDocs.push(saved);
       await saveLocalStudentManifest(activeStudent,savedDocs);
@@ -458,17 +515,22 @@ async function saveDocument(filename,blob) {
     updateProgress('Verifying file in OneDrive…',100);
     const items=await graphApi.listChildren(activeStudent.folderId);
     if(!items.some(x=>x.name===filename && x.file))throw new Error('OneDrive did not confirm the saved file. Please retry.');
-    renderStudentDocuments();hideProgress();toast(`${filename} saved successfully.`);
+    await refreshStudentDocuments();hideProgress();toast(`${filename} saved successfully.`);
   } catch(error) { hideProgress();throw error; }
 }
 
 async function refreshStudentDocuments() {
   if(!activeStudent)return;
+  $('savedDocsList').innerHTML='<div class="loading-line">Loading saved documents and previews…</div>';
+  revokeDocumentObjectUrls();
   if(isPhoneStudent(activeStudent)) {
     savedDocs=await listLocalStudentDocuments(activeStudent.folderId);
   } else {
     const items=await oneDriveApi.listStudentDocuments(activeStudent.folderId);
-    savedDocs=items.map(x=>({name:x.name,size:x.size,webUrl:x.webUrl}));
+    savedDocs=await Promise.all(items.map(async item=>({
+      name:item.name,size:item.size,webUrl:item.webUrl,id:item.id,
+      thumbnailUrl:await graphApi.getThumbnailUrl(item.id)
+    })));
   }
   renderStudentDocuments();
 }
@@ -491,42 +553,29 @@ function updateArchiveTabs() {
   });
 }
 
-async function getCachedOneDriveArchive() {
-  const state=await prepareAuth();
-  account=state.account||authApi?.getAccount()||account;
-  if(!state.configured||!account) return { connected:false, groups:[] };
-  await loadCloudApis();
-  await graphApi.getDrive();
-  baseFolder=oneDriveApi.getSavedBaseFolder();
-  if(!baseFolder?.id) return { connected:false, needsFolder:true, groups:[] };
-  await graphApi.listChildren(baseFolder.id);
-  const groups=await oneDriveApi.listArchive(baseFolder);
-  return { connected:true, groups };
-}
-
 async function selectArchiveSource(source) {
-  if(!['all','phone','onedrive'].includes(source)) return;
+  if(!['all','phone','onedrive'].includes(source))return;
   currentArchiveSource=source;
   updateArchiveTabs();
-  if(source==='onedrive') {
-    $('archiveList').innerHTML='<div class="loading-line">Connecting to OneDrive…</div>';
-    const connected=await connectOneDriveForArchive(true);
-    if(connected) await refreshArchive();
-    return;
-  }
   await refreshArchive();
 }
 
 async function connectOneDriveForArchive(interactive=false) {
   try {
+    const configuredId=getConfiguredClientId();
+    if(!configuredId||configuredId.includes('PASTE_')) {
+      setArchiveNote('Add your Microsoft Client ID in Settings to access the OneDrive archive.','settings');
+      if(interactive)openSettings('archiveView');
+      return false;
+    }
     const state=await prepareAuth();
     if(!state.configured) {
       setArchiveNote('Add your Microsoft Client ID in Settings to access the OneDrive archive.','settings');
-      if(interactive) openSettings('archiveView');
+      if(interactive)openSettings('archiveView');
       return false;
     }
     account=state.account||authApi?.getAccount()||account;
-    if(!account && interactive) account=await authApi.signIn();
+    if(!account&&interactive)account=await authApi.signIn();
     if(!account) {
       setArchiveNote('Sign in to view people saved in the shared OneDrive folder.','connect');
       return false;
@@ -535,107 +584,168 @@ async function connectOneDriveForArchive(interactive=false) {
     await graphApi.getDrive();
     baseFolder=oneDriveApi.getSavedBaseFolder();
     if(!baseFolder?.id) {
-      if(interactive) await openFolderSetup('archiveView');
+      if(interactive)await openFolderSetup('archiveView');
       else setArchiveNote('Choose the shared OneDrive folder to include its people in the archive.','connect');
       return false;
     }
-    await graphApi.listChildren(baseFolder.id);
     return true;
   } catch(error) {
     setArchiveNote(`OneDrive archive could not be loaded: ${error.message}`,'connect');
-    if(interactive) toast(error.message,true);
+    if(interactive)toast(error.message,true);
     return false;
   }
 }
 
 async function connectOneDriveFromArchive() {
-  if($('archiveConnectOneDriveButton').dataset.action==='settings') {
-    openSettings('archiveView');
-    return;
-  }
+  if($('archiveConnectOneDriveButton').dataset.action==='settings') {openSettings('archiveView');return;}
   const connected=await connectOneDriveForArchive(true);
   if(connected) {
-    if(currentArchiveSource==='all') await refreshArchive();
-    else { currentArchiveSource='onedrive'; updateArchiveTabs(); await refreshArchive(); }
+    if(currentArchiveSource==='all')await refreshArchive();
+    else {currentArchiveSource='onedrive';updateArchiveTabs();await refreshArchive();}
   }
 }
 
 async function refreshArchive() {
-  updateArchiveTabs();
-  $('archiveList').innerHTML='<div class="loading-line">Loading saved records…</div>';
+  const requestVersion=++archiveLoadVersion;
+  const refreshButton=$('archiveRefreshButton');
+  refreshButton.disabled=true;
+  $('archiveList').innerHTML='<div class="loading-line">Loading saved people…</div>';
   setArchiveNote('');
-  const phoneGroups=(currentArchiveSource==='phone'||currentArchiveSource==='all')
-    ? await listLocalArchive() : [];
   const groupsByDate=new Map();
   const addGroups=(groups,source)=>{
     for(const group of groups||[]) {
-      const existing=groupsByDate.get(group.date)||[];
-      for(const student of group.students||[]) existing.push({...student,source:student.source||source});
-      groupsByDate.set(group.date,existing);
+      const list=groupsByDate.get(group.date)||[];
+      for(const student of group.students||[])list.push({...student,source:student.source||source,date:student.date||group.date});
+      groupsByDate.set(group.date,list);
     }
   };
-  addGroups(phoneGroups,'phone');
+  try {
+    if(currentArchiveSource==='phone'||currentArchiveSource==='all')addGroups(await listLocalArchive(),'phone');
+    if(requestVersion!==archiveLoadVersion)return;
 
-  if(currentArchiveSource==='phone') {
-    setArchiveNote('Phone archive shows records saved by this app in this browser on this device. It does not include files copied into a phone folder outside the app.');
-  }
+    if(currentArchiveSource==='onedrive'||currentArchiveSource==='all') {
+      const connected=await connectOneDriveForArchive(false);
+      if(requestVersion!==archiveLoadVersion)return;
+      if(connected) {
+        const cloudGroups=await oneDriveApi.listArchive(baseFolder);
+        if(requestVersion!==archiveLoadVersion)return;
+        addGroups(cloudGroups,'onedrive');
+        setArchiveNote(currentArchiveSource==='all'
+          ?'All sources combines this phone’s local records with the shared OneDrive archive. Refresh to check for cloud changes.'
+          :'Live OneDrive archive. Changes made in OneDrive appear after Refresh. Delete the full student folder to remove that person.');
+      } else if(currentArchiveSource==='all') {
+        const phoneCount=[...groupsByDate.values()].reduce((n,list)=>n+list.length,0);
+        if(phoneCount===0) setArchiveNote($('archiveSourceNoteText').textContent||'Connect OneDrive to load student records.',$('archiveConnectOneDriveButton').dataset.action||'connect');
+      }
+    } else {
+      setArchiveNote('Phone archive shows records saved by this app in this browser on this device. Files copied outside the app are not automatically indexed.');
+    }
 
-  if(currentArchiveSource==='onedrive') {
-    const connected=await connectOneDriveForArchive(false);
-    if(!connected) {
-      currentArchive=[];
-      renderArchive();
-      return;
-    }
-    addGroups(await oneDriveApi.listArchive(baseFolder),'onedrive');
-    setArchiveNote('Live OneDrive archive. Changes made in OneDrive appear after Refresh. Delete the full student folder to remove that person.');
-  } else if(currentArchiveSource==='all') {
-    try {
-      const cloud=await getCachedOneDriveArchive();
-      if(cloud.connected) {
-        addGroups(cloud.groups,'onedrive');
-        setArchiveNote('All sources combines this phone’s local records with the shared OneDrive archive. Refresh to check for cloud changes.');
-      }
-      else if(cloud.needsFolder) setArchiveNote('Phone records are shown. Choose a OneDrive folder to include shared cloud records.','connect');
-      else {
-        const clientId=getConfiguredClientId();
-        setArchiveNote(clientId&&!clientId.includes('PASTE_')?'Phone records are shown. Connect OneDrive to include shared records from your other phones.':'Phone records are shown. Add your Microsoft Client ID to include OneDrive records.','settings');
-      }
-    } catch(error) {
-      setArchiveNote(`Phone records are shown. OneDrive could not be refreshed: ${error.message}`,'connect');
-    }
+    if(requestVersion!==archiveLoadVersion)return;
+    currentArchive=[...groupsByDate.entries()]
+      .sort((a,b)=>b[0].localeCompare(a[0]))
+      .map(([date,students])=>({date,id:date,students:students.sort((a,b)=>a.name.localeCompare(b.name))}));
+    renderArchive();
+  } catch(error) {
+    if(requestVersion!==archiveLoadVersion)return;
+    currentArchive=[...groupsByDate.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([date,students])=>({date,id:date,students}));
+    renderArchive();
+    setArchiveNote(`The archive could not finish loading: ${error.message}. Tap Refresh to try again.`,'connect');
+    toast(error.message,true);
+  } finally {
+    if(requestVersion===archiveLoadVersion)refreshButton.disabled=false;
   }
-  currentArchive=[...groupsByDate.entries()]
-    .sort((a,b)=>b[0].localeCompare(a[0]))
-    .map(([date,students])=>({date,id:date,students:students.sort((a,b)=>a.name.localeCompare(b.name))}));
-  renderArchive();
 }
 
 function renderArchive() {
   const term=$('archiveSearch').value.trim().toLowerCase();
   let html='';
-  const now=new Date(); const today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const now=new Date();const today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   for(const group of currentArchive) {
-    const matches=group.students.filter(s=>s.name.toLowerCase().includes(term));
-    if(term && !matches.length)continue;
-    const open=!!term || group.date===today;
-    html+=`<details class="date-group" ${open?'open':''}><summary><span>${humanDate(group.date)}</span><b>${matches.length} ${matches.length===1?'person':'people'}</b></summary><div class="date-records">${matches.map(s=>`<button class="record-row" data-student-folder="${escapeAttr(s.folderId)}" data-student-name="${escapeAttr(s.name)}" data-student-source="${s.source||'onedrive'}"><span class="record-avatar">${escapeHtml(s.name[0].toUpperCase())}</span><span class="record-copy"><strong>${escapeHtml(s.name)}</strong><small>${s.source==='phone'?'Phone':'OneDrive'} · ${escapeHtml(s.folderName)}</small></span><span>›</span></button>`).join('')}</div></details>`;
+    const matches=group.students.filter(student=>(student.name||'').toLowerCase().includes(term));
+    if(term&&!matches.length)continue;
+    const open=!!term||group.date===today;
+    html+=`<details class="date-group" ${open?'open':''}><summary><span>${humanDate(group.date)}</span><b>${matches.length} ${matches.length===1?'person':'people'}</b></summary><div class="date-records">${matches.map(student=>{
+      const source=student.source||'onedrive';
+      const attrs=`data-folder-id="${escapeAttr(student.folderId)}" data-name="${escapeAttr(student.name)}" data-folder-name="${escapeAttr(student.folderName||student.name)}" data-source="${source}" data-date="${escapeAttr(group.date)}"`;
+      return `<div class="archive-person-row"><button class="archive-open-button" data-open-student data-folder-id="${escapeAttr(student.folderId)}" data-name="${escapeAttr(student.name)}" data-folder-name="${escapeAttr(student.folderName||student.name)}" data-source="${source}" data-date="${escapeAttr(group.date)}"><span class="record-avatar">${escapeHtml((student.name||'?').charAt(0).toUpperCase())}</span><span class="record-copy"><strong>${escapeHtml(student.name||'Unnamed student')}</strong><small>${source==='phone'?'Phone · This device':'OneDrive · Shared folder'}</small></span><span>›</span></button><div class="archive-person-actions"><button class="mini-action" ${attrs} data-student-action="edit" title="Edit student" aria-label="Edit student">✎</button><button class="mini-action danger" ${attrs} data-student-action="delete" title="Delete student" aria-label="Delete student">×</button></div></div>`;
+    }).join('')}</div></details>`;
   }
   $('archiveList').innerHTML=html||'<div class="empty-state">No matching people found in this source.</div>';
-  $('archiveList').querySelectorAll('[data-student-folder]').forEach(b=>b.addEventListener('click',()=>openArchivedStudent(b.dataset.studentFolder,b.dataset.studentName,b.dataset.studentSource)));
 }
 
-async function openArchivedStudent(folderId,name,source='onedrive') {
+async function openArchivedStudent(folderId,name,source='onedrive',date='',folderName='') {
   const phoneSource=source==='phone';
-  const files=phoneSource?await listLocalStudentDocuments(folderId):await oneDriveApi.listStudentDocuments(folderId);
-  savedDocs=phoneSource?files:files.map(x=>({name:x.name,size:x.size,webUrl:x.webUrl}));
-  $('activeStudentName').textContent=name;
-  $('activeStudentMeta').textContent=phoneSource?'Saved on this phone':'Saved in OneDrive archive';
-  $('documentChecklist').innerHTML='';$('documentCount').textContent=`${files.length} saved`;
-  $('savedDocsList').innerHTML=phoneSource?files.map(f=>`<div class="record-row"><span class="record-avatar">${f.name.endsWith('.pdf')?'PDF':'JPG'}</span><span class="record-copy"><strong>${escapeHtml(f.name)}</strong><small>${formatBytes(f.size)} · Saved on this phone</small></span><button class="text-btn" data-download-doc="${escapeAttr(f.name)}">Download</button></div>`).join('')||'<div class="empty-state">No documents found for this student.</div>':files.map(f=>`<a class="record-row file-link" href="${f.webUrl}" target="_blank" rel="noopener"><span class="record-avatar">${f.name.endsWith('.pdf')?'PDF':'JPG'}</span><span class="record-copy"><strong>${escapeHtml(f.name)}</strong><small>${formatBytes(f.size)}</small></span><span>↗</span></a>`).join('')||'<div class="empty-state">No documents found for this student.</div>';
-  const localRecord=phoneSource?await getLocalStudentRecord(folderId):null;
-  activeStudent=phoneSource?{...localRecord,folderId,id:folderId,local:true,storage:'phone'}:{folderId,id:folderId,name,documents:[],storage:'onedrive'};
+  revokeDocumentObjectUrls();
+  if(phoneSource) {
+    const localRecord=await getLocalStudentRecord(folderId);
+    activeStudent={...(localRecord||{}),folderId,id:folderId,local:true,storage:'phone',name:localRecord?.name||name,date:localRecord?.date||date};
+  } else {
+    activeStudent=await oneDriveApi.getStudentRecord(folderId,{folderId,name,folderName:folderName||name,date,storage:'onedrive'});
+  }
+  updateStudentHeader();
+  $('documentChecklist').innerHTML='';$('documentCount').textContent='Loading…';
   showView('documentsView');
+  try { await refreshStudentDocuments(); }
+  catch(error) { savedDocs=[];renderStudentDocuments();toast(`Could not load saved documents: ${error.message}`,true); }
+}
+
+async function openStudentEditor(student) {
+  const phoneSource=student.source==='phone'||student.storage==='phone'||student.local===true;
+  editingStudent=phoneSource
+    ? await getLocalStudentRecord(student.folderId||student.id)
+    : await oneDriveApi.getStudentRecord(student.folderId,{...student,storage:'onedrive'});
+  if(!editingStudent)throw new Error('Student record not found. Refresh the archive and try again.');
+  editingStudent.storage=phoneSource?'phone':'onedrive';
+  $('editStudentName').value=editingStudent.name||student.name||'';
+  $('editStudentMobile').value=editingStudent.mobile||'';
+  $('editStudentAddress').value=editingStudent.address||'';
+  $('studentEditModal').classList.add('open');
+}
+
+function closeStudentEditor() {
+  $('studentEditModal').classList.remove('open');
+  editingStudent=null;
+}
+
+async function saveStudentEdits() {
+  if(!editingStudent)return;
+  const details={name:$('editStudentName').value.trim(),mobile:$('editStudentMobile').value.trim(),address:$('editStudentAddress').value.trim()};
+  if(!details.name){toast('Student name is required.',true);$('editStudentName').focus();return;}
+  const button=$('studentEditSave');button.disabled=true;
+  try {
+    const updated=editingStudent.storage==='phone'
+      ? await updateLocalStudentRecord(editingStudent.id,details)
+      : await oneDriveApi.updateStudentRecord(editingStudent,details);
+    if(activeStudent&&activeStudent.folderId===updated.folderId) {
+      activeStudent={...activeStudent,...updated};updateStudentHeader();
+    }
+    closeStudentEditor();
+    await refreshArchive();
+    if(baseFolder)await refreshHome();
+    toast('Student details updated successfully.');
+  } catch(error) { toast(error.message||'Could not update student details.',true); }
+  finally { button.disabled=false; }
+}
+
+async function deleteStudent(student) {
+  const phoneSource=student.source==='phone'||student.storage==='phone'||student.local===true;
+  const label=student.name||'this student';
+  if(!confirm(`Delete ${label} and all saved documents?\n\n${phoneSource?'This removes the record from this phone.':'This deletes the student folder from OneDrive (it may remain in the OneDrive recycle bin).'} This action cannot be undone from this scanner.`))return;
+  showProgress('Deleting student record',phoneSource?'Removing phone record and documents…':'Deleting student folder from OneDrive…',20);
+  try {
+    const localResult=phoneSource?await deleteLocalStudentRecord(student.folderId||student.id):null;
+    if(!phoneSource)await oneDriveApi.deleteStudentRecord(student.folderId);
+    if(activeStudent&&(activeStudent.folderId===(student.folderId||student.id))) {
+      activeStudent=null;savedDocs=[];revokeDocumentObjectUrls();showView('archiveView');
+    }
+    hideProgress();
+    await refreshArchive();
+    if(baseFolder)await refreshHome();
+    toast(localResult?.directoryCopyRemoved===false
+      ?'Phone app record deleted. The optional folder copy could not be removed; delete that copy manually in Files.'
+      :'Student and saved documents deleted.');
+  } catch(error) { hideProgress();toast(error.message||'Could not delete student record.',true); }
 }
 
 async function handleMergeFiles() {
@@ -648,7 +758,7 @@ async function handleMergeFiles() {
       updateProgress(`Review image ${i+1} of ${files.length}…`,Math.round((i/files.length)*55));
       const crop=await cropImage(files[i],null,()=>{
         $('cropTitle').textContent=`Merge Files · Image ${i+1} of ${files.length}`;
-        $('cropInstructions').textContent='Adjust the crop for this image. Confirm to continue to the next image.';
+        $('cropInstructions').textContent='Adjust the crop area, then confirm to continue to the next image.';
       });
       if(!crop){hideProgress();$('mergeInput').value='';return;}
       reviewed.push(crop);

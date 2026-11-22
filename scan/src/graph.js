@@ -80,3 +80,32 @@ export async function uploadFile(parentId, name, blob, onProgress = () => {}) {
 export async function deleteItem(itemId) {
   return graphRequest(`/me/drive/items/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 }
+
+
+export async function updateItem(itemId, patch) {
+  return graphRequest(`/me/drive/items/${encodeURIComponent(itemId)}`, { method: 'PATCH', body: patch });
+}
+
+export async function getFileDownloadUrl(itemId) {
+  const item = await graphRequest(`/me/drive/items/${encodeURIComponent(itemId)}?$select=id,name,%40microsoft.graph.downloadUrl`);
+  return item['@microsoft.graph.downloadUrl'] || null;
+}
+
+export async function getFileText(itemId) {
+  const url = await getFileDownloadUrl(itemId);
+  if (!url) throw new Error('OneDrive did not provide a download link for this file.');
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`Could not read the OneDrive file (${response.status}).`);
+  return response.text();
+}
+
+export async function getThumbnailUrl(itemId) {
+  try {
+    const result = await graphRequest(`/me/drive/items/${encodeURIComponent(itemId)}/thumbnails`);
+    const thumbnail = result.value?.[0];
+    return thumbnail?.medium?.url || thumbnail?.small?.url || null;
+  } catch (error) {
+    console.warn('No OneDrive thumbnail is available for this file.', error);
+    return null;
+  }
+}

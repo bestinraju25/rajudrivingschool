@@ -13,3 +13,26 @@
 .archive-source-note[hidden]{display:none}
 .archive-source-note .text-btn{flex:0 0 auto;white-space:nowrap}
 @media(max-width:360px){.archive-source-tabs button{font-size:10px;padding-left:3px;padding-right:3px}}
+
+/* Student record management and document thumbnails */
+.student-management-actions{display:flex;gap:9px;margin:-2px 0 12px}
+.student-management-actions .btn{flex:1;min-height:42px}
+.btn-danger-light{border:1px solid #f1c9cf;background:#fff5f6;color:#a22b3d;border-radius:12px;padding:11px 14px;font-size:12px;font-weight:800}
+.archive-person-row{display:flex;align-items:center;gap:7px;border-bottom:1px solid #edf1f5;background:#fff;padding-right:8px}
+.archive-person-row:last-child{border-bottom:0}
+.archive-open-button{flex:1;min-width:0;display:flex;align-items:center;gap:10px;text-align:left;text-decoration:none;color:var(--ink);background:transparent;border:0;padding:11px 10px 11px 14px}
+.archive-person-actions{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+.mini-action{width:33px;height:33px;border:1px solid #dce6f3;border-radius:10px;background:#f7faff;color:#2b62bb;font-size:17px;font-weight:700;display:grid;place-items:center}
+.mini-action.danger{background:#fff7f7;border-color:#f1d5d8;color:#b13b48;font-size:21px}
+.archive-person-row .record-copy{flex:1}
+.saved-document-row{display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:1px solid #edf1f5;background:#fff;min-width:0}
+.saved-document-row:last-child{border-bottom:0}
+.doc-preview-button{width:58px;height:68px;flex:0 0 58px;border:1px solid #e3eaf3;border-radius:9px;background:#f6f9fd;display:grid;place-items:center;overflow:hidden;padding:0}
+.doc-thumb{width:100%;height:100%;object-fit:cover;display:block;background:#f0f4f9}
+.doc-thumb-fallback{display:grid;place-items:center;color:#2762b8;font-size:12px;font-weight:900;letter-spacing:.3px}
+.doc-thumb-fallback.pdf{color:#b13742;background:#fff2f2}
+.saved-document-row .record-copy{flex:1;min-width:0}
+.saved-document-row .text-btn{flex:0 0 auto;white-space:nowrap}
+#archiveRefreshButton:disabled{opacity:.5;pointer-events:none}
+#cropInstructions{font-size:12px}
+@media(max-width:370px){.doc-preview-button{width:48px;height:60px;flex-basis:48px}.archive-person-actions{gap:3px}.mini-action{width:30px;height:30px}}

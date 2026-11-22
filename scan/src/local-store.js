@@ -126,7 +126,7 @@ export async function listLocalArchive() {
   const groups = new Map();
   for (const s of sorted) {
     if (!groups.has(s.date)) groups.set(s.date, []);
-    groups.get(s.date).push({ id: s.id, folderId: s.id, folderName: s.folderName, name: s.name, source: 'phone' });
+    groups.get(s.date).push({ id: s.id, folderId: s.id, folderName: s.folderName, name: s.name, mobile: s.mobile || '', address: s.address || '', source: 'phone' });
   }
   return [...groups.entries()].map(([date, students]) => ({ date, id: date, students }));
 }
@@ -157,4 +157,45 @@ export async function requestPersistentPhoneStorage() {
     if (navigator.storage?.persist) return await navigator.storage.persist();
   } catch { /* browser may not grant persistent storage */ }
   return false;
+}
+
+export async function updateLocalStudentRecord(studentId, details) {
+  const record = await get(STORES.students, studentId);
+  if (!record) throw new Error('This phone record could not be found. Refresh the archive and try again.');
+  record.name = String(details.name || '').trim();
+  record.mobile = String(details.mobile || '').trim();
+  record.address = String(details.address || '').trim();
+  record.updatedAt = new Date().toISOString();
+  await put(STORES.students, record);
+  await writeDirectoryFile([record.date, record.folderName], 'student.json', new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' }));
+  return { ...record, folderId: record.id, local: true };
+}
+
+export async function deleteLocalStudentRecord(studentId) {
+  const record = await get(STORES.students, studentId);
+  const db = await openDb();
+  const docs = await getAll(STORES.documents);
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction([STORES.students, STORES.documents], 'readwrite');
+    tx.objectStore(STORES.students).delete(studentId);
+    for (const doc of docs) if (doc.studentId === studentId) tx.objectStore(STORES.documents).delete(doc.key);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error || new Error('Could not delete the phone record.'));
+    tx.onabort = () => reject(tx.error || new Error('Phone record deletion was cancelled.'));
+  });
+  let directoryCopyRemoved = null;
+  if (record) {
+    const root = await getPhoneDirectoryHandle();
+    if (root && record.date && record.folderName && root.removeEntry) {
+      try {
+        const dateDir = await root.getDirectoryHandle(record.date);
+        await dateDir.removeEntry(record.folderName, { recursive: true });
+        directoryCopyRemoved = true;
+      } catch (error) {
+        directoryCopyRemoved = error.name === 'NotFoundError';
+        if (!directoryCopyRemoved) console.warn('The app record was deleted, but the selected phone folder copy could not be removed.', error);
+      }
+    }
+  }
+  return { directoryCopyRemoved };
 }
